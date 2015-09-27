@@ -6,7 +6,7 @@ namespace utils {
 
 /*-----------------------------------------------------------------------------
  * Dynamic Pointer Types
------------------------------------------------------------------------------*/
+ * --------------------------------------------------------------------------*/
 LS_DEFINE_CLASS_TYPE(pointer, bool);
 LS_DEFINE_CLASS_TYPE(pointer, signed char);
 LS_DEFINE_CLASS_TYPE(pointer, unsigned char);
@@ -27,7 +27,7 @@ LS_DEFINE_CLASS_TYPE(pointer, long double);
 
 /*-----------------------------------------------------------------------------
  * Dynamic Array Types
------------------------------------------------------------------------------*/
+ * --------------------------------------------------------------------------*/
 LS_DEFINE_CLASS_TYPE(pointer, bool[]);
 LS_DEFINE_CLASS_TYPE(pointer, signed char[]);
 LS_DEFINE_CLASS_TYPE(pointer, unsigned char[]);

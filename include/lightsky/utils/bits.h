@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   bytes/bits.h
  * Author: Miles Lacey
  *
@@ -9,8 +9,6 @@
 #define	__LS_UTILS_BITS_H__
 
 #include <climits>
-
-#include "lightsky/utils/assertions.h"
 
 #ifndef LS_BITS_PER_BYTE
     #define LS_BITS_PER_BYTE CHAR_BIT
@@ -23,118 +21,161 @@ namespace utils {
  *  @brief bitMask
  *  Convenience structure to facilitate bit acquisition of bytes.
  */
-struct alignas(1) bitMask {
+struct alignas(1) bitMask
+{
     /**
      *  @brief byte
      *  A single (hopefully cross-platform) representation of a byte.
      */
     char byte = 0;
-    
+
     /**
      *  @brief get
      *  Get the Ith bit of 'byte.'
-     *  
+     *
      *  @param i
      *  An iterative value, representing what bit in 'byte' should be returned.
-     *  
+     *
      *  @return A single binary value representing the Ith bit of *this.
      */
-    constexpr int get(int i) const {
+    constexpr
+    int get(int i) const
+    {
         return (byte >> i) & 1;
     }
-    
+
     /**
      *  @brief set
      *  Set the Ith bit in *this.
-     *  
+     *
      *  @param i
      *  An iterative value, representing what bit in 'byte' should be toggled.
-     *  
+     *
      *  @param val
      *  A binary value, representing whether 'byte' should be toggled to 1 or
      *  0.
      */
-    inline void set(int i, int val) {
+    inline
+    void set(int i, int val)
+    {
         byte = (byte & ~(1 << i)) | (val << i);
     }
 };
 
 /*-----------------------------------------------------------------------------
-    Functions allowing access to individual bytes
------------------------------------------------------------------------------*/
+ * Functions allowing access to individual bytes
+ * --------------------------------------------------------------------------*/
 /**
  *  @brief getByte
  *  Retrieve the Nth byte of a basic data type.
- *  
+ *
  *  @param key
- *  
+ *
  *  @param iter
  *  The iterator which specifies the Nth byte in 'key'.
- *  
+ *
  *  @return The Nth byte in 'key,' specified by 'iter.'
  */
-template <typename key_t> constexpr
-const bitMask* getByte(const key_t* key, unsigned iter);
+ template <typename key_t>
+ constexpr
+ const utils::bitMask* utils::getByte(const key_t* k, unsigned iter)
+ {
+     return (iter < sizeof(k))
+     ?
+        reinterpret_cast<const utils::bitMask*>(k) + iter
+     :
+        nullptr;
+ }
 
 /**
  *  @brief getByte (char string specialization)
  *  Retrieve the Nth byte of a basic data type.
- *  
+ *
  *  @param key
- *  
+ *
  *  @param iter
  *  The iterator which specifies the Nth byte in 'key'.
- *  
+ *
  *  @return The Nth byte in 'key,' specified by 'iter.'
  */
-template <> constexpr
-const bitMask* getByte(const char* key, unsigned iter);
+template <>
+constexpr
+const utils::bitMask* utils::getByte(const char* str, unsigned iter)
+{
+    return (str[iter / sizeof(char)] != '\0')
+    ?
+        reinterpret_cast<const utils::bitMask*>(str) + iter
+    :
+        nullptr;
+}
 
 /**
  *  @brief getByte (wchar_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
- *  
+ *
  *  @param key
- *  
+ *
  *  @param iter
  *  The iterator which specifies the Nth byte in 'key'.
- *  
+ *
  *  @return The Nth byte in 'key,' specified by 'iter.'
  */
-template <> constexpr
-const bitMask* getByte(const wchar_t* key, unsigned iter);
+template <>
+constexpr
+const utils::bitMask* utils::getByte(const wchar_t* str, unsigned iter)
+{
+    return (str[iter / sizeof(wchar_t)] != '\0')
+    ?
+        reinterpret_cast<const utils::bitMask*>(str) + iter
+    :
+        nullptr;
+}
 
 /**
  *  @brief getByte (char16_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
- *  
+ *
  *  @param key
- *  
+ *
  *  @param iter
  *  The iterator which specifies the Nth byte in 'key'.
- *  
+ *
  *  @return The Nth byte in 'key,' specified by 'iter.'
  */
-template <> constexpr
-const bitMask* getByte(const char16_t* key, unsigned iter);
+template <>
+constexpr
+const utils::bitMask* utils::getByte(const char16_t* str, unsigned iter)
+{
+    return (str[iter / sizeof(char16_t)] != '\0')
+    ?
+        reinterpret_cast<const utils::bitMask*>(str) + iter
+    :
+        nullptr;
+}
 
 /**
  *  @brief getByte (char32_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
- *  
+ *
  *  @param key
- *  
+ *
  *  @param iter
  *  The iterator which specifies the Nth byte in 'key'.
- *  
+ *
  *  @return The Nth byte in 'key,' specified by 'iter.'
  */
-template <> constexpr
-const bitMask* getByte(const char32_t* key, unsigned iter);
+template <>
+constexpr
+const utils::bitMask* utils::getByte(const char32_t* str, unsigned iter)
+{
+    return (str[iter / sizeof(char32_t)] != '\0')
+    ?
+        reinterpret_cast<const utils::bitMask*>(str) + iter
+    :
+        nullptr;
+}
 
 } // end utils namespace
 } // end ls namespace
-
-#include "lightsky/utils/generic/bits_impl.h"
 
 #endif	/* __LS_UTILS_BITS_H__ */

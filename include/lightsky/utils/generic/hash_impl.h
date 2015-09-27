@@ -3,70 +3,88 @@ namespace ls {
 namespace utils {
 
 /*-------------------------------------
-    DJB2 hash implementation
--------------------------------------*/
+ * DJB2 hash implementation
+* -----------------------------------*/
 constexpr
-hash_t hashDJB2_impl(const char* str, unsigned int hashVal) {
+hash_t hashDJB2_impl(const char* str, unsigned int hashVal)
+{
 	return (!*str)
-        ? hashVal
-        : hashDJB2_impl(str+1, ((hashVal << 5) + hashVal) ^ *str);
+    ?
+        hashVal
+    :
+        hashDJB2_impl(str+1, ((hashVal << 5) + hashVal) ^ *str);
 }
 
 /*-------------------------------------
-    DJB2 hash interface
--------------------------------------*/
+ * DJB2 hash interface
+ * -----------------------------------*/
 constexpr
-hash_t hashDJB2(const char* str) {
+hash_t hashDJB2(const char* str)
+{
 	return (!str)
-        ? 0
-        : hashDJB2_impl(str, 5381);
+    ?
+        0
+    :
+        hashDJB2_impl(str, 5381);
 }
 
 /*-------------------------------------
-    SDBM hash implementation
--------------------------------------*/
+ * SDBM hash implementation
+ * ----------------------------------*/
 constexpr
-hash_t hashSDBM_impl(const char* str, unsigned int hashVal) {
+hash_t hashSDBM_impl(const char* str, unsigned int hashVal)
+{
     return (!*str)
-        ? hashVal
-        : hashSDBM_impl(str+1, *str + (hashVal << 6) + (hashVal << 16) - hashVal);
+    ?
+        hashVal
+    :
+        hashSDBM_impl(str+1, *str + (hashVal << 6) + (hashVal << 16) - hashVal);
 }
 
 /*-------------------------------------
-    SDBM hash interface
--------------------------------------*/
+ * SDBM hash interface
+ * ----------------------------------*/
 constexpr
 hash_t hashSDBM(const char* str) {
     return (!str)
-        ? 0
-        : hashSDBM_impl(str, 65599);
+    ?
+        0
+    :
+        hashSDBM_impl(str, 65599);
 }
 
 /*-------------------------------------
-    FNV-1a hash implementation
--------------------------------------*/
+ * FNV-1a hash implementation
+ * ----------------------------------*/
 constexpr
-hash_t hashFNV1_impl(const char* str, unsigned int hashVal) {
+hash_t hashFNV1_impl(const char* str, unsigned int hashVal)
+{
     return (!*str)
-        ? hashVal
-        : hashFNV1_impl(str+1, *str ^ (hashVal *  16777619));
+    ?
+        hashVal
+    :
+        hashFNV1_impl(str+1, *str ^ (hashVal *  16777619));
 }
 
 /*-------------------------------------
-    FNV-1a hash interface
--------------------------------------*/
+ * FNV-1a hash interface
+ * ----------------------------------*/
 constexpr
-hash_t hashFNV1(const char* str) {
+hash_t hashFNV1(const char* str)
+{
     return (!str)
-        ? 0
-        : hashFNV1_impl(str, 2166136261);
+    ?
+        0
+    :
+        hashFNV1_impl(str, 2166136261);
 }
 
 /*-------------------------------------
-    CRC32 hash interface/implementation
--------------------------------------*/
+ * CRC32 hash interface/implementation
+ * ----------------------------------*/
 namespace utilsImpl {// CRC32 Table (zlib polynomia from crc32.c)
-constexpr static uint32_t crc_table[256] = {
+constexpr static uint32_t crc_table[256] =
+{
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
   0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
@@ -122,11 +140,17 @@ constexpr static uint32_t crc_table[256] = {
 };
 } // end utilsImpl namespace
 
+/*-------------------------------------
+ * CRC32 Hash Function
+ * ----------------------------------*/
 constexpr
-hash_t crc32(const char* str, hash_t prevCrc) {
+hash_t crc32(const char* str, hash_t prevCrc)
+{
     return *str != 0
-        ? crc32(str+1, (prevCrc >> 8) ^ utilsImpl::crc_table[(prevCrc ^ str[0]) & 0xFF])
-        : prevCrc ^ 0xFFFFFFFF;
+    ?
+        crc32(str+1, (prevCrc >> 8) ^ utilsImpl::crc_table[(prevCrc ^ str[0]) & 0xFF])
+    :
+        prevCrc ^ 0xFFFFFFFF;
 }
 
 } // end utils namespace

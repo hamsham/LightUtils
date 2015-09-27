@@ -5,8 +5,8 @@ namespace ls {
 namespace utils {
 
 /*-------------------------------------
-    Extern Templates for plain data types.
--------------------------------------*/
+ * Extern Templates for plain data types.
+ * ----------------------------------*/
 template class tuple_t<signed char>;
 template class tuple_t<signed char*>;
 template class tuple_t<signed short>;

@@ -6,8 +6,8 @@ namespace ls {
 namespace utils {
 
 /*-----------------------------------------------------------------------------
-    Byte Counting for Variadic Templates
------------------------------------------------------------------------------*/
+ * Byte Counting for Variadic Templates
+ * --------------------------------------------------------------------------*/
 /**
  *  @brief getArgByteSize
  *  Helper function to sum the number of bytes used by a set of types.
@@ -20,7 +20,10 @@ namespace utils {
  *  can be the size of a built-in type, or user-defined structures.
  */
 constexpr
-unsigned getArgByteSize(unsigned size);
+unsigned getArgByteSize(unsigned size)
+{
+    return size;
+}
 
 /**
  *  @brief getArgByteSize
@@ -36,8 +39,12 @@ unsigned getArgByteSize(unsigned size);
  *  An unsigned integer, representing the size, in bytes, of a set of object
  *  types. These types can be built-in, or user-defined structures.
  */
-template <typename... integral_t> constexpr
-unsigned getArgByteSize(unsigned size, integral_t... sizeN);
+template <typename... integral_t>
+constexpr
+unsigned getArgByteSize(unsigned size, integral_t... sizeN)
+{
+ return size + getArgByteSize(sizeN...);
+}
 
 /**
  *  @brief getByteSize
@@ -47,12 +54,14 @@ unsigned getArgByteSize(unsigned size, integral_t... sizeN);
  *  An unsigned integer, representing the size, in bytes, of a set of object
  *  types. These types can be built-in, or user-defined structures.
  */
-template <typename... integral_t> constexpr
-unsigned getByteSize();
+ template <typename... integral_t>
+ constexpr
+ unsigned getByteSize()
+ {
+     return getArgByteSize(sizeof(integral_t)...);
+ }
 
 } // end utils namespace
 } // end ls namespace
-
-#include "lightsky/utils/generic/byteSize_impl.h"
 
 #endif /* __LS_UTILS_BYTESIZE_H__ */

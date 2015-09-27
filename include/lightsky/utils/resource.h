@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   resource.h
  * Author: Miles Lacey
  *
@@ -26,7 +26,8 @@ namespace utils {
  * class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class resource {
+class resource
+{
     protected:
         /**
          * pData is a pointer to an array of bytes that hold a complete resource
@@ -42,7 +43,6 @@ class resource {
         long dataSize = 0l;
 
     public:
-
         /**
          * @brief Constructor
          *
@@ -84,11 +84,11 @@ class resource {
          *
          * @param r
          * A constant reference to a resource object.
-         * 
+         *
          * @return a reference to *this.
          */
         resource& operator =(const resource& r) = delete;
-        
+
         /**
          * @brief Move operator
          *
@@ -104,88 +104,131 @@ class resource {
 
         /**
          * @brief Load a file
-         * 
+         *
          * @param filename
          * A string object containing the relative path name to a file that
          * should be loadable into memory.
-         * 
+         *
          * @return true if the file was successfully loaded. False if not.
          */
-        virtual bool loadFile(const std::string& filename) = 0;
+        virtual
+        bool loadFile(const std::string& filename) = 0;
 
         /**
          * @brief Load a file using a c-style wide string.
-         * 
+         *
          * This method merely converts the filename into a multi-byte string
          * and calls "openFile()" using the ANSI equivalent string.
-         * 
+         *
          * @param filename
          * A string object containing the relative path name to a file that
          * should be loadable into memory.
-         * 
+         *
          * @return true if the file was successfully loaded. False if not.
          */
-        virtual bool loadFile(const std::wstring& filename);
+        virtual
+        bool loadFile(const std::wstring& filename);
 
         /**
          * @brief Save a file
          *
          * Use this method to save data to a file, specific to the type of
          * resource used by derived classes.
-         * 
+         *
          * @param filename
          * A string object containing the relative path name to a file that
          * should be saved to the computer.
-         * 
+         *
          * @return true if the file was successfully saved. False if not.
          */
-        virtual bool saveFile(const std::string& filename) const = 0;
+        virtual
+        bool saveFile(const std::string& filename) const = 0;
 
         /**
          * @brief Save a file using a c-style string of wide (UTF-8) characters
-         * 
+         *
          * This method merely converts the filename into a multi-byte string
          * and calls "saveFile()" using the ANSI equivalent string.
-         * 
+         *
          * @param filename
          * A string object containing the relative path name to a file that
          * should be saved to the computer.
-         * 
+         *
          * @return true if the file was successfully saved. False if not.
          */
-        virtual bool saveFile(const std::wstring& filename) const;
+        virtual
+        bool saveFile(const std::wstring& filename) const;
 
         /**
          * @brief Unload
          *
          * Free all memory used by *this.
          */
-        virtual void unload() = 0;
+        virtual
+        void unload() = 0;
 
         /**
          *  Get the size, in bytes, of the current file loaded into memory.
-         *  
+         *
          *  @return a long integral type, used to determine how many bytes
          *  had been loaded from a file.
          */
-        virtual long getByteSize() const;
+        virtual
+        long getByteSize() const;
 
         /**
          *  @brief Get the raw, loaded, data contained within *this.
-         *  
+         *
          *  This method may be overridden by derived classes in order to
          *  provide data specific to a certain module's needs. In such a case,
          *  please see the associated documentation in order to determine how
          *  to use this method.
-         *  
+         *
          *  @return a pointer to a chunk of data loaded from a file.
          */
-        virtual void* getData() const;
+        virtual
+        void* getData() const;
 };
+
+/*-------------------------------------
+ * Get the size, in bytes, of the current file loaded into memory.
+ * ----------------------------------*/
+inline
+long resource::getByteSize() const
+{
+    return dataSize;
+}
+
+/*-------------------------------------
+ * Get the raw, loaded, data contained within *this.
+ * ----------------------------------*/
+inline
+void* resource::getData() const
+{
+    return pData;
+}
+
+/*-------------------------------------
+ * Open a file with UTF-8
+ * ----------------------------------*/
+inline
+bool resource::loadFile(const std::wstring& filename)
+{
+    // attempt to load the file
+    return loadFile(convertWtoMb(filename));
+}
+
+/*-------------------------------------
+ * Save with an UTF-8 filename
+ * ----------------------------------*/
+inline
+bool resource::saveFile(const std::wstring& filename) const
+{
+    // attempt to save the file using a multi-byte string.
+    return saveFile(convertWtoMb(filename));
+}
 
 } // end utils namespace
 } // end ls namespace
-
-#include "lightsky/utils/generic/resource_impl.h"
 
 #endif	/* __LS_UTILS_RESOURCE_H__ */

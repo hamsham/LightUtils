@@ -1,7 +1,7 @@
-/* 
+/*
  * File:   utils/resource.cpp
  * Author: Miles Lacey
- * 
+ *
  * Created on February 1, 2014, 11:09 PM
  */
 
@@ -11,8 +11,8 @@ namespace ls {
 namespace utils {
 
 /*-------------------------------------
-    Destructor
--------------------------------------*/
+ * Destructor
+ * ----------------------------------*/
 resource::~resource() {
 }
 
