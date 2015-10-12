@@ -27,7 +27,7 @@ namespace utils {
  * this class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class dataResource final : public resource
+class DataResource final : public Resource
 {
     private:
         /**
@@ -42,7 +42,7 @@ class dataResource final : public resource
          * @brief Convenience method which reassigns the values contained in
          * the resource base class (pData & dataSize).
          */
-        void reassignBaseMembers();
+        void reassign_base_members();
 
     public:
         /**
@@ -51,14 +51,14 @@ class dataResource final : public resource
          * Calls "unload()" and releases all memory from *this.
          */
         virtual
-        ~dataResource() override;
+        ~DataResource() override;
 
         /**
          * @brief Constructor
          *
          * Initializes all members in *this and in the base resource class.
          */
-        dataResource();
+        DataResource();
 
         /**
          * @brief Copy constructor
@@ -68,7 +68,7 @@ class dataResource final : public resource
          * @param dr
          * A constant reference to another data resource.
          */
-        dataResource(const dataResource& dr);
+        DataResource(const DataResource& dr);
 
         /**
          * @brief Move Constructor
@@ -79,7 +79,7 @@ class dataResource final : public resource
          * @param dr
          * An r-value reference to another data resource.
          */
-        dataResource(dataResource&& dr);
+        DataResource(DataResource&& dr);
 
         /**
          * @brief Copy Operator
@@ -91,7 +91,7 @@ class dataResource final : public resource
          *
          * @return a reference to *this.
          */
-        dataResource& operator =(const dataResource& dr);
+        DataResource& operator =(const DataResource& dr);
 
         /**
          * @brief Move operator
@@ -104,7 +104,7 @@ class dataResource final : public resource
          *
          * @return a reference to *this.
          */
-        dataResource& operator =(dataResource&& dr);
+        DataResource& operator =(DataResource&& dr);
 
         /**
          * @param Load a file
@@ -116,7 +116,7 @@ class dataResource final : public resource
          * @return true if the file was successfully loaded. False if not.
          */
         virtual
-        bool loadFile(const std::string& filename) override;
+        bool load_file(const std::string& filename) override;
 
         /**
          * @param Save a file
@@ -128,7 +128,7 @@ class dataResource final : public resource
          * @return true if the file was successfully saved. False if not.
          */
         virtual
-        bool saveFile(const std::string& filename) const override;
+        bool save_file(const std::string& filename) const override;
 
         /**
          * @param Unload
@@ -154,7 +154,7 @@ class dataResource final : public resource
          *
          * @return true if the copy was successful. False if otherwise.
          */
-        bool setData(const char* const data, long size);
+        bool set_data(const char* const data, long size);
 };
 
 } // end utils namespace

@@ -20,7 +20,7 @@ namespace utils {
 /*-------------------------------------
  * Destructor
  * ----------------------------------*/
-dataResource::~dataResource()
+DataResource::~DataResource()
 {
     unload();
 }
@@ -28,32 +28,32 @@ dataResource::~dataResource()
 /*-------------------------------------
  * Constructor
  * ----------------------------------*/
-dataResource::dataResource()
+DataResource::DataResource()
 :
-    resource{},
+    Resource{},
     fileData{}
 {}
 
 /*-------------------------------------
  * Copy Constructor
  * ----------------------------------*/
-dataResource::dataResource(const dataResource& f)
+DataResource::DataResource(const DataResource& f)
 :
-    resource{}
+    Resource{}
 {
-    setData(const_cast<char*>(f.pData), f.dataSize);
+    set_data(const_cast<char*>(f.pData), f.dataSize);
 }
 
 /*-------------------------------------
  * Move Constructor
  * ----------------------------------*/
-dataResource::dataResource(dataResource&& f)
+DataResource::DataResource(DataResource&& f)
 :
-    resource{},
+    Resource{},
     fileData{std::move(f.fileData)}
 {
     pData = &fileData[0];
-    reassignBaseMembers();
+    reassign_base_members();
 
     f.pData = nullptr;
     f.dataSize = 0;
@@ -62,21 +62,21 @@ dataResource::dataResource(dataResource&& f)
 /*-------------------------------------
  * Copy Operator
  * ----------------------------------*/
-dataResource& dataResource::operator=(const dataResource& f)
+DataResource& DataResource::operator=(const DataResource& f)
 {
-    setData(const_cast<char*>(f.pData), f.dataSize);
+    set_data(const_cast<char*>(f.pData), f.dataSize);
     return *this;
 }
 
 /*-------------------------------------
  * Move Operator
  * ----------------------------------*/
-dataResource& dataResource::operator =(dataResource&& f)
+DataResource& DataResource::operator =(DataResource&& f)
 {
     unload();
 
     fileData = std::move(f.fileData);
-    reassignBaseMembers();
+    reassign_base_members();
 
     f.pData = nullptr;
     f.dataSize = 0;
@@ -87,7 +87,7 @@ dataResource& dataResource::operator =(dataResource&& f)
 /*-------------------------------------
  * Reassign base class members
  * ----------------------------------*/
-void dataResource::reassignBaseMembers()
+void DataResource::reassign_base_members()
 {
     pData = &fileData[0];
     dataSize = sizeof(decltype(fileData)::value_type) * fileData.size();
@@ -96,7 +96,7 @@ void dataResource::reassignBaseMembers()
 /*-------------------------------------
  * Unload a resource
  * ----------------------------------*/
-void dataResource::unload()
+void DataResource::unload()
 {
     fileData.clear();
     pData = nullptr;
@@ -113,7 +113,7 @@ void dataResource::unload()
  *
  * http://cpp.indi.frih.net/blog/2014/09/how-to-read-an-entire-file-into-memory-in-cpp/
  * ----------------------------------*/
-bool dataResource::loadFile(const std::string& filename)
+bool DataResource::load_file(const std::string& filename)
 {
     unload();
 
@@ -145,7 +145,7 @@ bool dataResource::loadFile(const std::string& filename)
 
     // move the string stream's buffer into a string
     fileData = std::move(oss.str());
-    reassignBaseMembers();
+    reassign_base_members();
 
     return true;
 }
@@ -153,7 +153,7 @@ bool dataResource::loadFile(const std::string& filename)
 /*-------------------------------------
  * Save with a UTF-8 filename
  * ----------------------------------*/
-bool dataResource::saveFile(const std::string& filename) const {
+bool DataResource::save_file(const std::string& filename) const {
     std::ofstream fout;
 
     fout.open(filename, std::ios_base::binary);
@@ -175,7 +175,7 @@ bool dataResource::saveFile(const std::string& filename) const {
 /*-------------------------------------
  * Set a resource's data
  * ----------------------------------*/
-bool dataResource::setData(const char* const data, long size)
+bool DataResource::set_data(const char* const data, long size)
 {
     unload();
 
@@ -189,7 +189,7 @@ bool dataResource::setData(const char* const data, long size)
     const unsigned valueSize = (size/byteSize) + (size%byteSize);
 
     fileData.assign(data, valueSize);
-    reassignBaseMembers();
+    reassign_base_members();
 
     return true;
 }

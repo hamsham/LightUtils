@@ -19,7 +19,7 @@ hash_t hashDJB2_impl(const char* str, unsigned int hashVal)
  * DJB2 hash interface
  * -----------------------------------*/
 constexpr
-hash_t hashDJB2(const char* str)
+hash_t hash_djb2(const char* str)
 {
 	return (!str)
     ?
@@ -45,7 +45,7 @@ hash_t hashSDBM_impl(const char* str, unsigned int hashVal)
  * SDBM hash interface
  * ----------------------------------*/
 constexpr
-hash_t hashSDBM(const char* str) {
+hash_t hash_sdbm(const char* str) {
     return (!str)
     ?
         0
@@ -70,7 +70,7 @@ hash_t hashFNV1_impl(const char* str, unsigned int hashVal)
  * FNV-1a hash interface
  * ----------------------------------*/
 constexpr
-hash_t hashFNV1(const char* str)
+hash_t hash_fnv1(const char* str)
 {
     return (!str)
     ?

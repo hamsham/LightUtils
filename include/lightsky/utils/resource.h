@@ -26,7 +26,7 @@ namespace utils {
  * class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class resource
+class Resource
 {
     protected:
         /**
@@ -48,7 +48,7 @@ class resource
          *
          * Initializes all members in *this.
          */
-        resource() = default;
+        Resource() = default;
 
         /**
          * @brief Copy Constructor
@@ -58,7 +58,7 @@ class resource
          * @param r
          * A constant reference to a resource object.
          */
-        resource(const resource& r) = delete;
+        Resource(const Resource& r) = delete;
 
         /**
          * @brief Move Constructor
@@ -69,13 +69,13 @@ class resource
          * @param r
          * An r-value reference to a resource object.
          */
-        resource(resource&& r) = delete;
+        Resource(Resource&& r) = delete;
 
         /**
          * Destructor.
          * Make sure to call "unload()" before an object goes out of scope.
          */
-        virtual ~resource() = 0;
+        virtual ~Resource() = 0;
 
         /**
          * @brief Copy operator
@@ -87,7 +87,7 @@ class resource
          *
          * @return a reference to *this.
          */
-        resource& operator =(const resource& r) = delete;
+        Resource& operator =(const Resource& r) = delete;
 
         /**
          * @brief Move operator
@@ -100,7 +100,7 @@ class resource
          *
          * @return a reference to *this.
          */
-        resource& operator =(resource&& r) = delete;
+        Resource& operator =(Resource&& r) = delete;
 
         /**
          * @brief Load a file
@@ -112,7 +112,7 @@ class resource
          * @return true if the file was successfully loaded. False if not.
          */
         virtual
-        bool loadFile(const std::string& filename) = 0;
+        bool load_file(const std::string& filename) = 0;
 
         /**
          * @brief Load a file using a c-style wide string.
@@ -127,7 +127,7 @@ class resource
          * @return true if the file was successfully loaded. False if not.
          */
         virtual
-        bool loadFile(const std::wstring& filename);
+        bool load_file(const std::wstring& filename);
 
         /**
          * @brief Save a file
@@ -142,7 +142,7 @@ class resource
          * @return true if the file was successfully saved. False if not.
          */
         virtual
-        bool saveFile(const std::string& filename) const = 0;
+        bool save_file(const std::string& filename) const = 0;
 
         /**
          * @brief Save a file using a c-style string of wide (UTF-8) characters
@@ -157,7 +157,7 @@ class resource
          * @return true if the file was successfully saved. False if not.
          */
         virtual
-        bool saveFile(const std::wstring& filename) const;
+        bool save_file(const std::wstring& filename) const;
 
         /**
          * @brief Unload
@@ -174,7 +174,7 @@ class resource
          *  had been loaded from a file.
          */
         virtual
-        long getByteSize() const;
+        long get_num_bytes() const;
 
         /**
          *  @brief Get the raw, loaded, data contained within *this.
@@ -187,14 +187,14 @@ class resource
          *  @return a pointer to a chunk of data loaded from a file.
          */
         virtual
-        void* getData() const;
+        void* get_data() const;
 };
 
 /*-------------------------------------
  * Get the size, in bytes, of the current file loaded into memory.
  * ----------------------------------*/
 inline
-long resource::getByteSize() const
+long Resource::get_num_bytes() const
 {
     return dataSize;
 }
@@ -203,7 +203,7 @@ long resource::getByteSize() const
  * Get the raw, loaded, data contained within *this.
  * ----------------------------------*/
 inline
-void* resource::getData() const
+void* Resource::get_data() const
 {
     return pData;
 }
@@ -212,20 +212,20 @@ void* resource::getData() const
  * Open a file with UTF-8
  * ----------------------------------*/
 inline
-bool resource::loadFile(const std::wstring& filename)
+bool Resource::load_file(const std::wstring& filename)
 {
     // attempt to load the file
-    return loadFile(convertWtoMb(filename));
+    return load_file(wide_to_mb_string(filename));
 }
 
 /*-------------------------------------
  * Save with an UTF-8 filename
  * ----------------------------------*/
 inline
-bool resource::saveFile(const std::wstring& filename) const
+bool Resource::save_file(const std::wstring& filename) const
 {
     // attempt to save the file using a multi-byte string.
-    return saveFile(convertWtoMb(filename));
+    return save_file(wide_to_mb_string(filename));
 }
 
 } // end utils namespace

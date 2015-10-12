@@ -20,7 +20,7 @@ namespace utils {
  *  can be the size of a built-in type, or user-defined structures.
  */
 constexpr
-unsigned getArgByteSize(unsigned size)
+unsigned get_arg_byte_size(unsigned size)
 {
     return size;
 }
@@ -41,9 +41,9 @@ unsigned getArgByteSize(unsigned size)
  */
 template <typename... integral_t>
 constexpr
-unsigned getArgByteSize(unsigned size, integral_t... sizeN)
+unsigned get_arg_byte_size(unsigned size, integral_t... sizeN)
 {
- return size + getArgByteSize(sizeN...);
+ return size + get_arg_byte_size(sizeN...);
 }
 
 /**
@@ -56,9 +56,9 @@ unsigned getArgByteSize(unsigned size, integral_t... sizeN)
  */
  template <typename... integral_t>
  constexpr
- unsigned getByteSize()
+ unsigned get_byte_size()
  {
-     return getArgByteSize(sizeof(integral_t)...);
+     return get_arg_byte_size(sizeof(integral_t)...);
  }
 
 } // end utils namespace

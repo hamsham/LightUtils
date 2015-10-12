@@ -30,7 +30,7 @@ namespace utils {
  */
 template <typename arg_t>
 inline
-void logMsg(const arg_t& arg);
+void log_msg(const arg_t& arg);
 
 /**
  * @brief Print multiple parameters to std::cout.
@@ -51,7 +51,7 @@ void logMsg(const arg_t& arg);
  */
 template <typename arg_t, typename... args_t>
 inline
-void logMsg(const arg_t& arg, const args_t&... args);
+void log_msg(const arg_t& arg, const args_t&... args);
 
 /**
  * @brief Print multiple parameters to std::cerr.
@@ -68,7 +68,7 @@ void logMsg(const arg_t& arg, const args_t&... args);
  */
 template <typename arg_t>
 inline
-void logErr(const arg_t& arg);
+void log_err(const arg_t& arg);
 
 /**
  * @brief Print multiple parameters to std::cerr.
@@ -89,7 +89,7 @@ void logErr(const arg_t& arg);
  */
 template <typename arg_t, typename... args_t>
 inline
-void logErr(const arg_t& arg, const args_t&... args);
+void log_err(const arg_t& arg, const args_t&... args);
 
 } // end utils namespace
 } // end ls namespace
@@ -105,11 +105,11 @@ else
 -----------------------------------------------------------------------------*/
 #ifdef LSS_DEBUG
     #ifndef LS_LOG_MSG
-        #define LS_LOG_MSG(...) ls::utils::logMsg(__VA_ARGS__)
+        #define LS_LOG_MSG(...) ls::utils::log_msg(__VA_ARGS__)
     #endif
 
     #ifndef LS_LOG_ERR
-        #define LS_LOG_ERR(...) ls::utils::logErr(__VA_ARGS__)
+        #define LS_LOG_ERR(...) ls::utils::log_err(__VA_ARGS__)
     #endif
 #else
     template <typename arg_t>

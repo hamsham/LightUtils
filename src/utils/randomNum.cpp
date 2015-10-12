@@ -11,7 +11,7 @@ namespace utils {
 /*-------------------------------------
  * Seeded Constructor
  * ----------------------------------*/
-randomNum::randomNum(const unsigned long s)
+RandomNum::RandomNum(const unsigned long s)
  {
     this->seed(s);
 }
@@ -19,14 +19,14 @@ randomNum::randomNum(const unsigned long s)
 /*-------------------------------------
  * Default Constructor
  * ----------------------------------*/
-randomNum::randomNum()
+RandomNum::RandomNum()
 {
 }
 
 /*-------------------------------------
  * Copy Constructor
  * ----------------------------------*/
-randomNum::randomNum(const randomNum& rn)
+RandomNum::RandomNum(const RandomNum& rn)
 :
     index{rn.index}
 {
@@ -39,7 +39,7 @@ randomNum::randomNum(const randomNum& rn)
 /*-------------------------------------
  * Move Constructor
  * ----------------------------------*/
-randomNum::randomNum(randomNum&& rn)
+RandomNum::RandomNum(RandomNum&& rn)
 :
     index{rn.index}
 {
@@ -52,13 +52,13 @@ randomNum::randomNum(randomNum&& rn)
 /*-------------------------------------
  * Destructor
  * ----------------------------------*/
-randomNum::~randomNum()
+RandomNum::~RandomNum()
 {}
 
 /*-------------------------------------
  * Copy Operator
  * ----------------------------------*/
-randomNum& randomNum::operator=(const randomNum& rn)
+RandomNum& RandomNum::operator=(const RandomNum& rn)
 {
     index = rn.index;
 
@@ -73,7 +73,7 @@ randomNum& randomNum::operator=(const randomNum& rn)
 /*-------------------------------------
  * Move Operator
  * ----------------------------------*/
-randomNum& randomNum::operator=(randomNum&& rn)
+RandomNum& RandomNum::operator=(RandomNum&& rn)
 {
     index = rn.index;
 
@@ -88,7 +88,7 @@ randomNum& randomNum::operator=(randomNum&& rn)
 /*-------------------------------------
  * Initialize the random distribution
  * ----------------------------------*/
-void randomNum::seed(unsigned long s)
+void RandomNum::seed(unsigned long s)
 {
     for (unsigned int i = 0; i < 16; ++i)
     {
@@ -102,7 +102,7 @@ void randomNum::seed(unsigned long s)
 /*-------------------------------------
  * Default random distribution initialization
  * ----------------------------------*/
-void randomNum::seed()
+void RandomNum::seed()
 {
     this->seed((long unsigned)std::chrono::system_clock::now().time_since_epoch().count());
 }
@@ -110,7 +110,7 @@ void randomNum::seed()
 /*-------------------------------------
  * Generate a random number
  * ----------------------------------*/
-unsigned long randomNum::operator()()
+unsigned long RandomNum::operator()()
 {
     unsigned long a, b, c, d;
     a = state[index];
@@ -130,7 +130,7 @@ unsigned long randomNum::operator()()
 /*-------------------------------------
  * Generate a random float within a an inclusive range
  * ----------------------------------*/
-float randomNum::randRangeF(randomNum& prng, const float low, const float high)
+float RandomNum::randRangeF(RandomNum& prng, const float low, const float high)
 {
     LS_DEBUG_ASSERT(low < high);
 
@@ -143,7 +143,7 @@ float randomNum::randRangeF(randomNum& prng, const float low, const float high)
 /*-------------------------------------
  * Generate a random int within an inclusive range.
  * ----------------------------------*/
-int randomNum::randRangeI(randomNum& prng, const int low, const int high) {
+int RandomNum::randRangeI(RandomNum& prng, const int low, const int high) {
     LS_DEBUG_ASSERT(low < high);
 
     return static_cast<int>(randRangeF(prng, static_cast<float>(low), static_cast<float>(high)));

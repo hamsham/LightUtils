@@ -1,5 +1,5 @@
 /*
- * File:   bTree.h
+ * File:   BTree.h
  * Author: Miles Lacey
  *
  * Created on June 19, 2013, 12:25 AM
@@ -32,12 +32,12 @@ enum bnode_dir_t : unsigned
  *  A node type used by the BTree class in order to store data.
  */
 template <typename data_t>
-class bTreeNode
+class BTreeNode
 {
     private:
         template <typename, typename>
         friend
-        class bTree;
+        class BTree;
 
         /**
          *  @brief data
@@ -49,7 +49,7 @@ class bTreeNode
          *  @brief subNodes
          *  A pointer to a dynamic array of child nodes.
          */
-        bTreeNode* subNodes = nullptr;
+        BTreeNode* subNodes = nullptr;
 
     public:
         /**
@@ -57,7 +57,7 @@ class bTreeNode
          *  Creates a b-tree node with no data within.
          */
         constexpr
-        bTreeNode();
+        BTreeNode();
 
         /**
          *  @brief B-Tree Node Copu Operator
@@ -66,7 +66,7 @@ class bTreeNode
          *  @param btn
          *  A constant reference to a b-tree node.
          */
-        bTreeNode(const bTreeNode& btn);
+        BTreeNode(const BTreeNode& btn);
 
         /**
          *  @brief B-Tree Node Move Operator
@@ -76,13 +76,13 @@ class bTreeNode
          *  An r-value reference to a b-tree node that will to go out of
          *  scope.
          */
-        bTreeNode(bTreeNode&& btn);
+        BTreeNode(BTreeNode&& btn);
 
         /**
          *  @brief Destructor
          *  Frees all memory/resources used by *this.
          */
-        ~bTreeNode();
+        ~BTreeNode();
 
         /**
          *  @brief B-Tree Node Copu Operator
@@ -93,7 +93,7 @@ class bTreeNode
          *
          *  @return a reference to *this.
          */
-        bTreeNode& operator=(const bTreeNode& btn);
+        BTreeNode& operator=(const BTreeNode& btn);
 
         /**
          *  @brief B-Tree Node Move Operator
@@ -105,7 +105,7 @@ class bTreeNode
          *
          *  @return a reference to *this.
          */
-        bTreeNode& operator=(bTreeNode&& btn);
+        BTreeNode& operator=(BTreeNode&& btn);
 };
 
 /*-------------------------------------
@@ -113,14 +113,14 @@ class bTreeNode
  * ----------------------------------*/
 template <typename data_t>
 constexpr
-bTreeNode<data_t>::bTreeNode()
+BTreeNode<data_t>::BTreeNode()
 {}
 
 /*-------------------------------------
  * B-Tree Node Copy Constructor
  * ----------------------------------*/
 template <typename data_t>
-bTreeNode<data_t>::bTreeNode(const bTreeNode& btn)
+BTreeNode<data_t>::BTreeNode(const BTreeNode& btn)
 :
     data{
         btn.data != nullptr
@@ -133,7 +133,7 @@ bTreeNode<data_t>::bTreeNode(const bTreeNode& btn)
 {
     if (btn.subNodes != nullptr)
     {
-        subNodes = new bTreeNode[BNODE_MAX];
+        subNodes = new BTreeNode[BNODE_MAX];
         subNodes[BNODE_LEFT] = btn.subNodes[BNODE_LEFT];
         subNodes[BNODE_RIGHT] = btn.subNodes[BNODE_RIGHT];
     }
@@ -143,7 +143,7 @@ bTreeNode<data_t>::bTreeNode(const bTreeNode& btn)
  * B-Tree Node Move Constructor
  * ----------------------------------*/
 template <typename data_t>
-bTreeNode<data_t>::bTreeNode(bTreeNode&& btn)
+BTreeNode<data_t>::BTreeNode(BTreeNode&& btn)
 :
     data{btn.data},
     subNodes{btn.subNodes}
@@ -156,7 +156,7 @@ bTreeNode<data_t>::bTreeNode(bTreeNode&& btn)
  * B-Tree Node Destructor
  * ----------------------------------*/
 template <typename data_t>
-bTreeNode<data_t>::~bTreeNode()
+BTreeNode<data_t>::~BTreeNode()
 {
     delete data;
     data = nullptr;
@@ -169,7 +169,7 @@ bTreeNode<data_t>::~bTreeNode()
  * B-Tree Node Copy Operator
  * ----------------------------------*/
 template <typename data_t>
-bTreeNode<data_t>& bTreeNode<data_t>::operator=(const bTreeNode& btn)
+BTreeNode<data_t>& BTreeNode<data_t>::operator=(const BTreeNode& btn)
 {
     delete data;
     if (btn.data)
@@ -184,7 +184,7 @@ bTreeNode<data_t>& bTreeNode<data_t>::operator=(const bTreeNode& btn)
     delete subNodes;
     if (btn.subNodes)
     {
-        subNodes = new bTreeNode[BNODE_MAX];
+        subNodes = new BTreeNode[BNODE_MAX];
         subNodes[BNODE_LEFT] = btn.subNodes[BNODE_LEFT];
         subNodes[BNODE_RIGHT] = btn.subNodes[BNODE_RIGHT];
     }
@@ -199,7 +199,7 @@ bTreeNode<data_t>& bTreeNode<data_t>::operator=(const bTreeNode& btn)
  * B-Tree Node Move Operator
  * ----------------------------------*/
 template <typename data_t>
-bTreeNode<data_t>& bTreeNode<data_t>::operator=(bTreeNode&& btn)
+BTreeNode<data_t>& BTreeNode<data_t>::operator=(BTreeNode&& btn)
 {
     data = btn.data;
     btn.data = nullptr;
@@ -220,13 +220,13 @@ bTreeNode<data_t>& bTreeNode<data_t>::operator=(bTreeNode&& btn)
  *  Add iterators, reduce usage of the new operator.
  */
 template <typename key_t, typename data_t>
-class bTree
+class BTree
 {
     private:
         /**
          *  @brief The head tree which contains all child nodes and data.
          */
-        bTreeNode<data_t> head = bTreeNode<data_t>{};
+        BTreeNode<data_t> head = BTreeNode<data_t>{};
 
         /**
          *  @brief Number of child nodes, not including the head node.
@@ -248,7 +248,7 @@ class bTree
          *  A pointer to a child node, referenced by 'k,' or NULL if one does
          *  not exist.
          */
-        const bTreeNode<data_t>* iterate(const key_t* k) const;
+        const BTreeNode<data_t>* iterate(const key_t* k) const;
 
         /**
          *  @brief Iterates through the list of child nodes and returns
@@ -265,7 +265,7 @@ class bTree
          *  A pointer to a child node, referenced by 'k,' or NULL if one does
          *  not exist.
          */
-        bTreeNode<data_t>* iterate(const key_t* k, bool createNodes);
+        BTreeNode<data_t>* iterate(const key_t* k, bool createNodes);
 
     public:
         /**
@@ -274,7 +274,7 @@ class bTree
          *  Creates an empty tree with no child nodes.
          */
         constexpr
-        bTree();
+        BTree();
 
         /**
          *  @brief Copy constructor.
@@ -282,7 +282,7 @@ class bTree
          *  @param tree
          *  A btree with data to be copied into *this.
          */
-        bTree(const bTree& tree);
+        BTree(const BTree& tree);
 
         /**
          *  @brief Move constructor
@@ -293,14 +293,14 @@ class bTree
          *  @param tree
          *  An r-value reference to a temporary tree.
          */
-        bTree(bTree&& tree);
+        BTree(BTree&& tree);
 
         /**
          *  @brief destructor
          *
          *  Clears all data and resources used by *this.
          */
-        ~bTree() {}
+        ~BTree() {}
 
         /**
          *  @brief copy operator
@@ -310,7 +310,7 @@ class bTree
          *
          *  @return a reference to *this.
          */
-        bTree& operator=(const bTree& tree);
+        BTree& operator=(const BTree& tree);
 
         /**
          *  @brief move operator
@@ -323,7 +323,7 @@ class bTree
          *
          *  @return a reference to *this.
          */
-        bTree& operator=(bTree&& tree);
+        BTree& operator=(BTree&& tree);
 
         /**
          *  @brief subscript operator (const)
@@ -439,7 +439,7 @@ class bTree
  * B-Tree Constructor
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-constexpr bTree<key_t, data_t>::bTree()
+constexpr BTree<key_t, data_t>::BTree()
 :
     head{},
     numNodes{0}
@@ -449,7 +449,7 @@ constexpr bTree<key_t, data_t>::bTree()
  * B-Tree Copy Constructor
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bTree<key_t, data_t>::bTree(const bTree& bt)
+BTree<key_t, data_t>::BTree(const BTree& bt)
 :
     head{bt.head},
     numNodes{bt.numNodes}
@@ -459,7 +459,7 @@ bTree<key_t, data_t>::bTree(const bTree& bt)
  * B-Tree Move Constructor
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bTree<key_t, data_t>::bTree(bTree&& bt)
+BTree<key_t, data_t>::BTree(BTree&& bt)
 {
     head.subNodes = bt.head.subNodes;
     bt.head.subNodes = nullptr;
@@ -472,7 +472,7 @@ bTree<key_t, data_t>::bTree(bTree&& bt)
  * B-Tree Copy Operator
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bTree<key_t, data_t>& bTree<key_t, data_t>::operator =(const bTree& bt)
+BTree<key_t, data_t>& BTree<key_t, data_t>::operator =(const BTree& bt)
 {
     head = bt.head;
     numNodes = bt.numNodes;
@@ -483,7 +483,7 @@ bTree<key_t, data_t>& bTree<key_t, data_t>::operator =(const bTree& bt)
  * B-Tree Move Operator
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bTree<key_t, data_t>& bTree<key_t, data_t>::operator =(bTree&& bt)
+BTree<key_t, data_t>& BTree<key_t, data_t>::operator =(BTree&& bt)
 {
     head.subNodes = bt.head.subNodes;
     bt.head.subNodes = nullptr;
@@ -498,23 +498,23 @@ bTree<key_t, data_t>& bTree<key_t, data_t>::operator =(bTree&& bt)
  * B-Tree Element iteration
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-const bTreeNode<data_t>* bTree<key_t, data_t>::iterate(const key_t* k) const
+const BTreeNode<data_t>* BTree<key_t, data_t>::iterate(const key_t* k) const
 {
     unsigned bytePos = 0;
-    const bTreeNode<data_t>* bNodeIter = &head;
-    const utils::bitMask* byteIter = nullptr;
+    const BTreeNode<data_t>* bNodeIter = &head;
+    const utils::BitMask* byteIter = nullptr;
 
-    while ((byteIter = ls::utils::getByte<key_t>(k, bytePos++)))
+    while ((byteIter = ls::utils::get_byte<key_t>(k, bytePos++)))
     {
         for (unsigned currBit = LS_BITS_PER_BYTE; currBit--;)
         {
-            // check to see if a new bTreeNode needs to be made
+            // check to see if a new BTreeNode needs to be made
             if (!bNodeIter->subNodes)
             {
                 return nullptr;
             }
 
-            // move to the next bTreeNode
+            // move to the next BTreeNode
             const int dir = byteIter->get(currBit);
             bNodeIter = &(bNodeIter->subNodes[dir]);
         }
@@ -527,30 +527,30 @@ const bTreeNode<data_t>* bTree<key_t, data_t>::iterate(const key_t* k) const
  * B-Tree Element iteration
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bTreeNode<data_t>* bTree<key_t, data_t>::iterate(const key_t* k, bool createNodes)
+BTreeNode<data_t>* BTree<key_t, data_t>::iterate(const key_t* k, bool createNodes)
 {
     unsigned                bytePos     = 0;
-    bTreeNode<data_t>*      bNodeIter   = &head;
-    const utils::bitMask*   byteIter    = nullptr;
+    BTreeNode<data_t>*      bNodeIter   = &head;
+    const utils::BitMask*   byteIter    = nullptr;
 
-    while ((byteIter = ls::utils::getByte<key_t>(k, bytePos++)))
+    while ((byteIter = ls::utils::get_byte<key_t>(k, bytePos++)))
     {
         for (unsigned currBit = LS_BITS_PER_BYTE; currBit--;)
         {
-            // check to see if a new bTreeNode needs to be made
+            // check to see if a new BTreeNode needs to be made
             if (!bNodeIter->subNodes)
             {
                 if (createNodes)
                 {
-                    // create and initialize the upcoming sub bTreeNode
-                    bNodeIter->subNodes = new bTreeNode<data_t>[BNODE_MAX];
+                    // create and initialize the upcoming sub BTreeNode
+                    bNodeIter->subNodes = new BTreeNode<data_t>[BNODE_MAX];
                 }
                 else {
                     return nullptr;
                 }
             }
 
-            // move to the next bTreeNode
+            // move to the next BTreeNode
             const int dir = byteIter->get(currBit);
             bNodeIter = &(bNodeIter->subNodes[dir]);
         }
@@ -563,7 +563,7 @@ bTreeNode<data_t>* bTree<key_t, data_t>::iterate(const key_t* k, bool createNode
  * B-Tree Destructor
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-void bTree<key_t, data_t>::clear()
+void BTree<key_t, data_t>::clear()
 {
     delete head.data;
     delete [] head.subNodes;
@@ -577,9 +577,9 @@ void bTree<key_t, data_t>::clear()
  * B-Tree Node Array Subscript operator
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-const data_t& bTree<key_t, data_t>::operator [](const key_t& k) const
+const data_t& BTree<key_t, data_t>::operator [](const key_t& k) const
 {
-    const bTreeNode<data_t>* const iter = iterate(&k);
+    const BTreeNode<data_t>* const iter = iterate(&k);
 
     if (!iter || !iter->data)
     {
@@ -593,9 +593,9 @@ const data_t& bTree<key_t, data_t>::operator [](const key_t& k) const
  * B-Tree Node Array Subscript operator
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-data_t& bTree<key_t, data_t>::operator [](const key_t& k)
+data_t& BTree<key_t, data_t>::operator [](const key_t& k)
 {
-    bTreeNode<data_t>* const iter = iterate(&k, true);
+    BTreeNode<data_t>* const iter = iterate(&k, true);
 
     if (!iter->data)
     {
@@ -610,9 +610,9 @@ data_t& bTree<key_t, data_t>::operator [](const key_t& k)
  * B-Tree Emplace
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-void bTree<key_t, data_t>::emplace(const key_t& k, data_t&& d)
+void BTree<key_t, data_t>::emplace(const key_t& k, data_t&& d)
 {
-    bTreeNode<data_t>* const iter = iterate(&k, true);
+    BTreeNode<data_t>* const iter = iterate(&k, true);
 
     if (!iter->data)
     {
@@ -629,9 +629,9 @@ void bTree<key_t, data_t>::emplace(const key_t& k, data_t&& d)
  * B-Tree Push
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-void bTree<key_t, data_t>::push(const key_t& k, const data_t& d)
+void BTree<key_t, data_t>::push(const key_t& k, const data_t& d)
 {
-    bTreeNode<data_t>* const iter = iterate(&k, true);
+    BTreeNode<data_t>* const iter = iterate(&k, true);
 
     if (!iter->data)
     {
@@ -648,9 +648,9 @@ void bTree<key_t, data_t>::push(const key_t& k, const data_t& d)
  * B-Tree Pop
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-void bTree<key_t, data_t>::pop(const key_t& k)
+void BTree<key_t, data_t>::pop(const key_t& k)
 {
-    bTreeNode<data_t>* const iter = iterate(&k, false);
+    BTreeNode<data_t>* const iter = iterate(&k, false);
 
     if (!iter || !iter->data)
     {
@@ -668,9 +668,9 @@ void bTree<key_t, data_t>::pop(const key_t& k)
  * B-Tree Has Data
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-bool bTree<key_t, data_t>::contains(const key_t& k) const
+bool BTree<key_t, data_t>::contains(const key_t& k) const
 {
-    const bTreeNode<data_t>* const iter = iterate(&k);
+    const BTreeNode<data_t>* const iter = iterate(&k);
     return iter && iter->data;
 }
 
@@ -678,9 +678,9 @@ bool bTree<key_t, data_t>::contains(const key_t& k) const
  * B-Tree Push
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-const data_t& bTree<key_t, data_t>::at(const key_t& k) const
+const data_t& BTree<key_t, data_t>::at(const key_t& k) const
 {
-    const bTreeNode<data_t>* const iter = iterate(&k);
+    const BTreeNode<data_t>* const iter = iterate(&k);
 
     if (!iter || !iter->data) {
         throw ls::utils::error_t::LS_ERROR;
@@ -694,7 +694,7 @@ const data_t& bTree<key_t, data_t>::at(const key_t& k) const
  * ----------------------------------*/
 template <typename key_t, typename data_t>
 inline
-unsigned bTree<key_t, data_t>::size() const
+unsigned BTree<key_t, data_t>::size() const
 {
     return numNodes;
 }
@@ -703,9 +703,9 @@ unsigned bTree<key_t, data_t>::size() const
  * B-Tree Push
  * ----------------------------------*/
 template <typename key_t, typename data_t>
-data_t& bTree<key_t, data_t>::at(const key_t& k)
+data_t& BTree<key_t, data_t>::at(const key_t& k)
 {
-    bTreeNode<data_t>* const iter = iterate(&k, false);
+    BTreeNode<data_t>* const iter = iterate(&k, false);
 
     if (!iter || !iter->data)
     {

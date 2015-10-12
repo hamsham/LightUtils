@@ -28,7 +28,7 @@ namespace utils {
  *  A string-representation of the input parameter
  */
 template <typename T>
-std::string toString(const T& data)
+std::string to_string(const T& data)
 {
     std::ostringstream oss;
     oss << data;
@@ -49,7 +49,7 @@ std::string toString(const T& data)
  *  A std::string object that uses 'char' types instead of the input
  *  parameter's 'wchar_t' type.
  */
-std::string convertWtoMb(const std::wstring& wstr);
+std::string wide_to_mb_string(const std::wstring& wstr);
 
 } // end utils namespace
 } // end ls namespace

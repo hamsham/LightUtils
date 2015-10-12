@@ -18,10 +18,10 @@ namespace ls {
 namespace utils {
 
 /**
- *  @brief bitMask
+ *  @brief BitMask
  *  Convenience structure to facilitate bit acquisition of bytes.
  */
-struct alignas(1) bitMask
+struct alignas(1) BitMask
 {
     /**
      *  @brief byte
@@ -66,7 +66,7 @@ struct alignas(1) bitMask
  * Functions allowing access to individual bytes
  * --------------------------------------------------------------------------*/
 /**
- *  @brief getByte
+ *  @brief get_byte
  *  Retrieve the Nth byte of a basic data type.
  *
  *  @param key
@@ -78,17 +78,17 @@ struct alignas(1) bitMask
  */
  template <typename key_t>
  constexpr
- const utils::bitMask* utils::getByte(const key_t* k, unsigned iter)
+ const utils::BitMask* utils::get_byte(const key_t* k, unsigned iter)
  {
      return (iter < sizeof(k))
      ?
-        reinterpret_cast<const utils::bitMask*>(k) + iter
+        reinterpret_cast<const utils::BitMask*>(k) + iter
      :
         nullptr;
  }
 
 /**
- *  @brief getByte (char string specialization)
+ *  @brief get_byte (char string specialization)
  *  Retrieve the Nth byte of a basic data type.
  *
  *  @param key
@@ -100,17 +100,17 @@ struct alignas(1) bitMask
  */
 template <>
 constexpr
-const utils::bitMask* utils::getByte(const char* str, unsigned iter)
+const utils::BitMask* utils::get_byte(const char* str, unsigned iter)
 {
     return (str[iter / sizeof(char)] != '\0')
     ?
-        reinterpret_cast<const utils::bitMask*>(str) + iter
+        reinterpret_cast<const utils::BitMask*>(str) + iter
     :
         nullptr;
 }
 
 /**
- *  @brief getByte (wchar_t string specialization)
+ *  @brief get_byte (wchar_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
  *
  *  @param key
@@ -122,17 +122,17 @@ const utils::bitMask* utils::getByte(const char* str, unsigned iter)
  */
 template <>
 constexpr
-const utils::bitMask* utils::getByte(const wchar_t* str, unsigned iter)
+const utils::BitMask* utils::get_byte(const wchar_t* str, unsigned iter)
 {
     return (str[iter / sizeof(wchar_t)] != '\0')
     ?
-        reinterpret_cast<const utils::bitMask*>(str) + iter
+        reinterpret_cast<const utils::BitMask*>(str) + iter
     :
         nullptr;
 }
 
 /**
- *  @brief getByte (char16_t string specialization)
+ *  @brief get_byte (char16_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
  *
  *  @param key
@@ -144,17 +144,17 @@ const utils::bitMask* utils::getByte(const wchar_t* str, unsigned iter)
  */
 template <>
 constexpr
-const utils::bitMask* utils::getByte(const char16_t* str, unsigned iter)
+const utils::BitMask* utils::get_byte(const char16_t* str, unsigned iter)
 {
     return (str[iter / sizeof(char16_t)] != '\0')
     ?
-        reinterpret_cast<const utils::bitMask*>(str) + iter
+        reinterpret_cast<const utils::BitMask*>(str) + iter
     :
         nullptr;
 }
 
 /**
- *  @brief getByte (char32_t string specialization)
+ *  @brief get_byte (char32_t string specialization)
  *  Retrieve the Nth byte of a basic data type.
  *
  *  @param key
@@ -166,11 +166,11 @@ const utils::bitMask* utils::getByte(const char16_t* str, unsigned iter)
  */
 template <>
 constexpr
-const utils::bitMask* utils::getByte(const char32_t* str, unsigned iter)
+const utils::BitMask* utils::get_byte(const char32_t* str, unsigned iter)
 {
     return (str[iter / sizeof(char32_t)] != '\0')
     ?
-        reinterpret_cast<const utils::bitMask*>(str) + iter
+        reinterpret_cast<const utils::BitMask*>(str) + iter
     :
         nullptr;
 }

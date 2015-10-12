@@ -36,7 +36,7 @@ enum endian_t : uint32_t
  * at compile-time.
  */
 constexpr
-endian_t getEndianOrder()
+endian_t get_endian_order()
 {
     return ((0xFFFFFFFF & 1) == LS_LITTLE_ENDIAN)
     ?
@@ -199,6 +199,6 @@ num_t btol(num_t n)
  * Macro that should be used to always get the endianness of the current build
  * target.
  */
-#define LS_ENDIANNESS ls::utils::getEndianOrder()
+#define LS_ENDIANNESS ls::utils::get_endian_order()
 
 #endif /* __LS_UTILS_ENDIAN_H__ */

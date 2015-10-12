@@ -24,7 +24,7 @@ namespace utils {
  */
 template <typename arg_t>
 inline
-void logMsg(const arg_t& arg)
+void log_msg(const arg_t& arg)
 {
     std::cout << arg << '\n';
     std::cout.flush();
@@ -49,10 +49,10 @@ void logMsg(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void logMsg(const arg_t& arg, const args_t&... args)
+void log_msg(const arg_t& arg, const args_t&... args)
 {
     std::cout << arg;
-    logMsg(args...);
+    log_msg(args...);
 }
 
 /**
@@ -70,7 +70,7 @@ void logMsg(const arg_t& arg, const args_t&... args)
  */
 template <typename arg_t>
 inline
-void logErr(const arg_t& arg)
+void log_err(const arg_t& arg)
 {
     std::cerr << arg << '\n';
     std::cerr.flush();
@@ -95,10 +95,10 @@ void logErr(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void logErr(const arg_t& arg, const args_t&... args)
+void log_err(const arg_t& arg, const args_t&... args)
 {
     std::cerr << arg;
-    logMsg(args...);
+    log_msg(args...);
 }
 
 } // end utils namespace

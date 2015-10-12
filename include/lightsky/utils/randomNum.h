@@ -13,7 +13,7 @@ namespace utils {
  *  (see: Random Number Generation)
  *  http://www.lomont.org/Math/Papers/2008/Lomont_PRNG_2008.pdf
  */
-class randomNum
+class RandomNum
 {
     private:
         /**
@@ -40,13 +40,13 @@ class randomNum
          *  PRNG algorithm. The same seed can be used repeatedly in order to
          *  generate the same set of values.
          */
-        randomNum(const unsigned long s);
+        RandomNum(const unsigned long s);
 
         /**
          *  @brief Constructor
          *  Initializes a non-seeded PRNG.
          */
-        randomNum();
+        RandomNum();
 
         /**
          *  @brief Copy Constructor
@@ -55,7 +55,7 @@ class randomNum
          *  @param prng
          *  A constant reference to another pseudo-random number generator.
          */
-        randomNum(const randomNum& prng);
+        RandomNum(const RandomNum& prng);
 
         /**
          *  @brief Move Constructor
@@ -64,13 +64,13 @@ class randomNum
          *  @param prng
          *  An r-value reference to another pseudo-random number generator.
          */
-        randomNum(randomNum&& prng);
+        RandomNum(RandomNum&& prng);
 
         /**
          *  @brief Destructor
          *  Frees all resources used by this.
          */
-        ~randomNum();
+        ~RandomNum();
 
         /**
          *  @brief Copy Operator
@@ -81,7 +81,7 @@ class randomNum
          *
          *  @return a reference to *this.
          */
-        randomNum& operator=(const randomNum&);
+        RandomNum& operator=(const RandomNum&);
 
         /**
          *  @brief Move Operator
@@ -92,7 +92,7 @@ class randomNum
          *
          *  @return a reference to *this.
          */
-        randomNum& operator=(randomNum&&);
+        RandomNum& operator=(RandomNum&&);
 
         /**
          *  @brief Seed
@@ -145,7 +145,7 @@ class randomNum
          *  'high.'
          */
         static
-        float randRangeF(randomNum& prng, const float low, const float high);
+        float randRangeF(RandomNum& prng, const float low, const float high);
 
         /**
          *  @brief randRangeF
@@ -164,7 +164,7 @@ class randomNum
          *  @return a pseudo-random integer value clamped in between 'low' and 'high.'
          */
         static
-        int randRangeI(randomNum& prng, const int low, const int high);
+        int randRangeI(RandomNum& prng, const int low, const int high);
 };
 
 } // end utils namespace

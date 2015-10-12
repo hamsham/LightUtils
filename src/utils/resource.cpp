@@ -13,7 +13,7 @@ namespace utils {
 /*-------------------------------------
  * Destructor
  * ----------------------------------*/
-resource::~resource() {
+Resource::~Resource() {
 }
 
 } // end utils namespace

@@ -16,7 +16,7 @@ namespace ls {
 /*-------------------------------------
  * Wide-String to Multi-Byte
  * ----------------------------------*/
-std::string utils::convertWtoMb(const std::wstring& wstr) {
+std::string utils::wide_to_mb_string(const std::wstring& wstr) {
     // return value
     std::string ret{};
 

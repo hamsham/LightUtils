@@ -39,7 +39,7 @@ typedef uint32_t hash_t;
  *  algorithm.
  */
 constexpr
-hash_t hashDJB2(const char* str);
+hash_t hash_djb2(const char* str);
 
 /**
  *  @brief SDBM Hashing Function
@@ -53,7 +53,7 @@ hash_t hashDJB2(const char* str);
  *  algorithm.
  */
 constexpr
-hash_t hashSDBM(const char* str);
+hash_t hash_sdbm(const char* str);
 
 /**
  *  @brief FNV-1a Hashing Function
@@ -67,7 +67,7 @@ hash_t hashSDBM(const char* str);
  *  algorithm.
  */
 constexpr
-hash_t hashFNV1(const char* str);
+hash_t hash_fnv1(const char* str);
 
 /**
  *  @brief CRC32 Hashing function
@@ -85,7 +85,7 @@ hash_t hashFNV1(const char* str);
  *  @return a 32-bit integer, representing a hashed value of the input string.
  */
 constexpr
-hash_t hashCRC32(const char* str, hash_t prevCrc = 0xFFFFFFFF);
+hash_t hash_crc32(const char* str, hash_t prevCrc = 0xFFFFFFFF);
 
 } // end utils namespace
 } // end ls namespace

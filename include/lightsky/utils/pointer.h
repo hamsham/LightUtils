@@ -1,5 +1,5 @@
 /*
- * File:   utils/pointer.h
+ * File:   utils/Pointer.h
  * Author: miles
  *
  * Created on November 10, 2014, 10:29 PM
@@ -17,10 +17,11 @@ namespace utils {
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
 template <typename data_t>
-class pointer {
+class Pointer
+{
     private:
         /**
-         * @brief pData represents a pointer to some data within an application
+         * @brief pData represents a Pointer to some data within an application
          */
         mutable data_t* pData = nullptr;
 
@@ -37,18 +38,18 @@ class pointer {
          *
          * Clear *this of any data/resources.
          */
-        ~pointer() {
+        ~Pointer() {
             clear();
         }
 
         /**
          * @brief Constructor
          *
-         * Creates an empty pointer type. Which should not be dereferenced
+         * Creates an empty Pointer type. Which should not be dereferenced
          * under any circumstances.
          */
         constexpr
-        pointer()
+        Pointer()
         :
             pData{nullptr}
         {}
@@ -57,10 +58,10 @@ class pointer {
          * @brief Pointer Constructor
          *
          * @param p
-         * A pointer to dynamically-allocated data.
+         * A Pointer to dynamically-allocated data.
          */
         explicit
-        pointer(data_t* const p)
+        Pointer(data_t* const p)
         :
             pData{p}
         {}
@@ -71,7 +72,7 @@ class pointer {
          * Constructs *this with no data assigned.
          */
         constexpr
-        pointer(std::nullptr_t)
+        Pointer(std::nullptr_t)
         :
             pData{nullptr}
         {}
@@ -79,7 +80,7 @@ class pointer {
         /**
          * Copy Constructor -- DELETED
          */
-        pointer(const pointer&) = delete;
+        Pointer(const Pointer&) = delete;
 
         /**
          * @brief Move Constructor
@@ -87,9 +88,9 @@ class pointer {
          * Moves data from the input parameter into *this.
          *
          * @param p
-         * A pointer type containing dynamically-allocated data.
+         * A Pointer type containing dynamically-allocated data.
          */
-        pointer(pointer&& p)
+        Pointer(Pointer&& p)
         :
             pData{p.pData}
         {
@@ -99,7 +100,7 @@ class pointer {
         /**
          * Copy Operator -- DELETED
          */
-        pointer& operator=(const pointer&) = delete;
+        Pointer& operator=(const Pointer&) = delete;
 
         /**
          * @brief Move Operatpr
@@ -107,12 +108,12 @@ class pointer {
          * Moves data from the input parameter into *this.
          *
          * @param p
-         * A pointer type containing dynamically-allocated data.
+         * A Pointer type containing dynamically-allocated data.
          *
          * @return
          * A reference to *this.
          */
-        pointer& operator=(pointer&& p)
+        Pointer& operator=(Pointer&& p)
         {
             clear();
 
@@ -148,13 +149,13 @@ class pointer {
          * @brief Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as *this, FALSE if not.
          */
         constexpr
-        bool operator == (const pointer& p) const
+        bool operator == (const Pointer& p) const
         {
             return pData == p.pData;
         }
@@ -163,13 +164,13 @@ class pointer {
          * @brief Not-Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to different
+         * @return TRUE if the input parameter contains a Pointer to different
          * data than *this, FALSE if so.
          */
         constexpr
-        bool operator != (const pointer& p) const
+        bool operator != (const Pointer& p) const
         {
             return pData != p.pData;
         }
@@ -178,13 +179,13 @@ class pointer {
          * @brief Greater-Than or Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or less than, or equal to, *this, FALSE if not.
          */
         constexpr
-        bool operator >= (const pointer& p) const
+        bool operator >= (const Pointer& p) const
         {
             return pData >= p.pData;
         }
@@ -193,13 +194,13 @@ class pointer {
          * @brief Greater-Than Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer of less
+         * @return TRUE if the input parameter contains a Pointer of less
          * value than *this, FALSE if not.
          */
         constexpr
-        bool operator > (const pointer& p) const
+        bool operator > (const Pointer& p) const
         {
             return pData > p.pData;
         }
@@ -208,13 +209,13 @@ class pointer {
          * @brief Less-Than or Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or greater than *this, FALSE if not.
          */
         constexpr
-        bool operator <= (const pointer& p) const
+        bool operator <= (const Pointer& p) const
         {
             return pData <= p.pData;
         }
@@ -223,13 +224,13 @@ class pointer {
          * @brief Less-Than Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer of greater
+         * @return TRUE if the input parameter contains a Pointer of greater
          * value than *this, FALSE if not.
          */
         constexpr
-        bool operator < (const pointer& p) const
+        bool operator < (const Pointer& p) const
         {
             return pData < p.pData;
         }
@@ -238,10 +239,10 @@ class pointer {
          * @brief Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as *this, FALSE if not.
          */
         constexpr
@@ -254,10 +255,10 @@ class pointer {
          * @brief Not-Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to different
+         * @return TRUE if the input parameter contains a Pointer to different
          * data than *this, FALSE if so.
          */
         constexpr
@@ -270,10 +271,10 @@ class pointer {
          * @brief Greater-Than or Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or less than, or equal to, *this, FALSE if not.
          */
         constexpr
@@ -286,10 +287,10 @@ class pointer {
          * @brief Greater-Than Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer of less
+         * @return TRUE if the input parameter contains a Pointer of less
          * value than *this, FALSE if not.
          */
         constexpr
@@ -302,10 +303,10 @@ class pointer {
          * @brief Less-Than or Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or greater than *this, FALSE if not.
          */
         constexpr
@@ -318,10 +319,10 @@ class pointer {
          * @brief Less-Than Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer of greater
+         * @return TRUE if the input parameter contains a Pointer of greater
          * value than *this, FALSE if not.
          */
         constexpr
@@ -331,9 +332,9 @@ class pointer {
         }
 
         /**
-         * Retrieve the pointer to data contained within *this.
+         * Retrieve the Pointer to data contained within *this.
          *
-         * @return A pointer to a set of dynamically-allocated data.
+         * @return A Pointer to a set of dynamically-allocated data.
          */
         constexpr
         const data_t* get() const
@@ -342,9 +343,9 @@ class pointer {
         }
 
         /**
-         * @brief Retrieve the pointer to data contained within *this.
+         * @brief Retrieve the Pointer to data contained within *this.
          *
-         * @return A pointer to a set of dynamically-allocated data.
+         * @return A Pointer to a set of dynamically-allocated data.
          */
         inline
         data_t* get()
@@ -353,13 +354,13 @@ class pointer {
         }
 
         /**
-         * @brief Swap the value of the pointers contained within *this and an
-         * input pointer object.
+         * @brief Swap the value of the Pointers contained within *this and an
+         * input Pointer object.
          *
          * @param other
-         * A pointer object who's data should be swapped with *this.
+         * A Pointer object who's data should be swapped with *this.
          */
-        void swap(pointer& other)
+        void swap(Pointer& other)
         {
             data_t* temp = other.pData;
             other.pData = this->pData;
@@ -391,7 +392,7 @@ class pointer {
          * @brief Retrieve a constant member contained within the data pointed
          * at by *this.
          *
-         * @return A constant pointer to a member of the dynamically-allocated
+         * @return A constant Pointer to a member of the dynamically-allocated
          * data within *this.
          */
         const data_t* operator ->() const
@@ -402,7 +403,7 @@ class pointer {
         /**
          * @brief Retrieve a member contained within the data pointed at by *this.
          *
-         * @return A pointer to a member of the dynamically-allocated data
+         * @return A Pointer to a member of the dynamically-allocated data
          * within *this.
          */
         data_t* operator ->()
@@ -411,10 +412,10 @@ class pointer {
         }
 
         /**
-         * @brief explicitly cast *this to the original pointer type contained
+         * @brief explicitly cast *this to the original Pointer type contained
          * within *this.
          *
-         * @return A pointer to a constant object pointer such as the one
+         * @return A Pointer to a constant object Pointer such as the one
          * contained within *this.
          */
         constexpr
@@ -424,10 +425,10 @@ class pointer {
         }
 
         /**
-         * @brief explicitly cast *this to the original pointer type contained
+         * @brief explicitly cast *this to the original Pointer type contained
          * within *this.
          *
-         * @return A pointer to an object pointer such as the one contained
+         * @return A Pointer to an object Pointer such as the one contained
          * within *this.
          */
         inline
@@ -437,11 +438,11 @@ class pointer {
         }
 
         /**
-         * @brief Delete the value of the internal pointer managed by this,
+         * @brief Delete the value of the internal Pointer managed by this,
          * then use *this to reference a new set of data.
          *
          * @param pNewData
-         * A pointer to a set of dynamically-allocated memory of the same type
+         * A Pointer to a set of dynamically-allocated memory of the same type
          * as *this.
          */
         void reset(data_t* pNewData = nullptr)
@@ -466,34 +467,34 @@ class pointer {
 /*-----------------------------------------------------------------------------
  * Dynamic Pointer Types
  * --------------------------------------------------------------------------*/
-LS_DECLARE_CLASS_TYPE(bool_pointer, pointer, bool);
-LS_DECLARE_CLASS_TYPE(char_pointer, pointer, signed char);
-LS_DECLARE_CLASS_TYPE(uchar_pointer, pointer, unsigned char);
-LS_DECLARE_CLASS_TYPE(wchar_pointer, pointer, wchar_t);
-LS_DECLARE_CLASS_TYPE(char16_pointer, pointer, char16_t);
-LS_DECLARE_CLASS_TYPE(char32_pointer, pointer, char32_t);
-LS_DECLARE_CLASS_TYPE(short_pointer, pointer, signed short);
-LS_DECLARE_CLASS_TYPE(ushort_pointer, pointer, unsigned short);
-LS_DECLARE_CLASS_TYPE(int_pointer, pointer, signed int);
-LS_DECLARE_CLASS_TYPE(uint_pointer, pointer, unsigned int);
-LS_DECLARE_CLASS_TYPE(long_pointer, pointer, signed long);
-LS_DECLARE_CLASS_TYPE(ulong_pointer, pointer, unsigned long);
-LS_DECLARE_CLASS_TYPE(llong_pointer, pointer, signed long long);
-LS_DECLARE_CLASS_TYPE(ullong_pointer, pointer, unsigned long long);
-LS_DECLARE_CLASS_TYPE(float_pointer, pointer, float);
-LS_DECLARE_CLASS_TYPE(double_pointer, pointer, double);
-LS_DECLARE_CLASS_TYPE(ldouble_pointer, pointer, long double);
+LS_DECLARE_CLASS_TYPE(bool_Pointer, Pointer, bool);
+LS_DECLARE_CLASS_TYPE(char_Pointer, Pointer, signed char);
+LS_DECLARE_CLASS_TYPE(uchar_Pointer, Pointer, unsigned char);
+LS_DECLARE_CLASS_TYPE(wchar_Pointer, Pointer, wchar_t);
+LS_DECLARE_CLASS_TYPE(char16_Pointer, Pointer, char16_t);
+LS_DECLARE_CLASS_TYPE(char32_Pointer, Pointer, char32_t);
+LS_DECLARE_CLASS_TYPE(short_Pointer, Pointer, signed short);
+LS_DECLARE_CLASS_TYPE(ushort_Pointer, Pointer, unsigned short);
+LS_DECLARE_CLASS_TYPE(int_Pointer, Pointer, signed int);
+LS_DECLARE_CLASS_TYPE(uint_Pointer, Pointer, unsigned int);
+LS_DECLARE_CLASS_TYPE(long_Pointer, Pointer, signed long);
+LS_DECLARE_CLASS_TYPE(ulong_Pointer, Pointer, unsigned long);
+LS_DECLARE_CLASS_TYPE(llong_Pointer, Pointer, signed long long);
+LS_DECLARE_CLASS_TYPE(ullong_Pointer, Pointer, unsigned long long);
+LS_DECLARE_CLASS_TYPE(float_Pointer, Pointer, float);
+LS_DECLARE_CLASS_TYPE(double_Pointer, Pointer, double);
+LS_DECLARE_CLASS_TYPE(ldouble_Pointer, Pointer, long double);
 
 /**----------------------------------------------------------------------------
  * Array Pointer Type
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
 template <typename data_t>
-class pointer<data_t[]>
+class Pointer<data_t[]>
 {
     private:
         /**
-         * pData represents a pointer to some data within an application
+         * pData represents a Pointer to some data within an application
          */
         mutable data_t* pData = nullptr;
 
@@ -511,7 +512,7 @@ class pointer<data_t[]>
          *
          * Clear *this of any data/resources.
          */
-        ~pointer()
+        ~Pointer()
         {
             clear();
         }
@@ -519,11 +520,11 @@ class pointer<data_t[]>
         /**
          * @brief Constructor
          *
-         * Creates an empty pointer type. Which should not be dereferenced
+         * Creates an empty Pointer type. Which should not be dereferenced
          * under any circumstances.
          */
         constexpr
-        pointer()
+        Pointer()
         :
             pData{nullptr}
         {}
@@ -532,10 +533,10 @@ class pointer<data_t[]>
          * @brief Pointer Constructor
          *
          * @param p
-         * A pointer to dynamically-allocated data.
+         * A Pointer to dynamically-allocated data.
          */
         explicit
-        pointer(data_t* const p)
+        Pointer(data_t* const p)
         :
             pData{p}
         {}
@@ -546,7 +547,7 @@ class pointer<data_t[]>
          * Constructs *this with no data assigned.
          */
         constexpr
-        pointer(std::nullptr_t)
+        Pointer(std::nullptr_t)
         :
             pData{nullptr}
         {}
@@ -554,7 +555,7 @@ class pointer<data_t[]>
         /**
          * Copy Constructor -- DELETED
          */
-        pointer(const pointer&) = delete;
+        Pointer(const Pointer&) = delete;
 
         /**
          * @brief Move Constructor
@@ -562,9 +563,9 @@ class pointer<data_t[]>
          * Moves data from the input parameter into *this.
          *
          * @param p
-         * A pointer type containing dynamically-allocated data.
+         * A Pointer type containing dynamically-allocated data.
          */
-        pointer(pointer&& p) :
+        Pointer(Pointer&& p) :
             pData{p.pData}
         {
             p.pData = nullptr;
@@ -573,7 +574,7 @@ class pointer<data_t[]>
         /**
          * Copy Operator -- DELETED
          */
-        pointer& operator=(const pointer&) = delete;
+        Pointer& operator=(const Pointer&) = delete;
 
         /**
          * @brief Move Operatpr
@@ -581,12 +582,12 @@ class pointer<data_t[]>
          * Moves data from the input parameter into *this.
          *
          * @param p
-         * A pointer type containing dynamically-allocated data.
+         * A Pointer type containing dynamically-allocated data.
          *
          * @return
          * A reference to *this.
          */
-        pointer& operator=(pointer&& p)
+        Pointer& operator=(Pointer&& p)
         {
             clear();
             pData = p.pData;
@@ -620,13 +621,13 @@ class pointer<data_t[]>
          * @brief Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as *this, FALSE if not.
          */
         constexpr
-        bool operator == (const pointer& p) const
+        bool operator == (const Pointer& p) const
         {
             return pData == p.pData;
         }
@@ -635,13 +636,13 @@ class pointer<data_t[]>
          * @brief Not-Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to different
+         * @return TRUE if the input parameter contains a Pointer to different
          * data than *this, FALSE if so.
          */
         constexpr
-        bool operator != (const pointer& p) const
+        bool operator != (const Pointer& p) const
         {
             return pData != p.pData;
         }
@@ -650,13 +651,13 @@ class pointer<data_t[]>
          * @brief Greater-Than or Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or less than, or equal to, *this, FALSE if not.
          */
         constexpr
-        bool operator >= (const pointer& p) const
+        bool operator >= (const Pointer& p) const
         {
             return pData >= p.pData;
         }
@@ -665,13 +666,13 @@ class pointer<data_t[]>
          * @brief Greater-Than Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer of less
+         * @return TRUE if the input parameter contains a Pointer of less
          * value than *this, FALSE if not.
          */
         constexpr
-        bool operator > (const pointer& p) const
+        bool operator > (const Pointer& p) const
         {
             return pData > p.pData;
         }
@@ -680,13 +681,13 @@ class pointer<data_t[]>
          * @brief Less-Than or Equal-To Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or greater than *this, FALSE if not.
          */
         constexpr
-        bool operator <= (const pointer& p) const
+        bool operator <= (const Pointer& p) const
         {
             return pData <= p.pData;
         }
@@ -695,13 +696,13 @@ class pointer<data_t[]>
          * @brief Less-Than Operator
          *
          * @param p
-         * A constant reference to a pointer object of the same type as *this.
+         * A constant reference to a Pointer object of the same type as *this.
          *
-         * @return TRUE if the input parameter contains a pointer of greater
+         * @return TRUE if the input parameter contains a Pointer of greater
          * value than *this, FALSE if not.
          */
         constexpr
-        bool operator < (const pointer& p) const
+        bool operator < (const Pointer& p) const
         {
             return pData < p.pData;
         }
@@ -710,10 +711,10 @@ class pointer<data_t[]>
          * @brief Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as *this, FALSE if not.
          */
         constexpr
@@ -726,10 +727,10 @@ class pointer<data_t[]>
          * @brief Not-Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to different
+         * @return TRUE if the input parameter contains a Pointer to different
          * data than *this, FALSE if so.
          */
         constexpr
@@ -742,10 +743,10 @@ class pointer<data_t[]>
          * @brief Greater-Than or Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or less than, or equal to, *this, FALSE if not.
          */
         constexpr
@@ -758,10 +759,10 @@ class pointer<data_t[]>
          * @brief Greater-Than Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer of less
+         * @return TRUE if the input parameter contains a Pointer of less
          * value than *this, FALSE if not.
          */
         constexpr
@@ -774,10 +775,10 @@ class pointer<data_t[]>
          * @brief Less-Than or Equal-To Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer to the same
+         * @return TRUE if the input parameter contains a Pointer to the same
          * data as or greater than *this, FALSE if not.
          */
         constexpr
@@ -790,10 +791,10 @@ class pointer<data_t[]>
          * @brief Less-Than Operator
          *
          * @param p
-         * A pointer to an object of the same type as the one contained within
+         * A Pointer to an object of the same type as the one contained within
          * *this.
          *
-         * @return TRUE if the input parameter contains a pointer of greater
+         * @return TRUE if the input parameter contains a Pointer of greater
          * value than *this, FALSE if not.
          */
         constexpr
@@ -835,9 +836,9 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief Retrieve the pointer to data contained within *this.
+         * @brief Retrieve the Pointer to data contained within *this.
          *
-         * @return A pointer to a set of dynamically-allocated data.
+         * @return A Pointer to a set of dynamically-allocated data.
          */
         constexpr
         const data_t* get() const
@@ -846,9 +847,9 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief Retrieve the pointer to data contained within *this.
+         * @brief Retrieve the Pointer to data contained within *this.
          *
-         * @return A pointer to a set of dynamically-allocated data.
+         * @return A Pointer to a set of dynamically-allocated data.
          */
         inline
         data_t* get()
@@ -857,13 +858,13 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief Swap the value of the pointers contained within *this and an
-         * input pointer object.
+         * @brief Swap the value of the Pointers contained within *this and an
+         * input Pointer object.
          *
          * @param other
-         * A pointer object who's data should be swapped with *this.
+         * A Pointer object who's data should be swapped with *this.
          */
-        void swap(pointer& other)
+        void swap(Pointer& other)
         {
             data_t* temp = other.pData;
             other.pData = this->pData;
@@ -894,7 +895,7 @@ class pointer<data_t[]>
          * @brief Retrieve a constant member contained within the data pointed
          * at by *this.
          *
-         * @return A constant pointer to a member of the dynamically-allocated
+         * @return A constant Pointer to a member of the dynamically-allocated
          * data within *this.
          */
         const data_t* operator ->() const
@@ -905,7 +906,7 @@ class pointer<data_t[]>
         /**
          * @brief Retrieve a member contained within the data pointed at by *this.
          *
-         * @return A pointer to a member of the dynamically-allocated data
+         * @return A Pointer to a member of the dynamically-allocated data
          * within *this.
          */
         data_t* operator ->()
@@ -914,10 +915,10 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief explicitly cast *this to the original pointer type contained
+         * @brief explicitly cast *this to the original Pointer type contained
          * within *this.
          *
-         * @return A pointer to a constant object pointer such as the one
+         * @return A Pointer to a constant object Pointer such as the one
          * contained within *this.
          */
         constexpr
@@ -927,10 +928,10 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief explicitly cast *this to the original pointer type contained
+         * @brief explicitly cast *this to the original Pointer type contained
          * within *this.
          *
-         * @return A pointer to an object pointer such as the one contained
+         * @return A Pointer to an object Pointer such as the one contained
          * within *this.
          */
         inline
@@ -940,11 +941,11 @@ class pointer<data_t[]>
         }
 
         /**
-         * @brief Delete the value of the internal pointer managed by this,
+         * @brief Delete the value of the internal Pointer managed by this,
          * then use *this to reference a new set of data.
          *
          * @param pNewData
-         * A pointer to a set of dynamically-allocated memory of the same type
+         * A Pointer to a set of dynamically-allocated memory of the same type
          * as *this.
          */
         void reset(data_t* pNewData = nullptr)
@@ -969,23 +970,23 @@ class pointer<data_t[]>
 /*-----------------------------------------------------------------------------
  * Dynamic Array Types
  * --------------------------------------------------------------------------*/
-LS_DECLARE_CLASS_TYPE(bool_array, pointer, bool[]);
-LS_DECLARE_CLASS_TYPE(char_array, pointer, signed char[]);
-LS_DECLARE_CLASS_TYPE(uchar_array, pointer, unsigned char[]);
-LS_DECLARE_CLASS_TYPE(wchar_array, pointer, wchar_t[]);
-LS_DECLARE_CLASS_TYPE(char16_array, pointer, char16_t[]);
-LS_DECLARE_CLASS_TYPE(char32_array, pointer, char32_t[]);
-LS_DECLARE_CLASS_TYPE(short_array, pointer, signed short[]);
-LS_DECLARE_CLASS_TYPE(ushort_array, pointer, unsigned short[]);
-LS_DECLARE_CLASS_TYPE(int_array, pointer, signed int[]);
-LS_DECLARE_CLASS_TYPE(uint_array, pointer, unsigned int[]);
-LS_DECLARE_CLASS_TYPE(long_array, pointer, signed long[]);
-LS_DECLARE_CLASS_TYPE(ulong_array, pointer, unsigned long[]);
-LS_DECLARE_CLASS_TYPE(llong_array, pointer, signed long long[]);
-LS_DECLARE_CLASS_TYPE(ullong_array, pointer, unsigned long long[]);
-LS_DECLARE_CLASS_TYPE(float_array, pointer, float[]);
-LS_DECLARE_CLASS_TYPE(double_array, pointer, double[]);
-LS_DECLARE_CLASS_TYPE(ldouble_array, pointer, long double[]);
+LS_DECLARE_CLASS_TYPE(bool_array, Pointer, bool[]);
+LS_DECLARE_CLASS_TYPE(char_array, Pointer, signed char[]);
+LS_DECLARE_CLASS_TYPE(uchar_array, Pointer, unsigned char[]);
+LS_DECLARE_CLASS_TYPE(wchar_array, Pointer, wchar_t[]);
+LS_DECLARE_CLASS_TYPE(char16_array, Pointer, char16_t[]);
+LS_DECLARE_CLASS_TYPE(char32_array, Pointer, char32_t[]);
+LS_DECLARE_CLASS_TYPE(short_array, Pointer, signed short[]);
+LS_DECLARE_CLASS_TYPE(ushort_array, Pointer, unsigned short[]);
+LS_DECLARE_CLASS_TYPE(int_array, Pointer, signed int[]);
+LS_DECLARE_CLASS_TYPE(uint_array, Pointer, unsigned int[]);
+LS_DECLARE_CLASS_TYPE(long_array, Pointer, signed long[]);
+LS_DECLARE_CLASS_TYPE(ulong_array, Pointer, unsigned long[]);
+LS_DECLARE_CLASS_TYPE(llong_array, Pointer, signed long long[]);
+LS_DECLARE_CLASS_TYPE(ullong_array, Pointer, unsigned long long[]);
+LS_DECLARE_CLASS_TYPE(float_array, Pointer, float[]);
+LS_DECLARE_CLASS_TYPE(double_array, Pointer, double[]);
+LS_DECLARE_CLASS_TYPE(ldouble_array, Pointer, long double[]);
 
 } // end utils namespace
 } // end ls namespace
