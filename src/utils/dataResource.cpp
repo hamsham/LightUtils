@@ -144,7 +144,8 @@ bool DataResource::load_file(const std::string& filename)
     }
 
     // move the string stream's buffer into a string
-    fileData = std::move(oss.str());
+    std::string&& ossStr = oss.str();
+    fileData = std::move(ossStr);
     reassign_base_members();
 
     return true;

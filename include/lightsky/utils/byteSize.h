@@ -43,7 +43,7 @@ template <typename... integral_t>
 constexpr
 unsigned get_arg_byte_size(unsigned size, integral_t... sizeN)
 {
- return size + get_arg_byte_size(sizeN...);
+    return size + get_arg_byte_size(sizeN...);
 }
 
 /**
