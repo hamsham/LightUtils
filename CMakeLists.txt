@@ -39,3 +39,14 @@ target_link_libraries("${OUTPUT_NAME}" liblssetup)
 # -------------------------------------
 install(TARGETS "${OUTPUT_NAME}" ARCHIVE DESTINATION lib)
 install(DIRECTORY include/lightsky/utils DESTINATION include/lightsky)
+
+
+
+# -------------------------------------
+# Library Tests
+# -------------------------------------
+set(LS_BUILD_UTILS_TESTS TRUE CACHE BOOL "Build tests for the LightUtils library.")
+
+if(LS_BUILD_UTILS_TESTS)
+    add_subdirectory("tests")
+endif()
