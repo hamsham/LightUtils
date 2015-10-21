@@ -30,7 +30,7 @@ set(LS_UTILS_SOURCES
 add_library("${OUTPUT_NAME}" STATIC "${LS_UTILS_SOURCES}")
 
 # Dependencies
-target_link_libraries("${OUTPUT_NAME}" liblssetup)
+target_link_libraries("${OUTPUT_NAME}" lssetup)
 
 
 
