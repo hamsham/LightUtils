@@ -12,7 +12,7 @@
 #include <string>
 #include <sstream>
 
-#include "lightsky/utils/dataResource.h"
+#include "lightsky/utils/DataResource.h"
 
 namespace ls {
 namespace utils {

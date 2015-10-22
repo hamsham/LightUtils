@@ -90,7 +90,7 @@ hash_t hash_crc32(const char* str, hash_t prevCrc = 0xFFFFFFFF);
 } // end utils namespace
 } // end ls namespace
 
-#include "lightsky/utils/generic/hash_impl.h"
+#include "lightsky/utils/generic/HashImpl.h"
 
 #endif	/* __LS_UTILS_HASH_H__ */
 

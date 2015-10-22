@@ -8,7 +8,7 @@
 #ifndef __LS_UTILS_POINTER_H__
 #define	__LS_UTILS_POINTER_H__
 
-#include "lightsky/setup/macros.h"
+#include "lightsky/setup/Macros.h"
 
 namespace ls {
 namespace utils {

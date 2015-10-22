@@ -10,8 +10,8 @@
 
 #include <string>
 
-#include "lightsky/utils/setup.h"
-#include "lightsky/utils/string_utils.h"
+#include "lightsky/utils/Setup.h"
+#include "lightsky/utils/StringUtils.h"
 
 namespace ls {
 namespace utils {

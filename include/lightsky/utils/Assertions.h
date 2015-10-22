@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-#include "lightsky/setup/macros.h"
+#include "lightsky/setup/Macros.h"
 
 namespace ls {
 namespace utils {

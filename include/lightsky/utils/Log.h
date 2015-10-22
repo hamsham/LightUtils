@@ -10,7 +10,7 @@
 #ifndef __LS_UTILS_LOG_H__
 #define __LS_UTILS_LOG_H__
 
-#include "lightsky/setup/os.h"
+#include "lightsky/setup/OS.h"
 
 namespace ls {
 namespace utils {
@@ -95,15 +95,15 @@ void log_err(const arg_t& arg, const args_t&... args);
 } // end ls namespace
 
 #ifdef LS_OS_ANDROID
-    #include "lightsky/utils/android/log_impl.h"
+    #include "lightsky/utils/android/LogImpl.h"
 else
-    #include "lightsky/utils/generic/log_impl.h"
+    #include "lightsky/utils/generic/LogImpl.h"
 #endif
 
 /*-----------------------------------------------------------------------------
     Debugging Various Messages.
 -----------------------------------------------------------------------------*/
-#ifdef LSS_DEBUG
+#ifdef LS_DEBUG
     #ifndef LS_LOG_MSG
         #define LS_LOG_MSG(...) ls::utils::log_msg(__VA_ARGS__)
     #endif

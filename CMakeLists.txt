@@ -13,13 +13,13 @@ set(OUTPUT_NAME lsutils)
 include_directories("include")
 
 set(LS_UTILS_SOURCES
-    "src/utils/assertions.cpp"
-    "src/utils/dataResource.cpp"
-    "src/utils/pointer.cpp"
-    "src/utils/randomNum.cpp"
-    "src/utils/resource.cpp"
-    "src/utils/string_utils.cpp"
-    "src/utils/tuple.cpp"
+    "src/utils/Assertions.cpp"
+    "src/utils/DataResource.cpp"
+    "src/utils/Pointer.cpp"
+    "src/utils/RandomNum.cpp"
+    "src/utils/Resource.cpp"
+    "src/utils/StringUtils.cpp"
+    "src/utils/Tuple.cpp"
 )
 
 

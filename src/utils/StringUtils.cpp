@@ -9,7 +9,7 @@
 #include <cstring> // std::memset, std::wcslen
 #include <string> // std::wstring
 
-#include "lightsky/utils/string_utils.h"
+#include "lightsky/utils/StringUtils.h"
 
 namespace ls {
 

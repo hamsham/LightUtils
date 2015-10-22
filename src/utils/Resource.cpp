@@ -5,7 +5,7 @@
  * Created on February 1, 2014, 11:09 PM
  */
 
-#include "lightsky/utils/resource.h"
+#include "lightsky/utils/Resource.h"
 
 namespace ls {
 namespace utils {
