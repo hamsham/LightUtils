@@ -25,6 +25,8 @@ void log_android(std::ostringstream& os, const android_LogPriority priority, con
     log_android(os, priority, args...);
 }
 
+} // end utils namespace
+
 /*-----------------------------------------------------------------------------
  *  Standard Logging Interfaces
  * --------------------------------------------------------------------------*/
@@ -43,7 +45,7 @@ void log_android(std::ostringstream& os, const android_LogPriority priority, con
  */
 template <typename arg_t>
 inline
-void log_msg(const arg_t& arg)
+void utils::log_msg(const arg_t& arg)
 {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_INFO, arg);
@@ -68,7 +70,7 @@ void log_msg(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void log_msg(const arg_t& arg, const args_t&... args)
+void utils::log_msg(const arg_t& arg, const args_t&... args)
 {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_INFO, arg, args...);
@@ -89,7 +91,7 @@ void log_msg(const arg_t& arg, const args_t&... args)
  */
 template <typename arg_t>
 inline
-void log_err(const arg_t& arg)
+void utils::log_err(const arg_t& arg)
 {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_ERROR, arg);
@@ -114,11 +116,10 @@ void log_err(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void log_err(const arg_t& arg, const args_t&... args)
+void utils::log_err(const arg_t& arg, const args_t&... args)
 {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_ERROR, arg, args...);
 }
 
-} // end utils namespace
 } // end ls namespace

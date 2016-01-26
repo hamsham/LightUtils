@@ -96,7 +96,7 @@ void log_err(const arg_t& arg, const args_t&... args);
 
 #ifdef LS_OS_ANDROID
     #include "lightsky/utils/android/LogImpl.h"
-else
+#else
     #include "lightsky/utils/generic/LogImpl.h"
 #endif
 

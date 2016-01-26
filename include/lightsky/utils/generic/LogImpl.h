@@ -1,10 +1,7 @@
 
-#include "platform/os.h"
-
 #include <iostream>
 
 namespace ls {
-namespace utils {
 
 /*-----------------------------------------------------------------------------
  *  Standard Logging Interfaces
@@ -24,7 +21,7 @@ namespace utils {
  */
 template <typename arg_t>
 inline
-void log_msg(const arg_t& arg)
+void utils::log_msg(const arg_t& arg)
 {
     std::cout << arg << '\n';
     std::cout.flush();
@@ -49,7 +46,7 @@ void log_msg(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void log_msg(const arg_t& arg, const args_t&... args)
+void utils::log_msg(const arg_t& arg, const args_t&... args)
 {
     std::cout << arg;
     log_msg(args...);
@@ -70,7 +67,7 @@ void log_msg(const arg_t& arg, const args_t&... args)
  */
 template <typename arg_t>
 inline
-void log_err(const arg_t& arg)
+void utils::log_err(const arg_t& arg)
 {
     std::cerr << arg << '\n';
     std::cerr.flush();
@@ -95,11 +92,10 @@ void log_err(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void log_err(const arg_t& arg, const args_t&... args)
+void utils::log_err(const arg_t& arg, const args_t&... args)
 {
     std::cerr << arg;
     log_msg(args...);
 }
 
-} // end utils namespace
 } // end ls namespace

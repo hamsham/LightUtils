@@ -2,6 +2,9 @@
 namespace ls {
 namespace utils {
 
+///////////////////////////////////////////////////////////////////////////////
+//      Hash Function Implementations
+///////////////////////////////////////////////////////////////////////////////
 /*-------------------------------------
  * DJB2 hash implementation
 * -----------------------------------*/
@@ -13,19 +16,6 @@ hash_t hashDJB2_impl(const char* str, unsigned int hashVal)
         hashVal
     :
         hashDJB2_impl(str+1, ((hashVal << 5) + hashVal) ^ *str);
-}
-
-/*-------------------------------------
- * DJB2 hash interface
- * -----------------------------------*/
-constexpr
-hash_t hash_djb2(const char* str)
-{
-	return (!str)
-    ?
-        0
-    :
-        hashDJB2_impl(str, 5381);
 }
 
 /*-------------------------------------
@@ -42,18 +32,6 @@ hash_t hashSDBM_impl(const char* str, unsigned int hashVal)
 }
 
 /*-------------------------------------
- * SDBM hash interface
- * ----------------------------------*/
-constexpr
-hash_t hash_sdbm(const char* str) {
-    return (!str)
-    ?
-        0
-    :
-        hashSDBM_impl(str, 65599);
-}
-
-/*-------------------------------------
  * FNV-1a hash implementation
  * ----------------------------------*/
 constexpr
@@ -67,22 +45,8 @@ hash_t hashFNV1_impl(const char* str, unsigned int hashVal)
 }
 
 /*-------------------------------------
- * FNV-1a hash interface
+ * CRC32 Table (zlib polynomia from crc32.c)
  * ----------------------------------*/
-constexpr
-hash_t hash_fnv1(const char* str)
-{
-    return (!str)
-    ?
-        0
-    :
-        hashFNV1_impl(str, 2166136261);
-}
-
-/*-------------------------------------
- * CRC32 hash interface/implementation
- * ----------------------------------*/
-namespace utilsImpl {// CRC32 Table (zlib polynomia from crc32.c)
 constexpr static uint32_t crc_table[256] =
 {
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
@@ -138,20 +102,61 @@ constexpr static uint32_t crc_table[256] =
   0x5d681b02L, 0x2a6f2b94L, 0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL,
   0x2d02ef8dL
 };
-} // end utilsImpl namespace
+
+} // end utils namespace
+
+///////////////////////////////////////////////////////////////////////////////
+//      Hash Function Interfaces
+///////////////////////////////////////////////////////////////////////////////
+/*-------------------------------------
+ * DJB2 hash interface
+ * -----------------------------------*/
+constexpr
+utils::hash_t utils::hash_djb2(const char* str)
+{
+	return (!str)
+    ?
+        0
+    :
+        hashDJB2_impl(str, 5381);
+}
+
+/*-------------------------------------
+ * SDBM hash interface
+ * ----------------------------------*/
+constexpr
+utils::hash_t utils::hash_sdbm(const char* str) {
+    return (!str)
+    ?
+        0
+    :
+        hashSDBM_impl(str, 65599);
+}
+
+/*-------------------------------------
+ * FNV-1a hash interface
+ * ----------------------------------*/
+constexpr
+utils::hash_t utils::hash_fnv1(const char* str)
+{
+    return (!str)
+    ?
+        0
+    :
+        hashFNV1_impl(str, 2166136261);
+}
 
 /*-------------------------------------
  * CRC32 Hash Function
  * ----------------------------------*/
 constexpr
-hash_t crc32(const char* str, hash_t prevCrc)
+utils::hash_t utils::hash_crc32(const char* str, hash_t prevCrc)
 {
     return *str != 0
     ?
-        crc32(str+1, (prevCrc >> 8) ^ utilsImpl::crc_table[(prevCrc ^ str[0]) & 0xFF])
+        hash_crc32(str+1, (prevCrc >> 8) ^ crc_table[(prevCrc ^ str[0]) & 0xFF])
     :
         prevCrc ^ 0xFFFFFFFF;
 }
 
-} // end utils namespace
 } // end ls namespace
