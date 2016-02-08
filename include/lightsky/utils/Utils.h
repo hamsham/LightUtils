@@ -8,19 +8,19 @@
 #ifndef __LS_UTILS_H__
 #define __LS_UTILS_H__
 
-#include "lightsky/utils/setup.h"
+#include "lightsky/utils/Setup.h"
 
-#include "lightsky/utils/assertions.h"
-#include "lightsky/utils/bits.h"
-#include "lightsky/utils/btree.h"
-#include "lightsky/utils/byteSize.h"
-#include "lightsky/utils/dataResource.h"
-#include "lightsky/utils/endian.h"
-#include "lightsky/utils/hash.h"
-#include "lightsky/utils/log.h"
-#include "lightsky/utils/randomNum.h"
-#include "lightsky/utils/resource.h"
-#include "lightsky/utils/string_utils.h"
-#include "lightsky/utils/tuple.h"
+#include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Bits.h"
+#include "lightsky/utils/Btree.h"
+#include "lightsky/utils/ByteSize.h"
+#include "lightsky/utils/DataResource.h"
+#include "lightsky/utils/Endian.h"
+#include "lightsky/utils/Hash.h"
+#include "lightsky/utils/Log.h"
+#include "lightsky/utils/RandomNum.h"
+#include "lightsky/utils/Resource.h"
+#include "lightsky/utils/StringUtils.h"
+#include "lightsky/utils/Tuple.h"
 
 #endif /* __LS_UTILS_H__ */
