@@ -155,7 +155,22 @@ class DataResource final : public Resource
          * @return true if the copy was successful. False if otherwise.
          */
         bool set_data(const char* const data, long size);
+        
+        /**
+         * Retrieve the currently loaded file data as a plain string of bytes.
+         * 
+         * @return A constant reference to an std::string which contains all of
+         * the data which was loaded from the input file.
+         */
+        const std::string& get_data_as_str() const;
 };
+
+/*-------------------------------------
+ * Retrieve data as an std::string
+-------------------------------------*/
+inline const std::string& DataResource::get_data_as_str() const {
+    return fileData;
+}
 
 } // end utils namespace
 } // end ls namespace
