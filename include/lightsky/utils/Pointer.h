@@ -452,15 +452,21 @@ class Pointer
         }
 
         /**
-         * @brief Free all data referenced by *this.
+         * @brief Return the currently held pointer to data after releasing
+         * all ownership.
          *
-         * This method will delete all data that *this object references. It is
-         * exactly the same as calling "reset(nullptr)".
+         * This method will release ownership of all data that *this object
+         * references.
+         * 
+         * @return A pointer to the currently held data store after it has been
+         * relieved of all internal references.
          */
         inline
-        void release()
+        data_t* release()
         {
-            reset(nullptr);
+            data_t* const pRet = pData;
+            pData = nullptr;
+            return pRet;
         }
 };
 
@@ -955,15 +961,21 @@ class Pointer<data_t[]>
         }
 
         /**
-         * @brief Free all data referenced by *this.
+         * @brief Return the currently held pointer to data after releasing
+         * all ownership.
          *
-         * This method will delete all data that *this object references. It is
-         * exactly the same as calling "reset(nullptr)".
+         * This method will release ownership of all data that *this object
+         * references.
+         * 
+         * @return A pointer to the currently held data store after it has been
+         * relieved of all internal references.
          */
         inline
-        void release()
+        data_t* release()
         {
-            reset(nullptr);
+            data_t* const pRet = pData;
+            pData = nullptr;
+            return pRet;
         }
 };
 
