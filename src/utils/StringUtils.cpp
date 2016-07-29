@@ -9,7 +9,7 @@
 #include <cstring> // std::memset, std::wcslen
 #include <string> // std::wstring
 
-#include "lightsky/utils/StringUtils.h"
+#include "ls/utils/StringUtils.h"
 
 namespace ls {
 
@@ -18,13 +18,13 @@ namespace ls {
  * ----------------------------------*/
 std::string utils::wide_to_mb_string(const std::wstring& wstr) {
     // return value
-    std::string ret{};
+    std::string ret {};
 
     // get the size difference between the two data types
-    unsigned sizeDifference = sizeof(wchar_t) / sizeof(char);
+    unsigned sizeDifference = sizeof (wchar_t) / sizeof (char);
 
     // convert the wide string to a multi-byte char string
-    std::size_t maxBytes = (wstr.size()*sizeDifference) + 1;
+    std::size_t maxBytes = (wstr.size() * sizeDifference) + 1;
 
     // Allocate a new character array, 0-initialize the string, just in case
     ret.resize(maxBytes, '\0');

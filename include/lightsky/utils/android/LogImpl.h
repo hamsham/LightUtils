@@ -11,16 +11,14 @@ namespace utils {
  * --------------------------------------------------------------------------*/
 template <typename arg_t>
 inline
-void log_android(std::ostringstream& os, const android_LogPriority priority, const arg_t& arg)
-{
+void log_android(std::ostringstream& os, const android_LogPriority priority, const arg_t& arg) {
     os << arg;
     __android_log_write(priority, "", os.str().c_str());
 }
 
 template <typename arg_t, typename... args_t>
 inline
-void log_android(std::ostringstream& os, const android_LogPriority priority, const arg_t& arg, const args_t&... args)
-{
+void log_android(std::ostringstream& os, const android_LogPriority priority, const arg_t& arg, const args_t&... args) {
     os << arg;
     log_android(os, priority, args...);
 }
@@ -30,6 +28,7 @@ void log_android(std::ostringstream& os, const android_LogPriority priority, con
 /*-----------------------------------------------------------------------------
  *  Standard Logging Interfaces
  * --------------------------------------------------------------------------*/
+
 /**
  * @brief Print multiple parameters to std::cout.
  *
@@ -45,8 +44,7 @@ void log_android(std::ostringstream& os, const android_LogPriority priority, con
  */
 template <typename arg_t>
 inline
-void utils::log_msg(const arg_t& arg)
-{
+void utils::log_msg(const arg_t& arg) {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_INFO, arg);
 }
@@ -70,8 +68,7 @@ void utils::log_msg(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void utils::log_msg(const arg_t& arg, const args_t&... args)
-{
+void utils::log_msg(const arg_t& arg, const args_t&... args) {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_INFO, arg, args...);
 }
@@ -91,8 +88,7 @@ void utils::log_msg(const arg_t& arg, const args_t&... args)
  */
 template <typename arg_t>
 inline
-void utils::log_err(const arg_t& arg)
-{
+void utils::log_err(const arg_t& arg) {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_ERROR, arg);
 }
@@ -116,8 +112,7 @@ void utils::log_err(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void utils::log_err(const arg_t& arg, const args_t&... args)
-{
+void utils::log_err(const arg_t& arg, const args_t&... args) {
     std::ostringstream os;
     log_android(os, android_LogPriority::ANDROID_LOG_ERROR, arg, args...);
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   utils/setup.h
  * Author: Miles Lacey
  *
@@ -8,6 +8,6 @@
 #ifndef __LS_UTILS_SETUP_H__
 #define __LS_UTILS_SETUP_H__
 
-#include "lightsky/setup/Setup.h"
+#include "ls/setup/Setup.h"
 
 #endif /* __LS_UTILS_SETUP_H__ */

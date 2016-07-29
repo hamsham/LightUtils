@@ -2,7 +2,7 @@
 # -------------------------------------
 # Project Setup
 # -------------------------------------
-project(lsutils_tests CXX)
+project(ls_utils_tests CXX)
 
 
 
@@ -18,8 +18,8 @@ include_directories(".")
 # -------------------------------------
 set(
     LS_UTILS_TEST_DEPS
-    lsutils
-    lsmath
+    ls_utils
+    ls_math
 )
 
 
@@ -27,5 +27,5 @@ set(
 # -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
-add_executable(lsutils_tuple_test "lsutils_tuple_test.cpp")
-add_dependencies(lsutils_tuple_test ${LS_UTILS_TEST_DEPS})
+add_executable(ls_utils_tuple_test "lsutils_tuple_test.cpp")
+add_dependencies(ls_utils_tuple_test ${LS_UTILS_TEST_DEPS})

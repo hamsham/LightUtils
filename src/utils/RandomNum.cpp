@@ -2,8 +2,8 @@
 #include <chrono>
 #include <limits>
 
-#include "lightsky/utils/Assertions.h"
-#include "lightsky/utils/RandomNum.h"
+#include "ls/utils/Assertions.h"
+#include "ls/utils/RandomNum.h"
 
 namespace ls {
 namespace utils {
@@ -11,27 +11,24 @@ namespace utils {
 /*-------------------------------------
  * Seeded Constructor
  * ----------------------------------*/
-RandomNum::RandomNum(const unsigned long s)
- {
+RandomNum::RandomNum(const unsigned long s) {
     this->seed(s);
 }
 
 /*-------------------------------------
  * Default Constructor
  * ----------------------------------*/
-RandomNum::RandomNum()
-{
+RandomNum::RandomNum() {
 }
 
 /*-------------------------------------
  * Copy Constructor
  * ----------------------------------*/
 RandomNum::RandomNum(const RandomNum& rn)
-:
-    index{rn.index}
+    :
+    index {rn.index}
 {
-    for (unsigned i = 0; i < 16; ++i)
-    {
+    for (unsigned i = 0; i < 16; ++i) {
         state[i] = rn.state[i];
     }
 }
@@ -40,11 +37,10 @@ RandomNum::RandomNum(const RandomNum& rn)
  * Move Constructor
  * ----------------------------------*/
 RandomNum::RandomNum(RandomNum&& rn)
-:
-    index{rn.index}
+    :
+    index {rn.index}
 {
-    for (unsigned i = 0; i < 16; ++i)
-    {
+    for (unsigned i = 0; i < 16; ++i) {
         state[i] = rn.state[i];
     }
 }
@@ -52,18 +48,16 @@ RandomNum::RandomNum(RandomNum&& rn)
 /*-------------------------------------
  * Destructor
  * ----------------------------------*/
-RandomNum::~RandomNum()
-{}
+RandomNum::~RandomNum() {
+}
 
 /*-------------------------------------
  * Copy Operator
  * ----------------------------------*/
-RandomNum& RandomNum::operator=(const RandomNum& rn)
-{
+RandomNum& RandomNum::operator =(const RandomNum& rn) {
     index = rn.index;
 
-    for (unsigned i = 0; i < 16; ++i)
-    {
+    for (unsigned i = 0; i < 16; ++i) {
         state[i] = rn.state[i];
     }
 
@@ -73,12 +67,10 @@ RandomNum& RandomNum::operator=(const RandomNum& rn)
 /*-------------------------------------
  * Move Operator
  * ----------------------------------*/
-RandomNum& RandomNum::operator=(RandomNum&& rn)
-{
+RandomNum& RandomNum::operator =(RandomNum&& rn) {
     index = rn.index;
 
-    for (unsigned i = 0; i < 16; ++i)
-    {
+    for (unsigned i = 0; i < 16; ++i) {
         state[i] = rn.state[i];
     }
 
@@ -88,12 +80,10 @@ RandomNum& RandomNum::operator=(RandomNum&& rn)
 /*-------------------------------------
  * Initialize the random distribution
  * ----------------------------------*/
-void RandomNum::seed(unsigned long s)
-{
-    for (unsigned int i = 0; i < 16; ++i)
-    {
+void RandomNum::seed(unsigned long s) {
+    for (unsigned int i = 0; i < 16; ++i) {
         state[i] = s++;
-        this->operator()(); // initializing the state to random bits
+        this->operator ()(); // initializing the state to random bits
     }
 
     index = 0;
@@ -102,27 +92,25 @@ void RandomNum::seed(unsigned long s)
 /*-------------------------------------
  * Default random distribution initialization
  * ----------------------------------*/
-void RandomNum::seed()
-{
+void RandomNum::seed() {
     this->seed((long unsigned)std::chrono::system_clock::now().time_since_epoch().count());
 }
 
 /*-------------------------------------
  * Generate a random number
  * ----------------------------------*/
-unsigned long RandomNum::operator()()
-{
+unsigned long RandomNum::operator ()() {
     unsigned long a, b, c, d;
     a = state[index];
-    c = state[(index+13)&15];
-    b = a^c^(a<<16)^(c<<15);
-    c = state[(index+9)&15];
-    c ^= (c>>11);
+    c = state[(index + 13)&15];
+    b = a^c^(a << 16)^(c << 15);
+    c = state[(index + 9)&15];
+    c ^= (c >> 11);
     a = state[index] = b^c;
-    d = a^((a<<5)&0xDA442D24UL);
+    d = a^((a << 5)&0xDA442D24UL);
     index = (index + 15)&15;
     a = state[index];
-    state[index] = a^b^d^(a<<2)^(b<<18)^(c<<28);
+    state[index] = a^b^d^(a << 2)^(b << 18)^(c << 28);
 
     return state[index];
 }
@@ -130,8 +118,7 @@ unsigned long RandomNum::operator()()
 /*-------------------------------------
  * Generate a random float within a an inclusive range
  * ----------------------------------*/
-float RandomNum::randRangeF(RandomNum& prng, const float low, const float high)
-{
+float RandomNum::randRangeF(RandomNum& prng, const float low, const float high) {
     LS_DEBUG_ASSERT(low < high);
 
     const float delta = high - low;
@@ -150,4 +137,4 @@ int RandomNum::randRangeI(RandomNum& prng, const int low, const int high) {
 }
 
 } // end utils namespace
-} // end hamlibs namespace
+} // end ls namespace

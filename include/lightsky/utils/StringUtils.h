@@ -6,7 +6,7 @@
  */
 
 #ifndef __LS_UTILS_STRING_UTILS_H__
-#define	__LS_UTILS_STRING_UTILS_H__
+#define __LS_UTILS_STRING_UTILS_H__
 
 #include <string>
 #include <sstream>
@@ -28,8 +28,7 @@ namespace utils {
  *  A string-representation of the input parameter
  */
 template <typename T>
-std::string to_string(const T& data)
-{
+std::string to_string(const T& data) {
     std::ostringstream oss;
     oss << data;
     return oss.str();
@@ -54,4 +53,4 @@ std::string wide_to_mb_string(const std::wstring& wstr);
 } // end utils namespace
 } // end ls namespace
 
-#endif	/* __LS_UTILS_STRING_UTILS_H__ */
+#endif  /* __LS_UTILS_STRING_UTILS_H__ */

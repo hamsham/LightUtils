@@ -15,6 +15,8 @@
 namespace ls {
 namespace utils {
 
+
+
 /**
  * This enumeration can be placed into templated objects in order to generate
  * compile-time code based on a program's target endianness.
@@ -23,34 +25,25 @@ namespace utils {
  * order to manually compare them against the number order in the
  * endianValues[] array.
  */
-enum endian_t : uint32_t
-{
-    LS_LITTLE_ENDIAN   = 0x00000001,
-    LS_BIG_ENDIAN      = 0x01000000,
-    LS_PDP_ENDIAN      = 0x00010000,
-    LS_UNKNOWN_ENDIAN  = 0xFFFFFFFF
+enum endian_t : uint32_t {
+    LS_LITTLE_ENDIAN = 0x00000001,
+    LS_BIG_ENDIAN = 0x01000000,
+    LS_PDP_ENDIAN = 0x00010000,
+    LS_UNKNOWN_ENDIAN = 0xFFFFFFFF
 };
 
 /**
  * A simple function that can be used to help determine a program's endianness
  * at compile-time.
  */
-constexpr
-endian_t get_endian_order()
-{
+constexpr endian_t get_endian_order() {
     return ((0xFFFFFFFF & 1) == LS_LITTLE_ENDIAN)
-    ?
-        LS_LITTLE_ENDIAN
-    :
-        ((0xFFFFFFFF & 1) == LS_BIG_ENDIAN)
-        ?
-            LS_BIG_ENDIAN
-        :
-            ((0xFFFFFFFF & 1) == LS_PDP_ENDIAN)
-            ?
-                LS_PDP_ENDIAN
-            :
-                LS_UNKNOWN_ENDIAN;
+        ? LS_LITTLE_ENDIAN
+        : ((0xFFFFFFFF & 1) == LS_BIG_ENDIAN)
+            ? LS_BIG_ENDIAN
+            : ((0xFFFFFFFF & 1) == LS_PDP_ENDIAN)
+                ? LS_PDP_ENDIAN
+                : LS_UNKNOWN_ENDIAN;
 }
 
 /**
@@ -65,8 +58,7 @@ endian_t get_endian_order()
  * endian representation.
  */
 constexpr
-uint16_t btol(uint16_t n)
-{
+uint16_t btol(uint16_t n) {
     return (n >> 8) ^ (n << 8);
 }
 
@@ -82,9 +74,8 @@ uint16_t btol(uint16_t n)
  * endian representation.
  */
 constexpr
-int16_t btol(int16_t n)
-{
-    return (int16_t)btol((uint16_t)n);
+int16_t btol(int16_t n) {
+    return (int16_t) btol((uint16_t) n);
 }
 
 /**
@@ -99,13 +90,12 @@ int16_t btol(int16_t n)
  * endian representation.
  */
 constexpr
-uint32_t btol(uint32_t n)
-{
+uint32_t btol(uint32_t n) {
     return
     (0x000000FF & (n >> 24)) ^
-    (0x0000FF00 & (n >> 8)) ^
-    (0x00FF0000 & (n << 8)) ^
-    (0xFF000000 & (n << 24));
+        (0x0000FF00 & (n >> 8)) ^
+        (0x00FF0000 & (n << 8)) ^
+        (0xFF000000 & (n << 24));
 }
 
 /**
@@ -120,9 +110,8 @@ uint32_t btol(uint32_t n)
  * endian representation.
  */
 constexpr
-int32_t btol(int32_t n)
-{
-    return (int32_t)btol((uint32_t)n);
+int32_t btol(int32_t n) {
+    return (int32_t) btol((uint32_t) n);
 }
 
 /**
@@ -137,17 +126,16 @@ int32_t btol(int32_t n)
  * endian representation.
  */
 constexpr
-uint64_t btol(uint64_t n)
-{
+uint64_t btol(uint64_t n) {
     return
     (0x00000000000000FF & (n >> 56)) ^
-    (0x000000000000FF00 & (n >> 40)) ^
-    (0x0000000000FF0000 & (n >> 24)) ^
-    (0x00000000FF000000 & (n >> 8)) ^
-    (0x000000FF00000000 & (n << 8)) ^
-    (0x0000FF0000000000 & (n << 24)) ^
-    (0x00FF000000000000 & (n << 40)) ^
-    (0xFF00000000000000 & (n << 56));
+        (0x000000000000FF00 & (n >> 40)) ^
+        (0x0000000000FF0000 & (n >> 24)) ^
+        (0x00000000FF000000 & (n >> 8)) ^
+        (0x000000FF00000000 & (n << 8)) ^
+        (0x0000FF0000000000 & (n << 24)) ^
+        (0x00FF000000000000 & (n << 40)) ^
+        (0xFF00000000000000 & (n << 56));
 }
 
 /**
@@ -162,9 +150,8 @@ uint64_t btol(uint64_t n)
  * endian representation.
  */
 constexpr
-int64_t btol(int64_t n)
-{
-    return (int64_t)btol((uint64_t)n);
+int64_t btol(int64_t n) {
+    return (int64_t) btol((uint64_t) n);
 }
 
 /**
@@ -178,14 +165,12 @@ int64_t btol(int64_t n)
  * endian representation.
  */
 template <typename num_t>
-num_t btol(num_t n)
-{
+num_t btol(num_t n) {
     num_t ret;
-    unsigned char* const pIn = (unsigned char* const)&n;
-    unsigned char* const pOut = (unsigned char* const)&ret;
+    unsigned char* const pIn = (unsigned char* const) &n;
+    unsigned char* const pOut = (unsigned char* const) &ret;
 
-    for (unsigned i = 0, j = sizeof(num_t)-1; i < sizeof(num_t); ++i, --j)
-    {
+    for (unsigned i = 0, j = sizeof (num_t) - 1; i < sizeof (num_t); ++i, --j) {
         pOut[i] = pIn[j];
     }
 

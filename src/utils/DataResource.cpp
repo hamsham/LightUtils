@@ -12,7 +12,7 @@
 #include <string>
 #include <sstream>
 
-#include "lightsky/utils/DataResource.h"
+#include "ls/utils/DataResource.h"
 
 namespace ls {
 namespace utils {
@@ -20,8 +20,7 @@ namespace utils {
 /*-------------------------------------
  * Destructor
  * ----------------------------------*/
-DataResource::~DataResource()
-{
+DataResource::~DataResource() {
     unload();
 }
 
@@ -29,17 +28,18 @@ DataResource::~DataResource()
  * Constructor
  * ----------------------------------*/
 DataResource::DataResource()
-:
-    Resource{},
-    fileData{}
-{}
+    :
+    Resource {},
+fileData {}
+{
+}
 
 /*-------------------------------------
  * Copy Constructor
  * ----------------------------------*/
 DataResource::DataResource(const DataResource& f)
-:
-    Resource{}
+    :
+    Resource {}
 {
     set_data(const_cast<char*>(f.pData), f.dataSize);
 }
@@ -48,9 +48,9 @@ DataResource::DataResource(const DataResource& f)
  * Move Constructor
  * ----------------------------------*/
 DataResource::DataResource(DataResource&& f)
-:
-    Resource{},
-    fileData{std::move(f.fileData)}
+    :
+    Resource {},
+fileData {std::move(f.fileData)}
 {
     pData = &fileData[0];
     reassign_base_members();
@@ -62,8 +62,7 @@ DataResource::DataResource(DataResource&& f)
 /*-------------------------------------
  * Copy Operator
  * ----------------------------------*/
-DataResource& DataResource::operator=(const DataResource& f)
-{
+DataResource& DataResource::operator =(const DataResource& f) {
     set_data(const_cast<char*>(f.pData), f.dataSize);
     return *this;
 }
@@ -71,8 +70,7 @@ DataResource& DataResource::operator=(const DataResource& f)
 /*-------------------------------------
  * Move Operator
  * ----------------------------------*/
-DataResource& DataResource::operator =(DataResource&& f)
-{
+DataResource& DataResource::operator =(DataResource&& f) {
     unload();
 
     fileData = std::move(f.fileData);
@@ -87,17 +85,15 @@ DataResource& DataResource::operator =(DataResource&& f)
 /*-------------------------------------
  * Reassign base class members
  * ----------------------------------*/
-void DataResource::reassign_base_members()
-{
+void DataResource::reassign_base_members() {
     pData = &fileData[0];
-    dataSize = sizeof(decltype(fileData)::value_type) * fileData.size();
+    dataSize = sizeof (decltype(fileData)::value_type) * fileData.size();
 }
 
 /*-------------------------------------
  * Unload a resource
  * ----------------------------------*/
-void DataResource::unload()
-{
+void DataResource::unload() {
     fileData.clear();
     pData = nullptr;
     dataSize = 0;
@@ -113,32 +109,28 @@ void DataResource::unload()
  *
  * http://cpp.indi.frih.net/blog/2014/09/how-to-read-an-entire-file-into-memory-in-cpp/
  * ----------------------------------*/
-bool DataResource::load_file(const std::string& filename)
-{
+bool DataResource::load_file(const std::string& filename) {
     unload();
 
     std::ifstream fin;
     fin.open(filename, std::ios_base::binary | std::ios_base::in);
 
-    if (!fin.good())
-    {
+    if (!fin.good()) {
         return false;
     }
 
     // Determine of the file can successfully scanned,
-    if (fin.bad() || fin.fail())
-    {
+    if (fin.bad() || fin.fail()) {
         fin.close();
         return false;
     }
 
     // convert the input file's stream to an std::ostringstream's output buffer.
-    std::ostringstream oss{};
+    std::ostringstream oss {};
     oss << fin.rdbuf();
 
     // redundancy
-    if (oss.bad() || oss.fail())
-    {
+    if (oss.bad() || oss.fail()) {
         fin.close();
         return false;
     }
@@ -159,8 +151,7 @@ bool DataResource::save_file(const std::string& filename) const {
 
     fout.open(filename, std::ios_base::binary);
 
-    if (!fout.good())
-    {
+    if (!fout.good()) {
         return false;
     }
 
@@ -176,18 +167,16 @@ bool DataResource::save_file(const std::string& filename) const {
 /*-------------------------------------
  * Set a resource's data
  * ----------------------------------*/
-bool DataResource::set_data(const char* const data, long size)
-{
+bool DataResource::set_data(const char* const data, long size) {
     unload();
 
-    if (data == nullptr || size == 0)
-    {
+    if (data == nullptr || size == 0) {
         return true;
     }
 
 
-    const unsigned byteSize = sizeof(decltype(fileData)::value_type);
-    const unsigned valueSize = (size/byteSize) + (size%byteSize);
+    const unsigned byteSize = sizeof (decltype(fileData)::value_type);
+    const unsigned valueSize = (size / byteSize) + (size % byteSize);
 
     fileData.assign(data, valueSize);
     reassign_base_members();

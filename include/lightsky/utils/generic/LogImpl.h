@@ -6,6 +6,7 @@ namespace ls {
 /*-----------------------------------------------------------------------------
  *  Standard Logging Interfaces
  * --------------------------------------------------------------------------*/
+
 /**
  * @brief Print multiple parameters to std::cout.
  *
@@ -21,8 +22,7 @@ namespace ls {
  */
 template <typename arg_t>
 inline
-void utils::log_msg(const arg_t& arg)
-{
+void utils::log_msg(const arg_t& arg) {
     std::cout << arg << '\n';
     std::cout.flush();
 }
@@ -46,8 +46,7 @@ void utils::log_msg(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void utils::log_msg(const arg_t& arg, const args_t&... args)
-{
+void utils::log_msg(const arg_t& arg, const args_t&... args) {
     std::cout << arg;
     log_msg(args...);
 }
@@ -67,8 +66,7 @@ void utils::log_msg(const arg_t& arg, const args_t&... args)
  */
 template <typename arg_t>
 inline
-void utils::log_err(const arg_t& arg)
-{
+void utils::log_err(const arg_t& arg) {
     std::cerr << arg << '\n';
     std::cerr.flush();
 }
@@ -92,10 +90,9 @@ void utils::log_err(const arg_t& arg)
  */
 template <typename arg_t, typename... args_t>
 inline
-void utils::log_err(const arg_t& arg, const args_t&... args)
-{
+void utils::log_err(const arg_t& arg, const args_t&... args) {
     std::cerr << arg;
-    log_msg(args...);
+    log_err(args...);
 }
 
 } // end ls namespace
