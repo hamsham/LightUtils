@@ -10,7 +10,7 @@
 #ifndef __LS_UTILS_LOG_H__
 #define __LS_UTILS_LOG_H__
 
-#include "ls/setup/OS.h"
+#include "lightsky/setup/OS.h"
 
 namespace ls {
 namespace utils {
@@ -95,9 +95,9 @@ void log_err(const arg_t& arg, const args_t&... args);
 } // end ls namespace
 
 #ifdef LS_OS_ANDROID
-#include "ls/utils/android/LogImpl.h"
+#include "lightsky/utils/android/LogImpl.h"
 #else
-#include "ls/utils/generic/LogImpl.h"
+#include "lightsky/utils/generic/LogImpl.h"
 #endif
 
 /*-----------------------------------------------------------------------------

@@ -99,6 +99,6 @@ constexpr hash_t string_hash(const char* str) noexcept {
 } // end utils namespace
 } // end ls namespace
 
-#include "ls/utils/generic/HashImpl.h"
+#include "lightsky/utils/generic/HashImpl.h"
 
 #endif  /* __LS_UTILS_HASH_H__ */

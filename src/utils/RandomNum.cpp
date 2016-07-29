@@ -2,8 +2,8 @@
 #include <chrono>
 #include <limits>
 
-#include "ls/utils/Assertions.h"
-#include "ls/utils/RandomNum.h"
+#include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/RandomNum.h"
 
 namespace ls {
 namespace utils {

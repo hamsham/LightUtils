@@ -18,8 +18,8 @@ include_directories(".")
 # -------------------------------------
 set(
     LS_UTILS_TEST_DEPS
-    ls_utils
-    ls_math
+    lsutils
+    lsmath
 )
 
 

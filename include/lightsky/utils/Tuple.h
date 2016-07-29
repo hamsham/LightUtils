@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "ls/utils/ByteSize.h"
+#include "lightsky/utils/ByteSize.h"
 
 namespace ls {
 namespace utils {
