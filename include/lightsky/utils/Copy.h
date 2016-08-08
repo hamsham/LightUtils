@@ -5,6 +5,8 @@
 #include <cstdlib> // std::size_t
 #include <utility> // std::move
 
+#include "lightsky/setup/Api.h"
+
 #include "lightsky/utils/Loops.h"
 
 
@@ -31,7 +33,7 @@ namespace utils {
  * 
  * @return The 'dest' parameter.
  */
-void* fast_memcpy(void* const dest, const void* const src, const std::size_t count);
+void* LS_API fast_memcpy(void* const dest, const void* const src, const std::size_t count);
 
 
 
@@ -52,7 +54,7 @@ void* fast_memcpy(void* const dest, const void* const src, const std::size_t cou
  * Specifies the number of items which will be copied.
  */
 template <typename dest_t, typename src_t>
-void fast_copy(dest_t* dest, const src_t* src, const std::size_t count) {
+void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t count) {
     LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = *src++))
 }
 
@@ -75,7 +77,7 @@ void fast_copy(dest_t* dest, const src_t* src, const std::size_t count) {
  * Specifies the number of items which will be moved.
  */
 template <typename dest_t, typename src_t>
-void fast_move(dest_t* dest, src_t* src, const std::size_t count) {
+void LS_API fast_move(dest_t* dest, src_t* src, const std::size_t count) {
     LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = std::move(*src++)))
 }
 
@@ -96,7 +98,7 @@ void fast_move(dest_t* dest, src_t* src, const std::size_t count) {
  * 
  * @return The 'dest' parameter.
  */
-void* fast_memset(void* const dest, const unsigned char fillByte, const std::size_t count);
+void* LS_API fast_memset(void* const dest, const unsigned char fillByte, const std::size_t count);
 
 
 
@@ -116,7 +118,7 @@ void* fast_memset(void* const dest, const unsigned char fillByte, const std::siz
  * Specifies the number of items which will be filled.
  */
 template <typename dest_t, typename fill_t>
-void fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t count) {
+void LS_API fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t count) {
     LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = fillType))
 }
 

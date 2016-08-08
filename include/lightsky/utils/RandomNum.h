@@ -2,6 +2,8 @@
 #ifndef __LS_UTILS_RANDON_H__
 #define __LS_UTILS_RANDON_H__
 
+#include "lightsky/setup/Api.h"
+
 namespace ls {
 namespace utils {
 
@@ -15,7 +17,7 @@ namespace utils {
  *  (see: Random Number Generation)
  *  http://www.lomont.org/Math/Papers/2008/Lomont_PRNG_2008.pdf
  */
-class RandomNum {
+class LS_API RandomNum {
   private:
     /**
      *  @brief state

@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include "lightsky/setup/Api.h"
+
 #include "lightsky/utils/Setup.h"
 #include "lightsky/utils/StringUtils.h"
 
@@ -28,7 +30,7 @@ namespace utils {
  * class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class Resource {
+class LS_API Resource {
   protected:
     /**
      * pData is a pointer to an array of bytes that hold a complete resource

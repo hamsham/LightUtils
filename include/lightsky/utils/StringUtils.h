@@ -11,6 +11,8 @@
 #include <string>
 #include <sstream>
 
+#include "lightsky/setup/Api.h"
+
 namespace ls {
 namespace utils {
 
@@ -48,7 +50,7 @@ std::string to_string(const T& data) {
  *  A std::string object that uses 'char' types instead of the input
  *  parameter's 'wchar_t' type.
  */
-std::string wide_to_mb_string(const std::wstring& wstr);
+std::string LS_API wide_to_mb_string(const std::wstring& wstr);
 
 } // end utils namespace
 } // end ls namespace

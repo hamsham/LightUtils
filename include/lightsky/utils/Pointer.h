@@ -8,6 +8,7 @@
 #ifndef __LS_UTILS_POINTER_H__
 #define __LS_UTILS_POINTER_H__
 
+#include "lightsky/setup/Api.h"
 #include "lightsky/setup/Macros.h"
 
 namespace ls {
@@ -19,7 +20,7 @@ namespace utils {
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
 template <typename data_t>
-class Pointer {
+class LS_API Pointer {
     
     // public typedefs
   public:
@@ -55,11 +56,9 @@ class Pointer {
      * under any circumstances.
      */
     constexpr
-    Pointer()
-        :
+    Pointer() :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * @brief Pointer Constructor
@@ -68,11 +67,9 @@ class Pointer {
      * A Pointer to dynamically-allocated data.
      */
     explicit
-    Pointer(data_t * const p)
-        :
+    Pointer(data_t * const p) :
         pData{p}
-    {
-    }
+    {}
 
     /**
      * @brief NULL Constructor
@@ -80,11 +77,9 @@ class Pointer {
      * Constructs *this with no data assigned.
      */
     constexpr
-    Pointer(std::nullptr_t)
-        :
+    Pointer(std::nullptr_t) :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * Copy Constructor -- DELETED
@@ -99,8 +94,7 @@ class Pointer {
      * @param p
      * A Pointer type containing dynamically-allocated data.
      */
-    Pointer(Pointer&& p)
-        :
+    Pointer(Pointer&& p) :
         pData{p.pData}
     {
         p.pData = nullptr;
@@ -481,7 +475,7 @@ LS_DECLARE_CLASS_TYPE(ldouble_Pointer, Pointer, long double);
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
 template <typename data_t>
-class Pointer<data_t[]> {
+class LS_API Pointer<data_t[]> {
     
     // public typedefs
   public:
@@ -518,11 +512,9 @@ class Pointer<data_t[]> {
      * under any circumstances.
      */
     constexpr
-    Pointer()
-        :
+    Pointer() :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * @brief Pointer Constructor
@@ -531,11 +523,9 @@ class Pointer<data_t[]> {
      * A Pointer to dynamically-allocated data.
      */
     explicit
-    Pointer(data_t * const p)
-        :
+    Pointer(data_t * const p) :
         pData{p}
-    {
-    }
+    {}
 
     /**
      * @brief NULL Constructor
@@ -543,11 +533,9 @@ class Pointer<data_t[]> {
      * Constructs *this with no data assigned.
      */
     constexpr
-    Pointer(std::nullptr_t)
-        :
+    Pointer(std::nullptr_t) :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * Copy Constructor -- DELETED

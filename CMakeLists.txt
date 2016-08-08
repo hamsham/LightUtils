@@ -28,10 +28,31 @@ set(LS_UTILS_SOURCES
 # -------------------------------------
 # Library Setup
 # -------------------------------------
-add_library("${OUTPUT_NAME}" STATIC "${LS_UTILS_SOURCES}")
+option(BUILD_SHARED_LIBS "Build Shared Libraries" OFF)
+
+if (BUILD_SHARED_LIB)
+    add_definitions(-DLS_BUILD_SHARED -DLS_SHARED)
+    set(LS_LIB_TYPE SHARED)
+else()
+    set(LS_LIB_TYPE STATIC)
+endif()
+
+add_library("${OUTPUT_NAME}" ${LS_LIB_TYPE} "${LS_UTILS_SOURCES}")
 
 # Dependencies
 target_link_libraries("${OUTPUT_NAME}" lssetup)
+
+
+
+# -------------------------------------
+# Library Installation Setup
+# -------------------------------------
+install(TARGETS "${OUTPUT_NAME}"
+    RUNTIME DESTINATION bin
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)
+install(DIRECTORY include/lightsky/utils DESTINATION include/lightsky)
 
 
 

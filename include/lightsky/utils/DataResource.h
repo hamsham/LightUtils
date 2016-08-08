@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include "lightsky/setup/Api.h"
+
 #include "lightsky/utils/Setup.h"
 #include "lightsky/utils/Resource.h"
 
@@ -29,7 +31,7 @@ namespace utils {
  * this class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class DataResource final : public Resource {
+class LS_API DataResource final : public Resource {
   private:
     /**
      * @brief fileData contains an entire file loaded into memory. The
