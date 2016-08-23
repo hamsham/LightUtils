@@ -12,10 +12,8 @@ namespace utils {
 constexpr
 hash_t hashDJB2_impl(const char* str, unsigned int hashVal) {
     return (!*str)
-        ?
-        hashVal
-        :
-        hashDJB2_impl(str + 1, ((hashVal << 5) + hashVal) ^ *str);
+        ? hashVal
+        : hashDJB2_impl(str + 1, ((hashVal << 5) + hashVal) ^ *str);
 }
 
 /*-------------------------------------
@@ -24,10 +22,8 @@ hash_t hashDJB2_impl(const char* str, unsigned int hashVal) {
 constexpr
 hash_t hashSDBM_impl(const char* str, unsigned int hashVal) {
     return (!*str)
-        ?
-        hashVal
-        :
-        hashSDBM_impl(str + 1, *str + (hashVal << 6) + (hashVal << 16) - hashVal);
+        ? hashVal
+        : hashSDBM_impl(str + 1, *str + (hashVal << 6) + (hashVal << 16) - hashVal);
 }
 
 /*-------------------------------------
@@ -36,10 +32,8 @@ hash_t hashSDBM_impl(const char* str, unsigned int hashVal) {
 constexpr
 hash_t hashFNV1_impl(const char* str, unsigned int hashVal) {
     return (!*str)
-        ?
-        hashVal
-        :
-        hashFNV1_impl(str + 1, *str ^ (hashVal * 16777619));
+        ? hashVal
+        : hashFNV1_impl(str + 1, *str ^ (hashVal * 16777619));
 }
 
 /*-------------------------------------
@@ -112,10 +106,8 @@ constexpr static uint32_t crc_table[256] = {
 constexpr
 utils::hash_t utils::hash_djb2(const char* str) {
     return (!str)
-        ?
-        0
-        :
-        hashDJB2_impl(str, 5381);
+        ? 0
+        : hashDJB2_impl(str, 5381);
 }
 
 /*-------------------------------------
@@ -124,10 +116,8 @@ utils::hash_t utils::hash_djb2(const char* str) {
 constexpr
 utils::hash_t utils::hash_sdbm(const char* str) {
     return (!str)
-        ?
-        0
-        :
-        hashSDBM_impl(str, 65599);
+        ? 0
+        : hashSDBM_impl(str, 65599);
 }
 
 /*-------------------------------------
@@ -136,10 +126,8 @@ utils::hash_t utils::hash_sdbm(const char* str) {
 constexpr
 utils::hash_t utils::hash_fnv1(const char* str) {
     return (!str)
-        ?
-        0
-        :
-        hashFNV1_impl(str, 2166136261);
+        ? 0
+        : hashFNV1_impl(str, 2166136261);
 }
 
 /*-------------------------------------
@@ -148,10 +136,8 @@ utils::hash_t utils::hash_fnv1(const char* str) {
 constexpr
 utils::hash_t utils::hash_crc32(const char* str, hash_t prevCrc) {
     return *str != 0
-        ?
-        hash_crc32(str + 1, (prevCrc >> 8) ^ crc_table[(prevCrc ^ str[0]) & 0xFF])
-        :
-        prevCrc ^ 0xFFFFFFFF;
+        ? hash_crc32(str + 1, (prevCrc >> 8) ^ crc_table[(prevCrc ^ str[0]) & 0xFF])
+        : prevCrc ^ 0xFFFFFFFF;
 }
 
 } // end ls namespace
