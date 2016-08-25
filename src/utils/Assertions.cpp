@@ -1,9 +1,10 @@
 
-#include <iostream>
-#include <csignal>
-#include <string>
+#include <csignal> // raise(), SIGABRT
+#include <cstdlib> // std::exit, EXIT_FAILURE
+#include <exception> // std::terminate
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Log.h"
 
 namespace ls {
 
@@ -13,13 +14,13 @@ void utils::runtime_assert(bool condition, error_t type, const char* const msg) 
     }
 
     const char* const errorString[] = {"ALERT: ", "WARNING: ", "ERROR: "};
-    std::cerr << errorString[type] << msg << std::endl;
+    LS_LOG_ERR(errorString[type], msg);
 
     if (type == utils::LS_WARNING) {
         std::exit(EXIT_FAILURE);
     }
     else if (type == utils::LS_ERROR) {
-        raise(SIGABRT);
+        std::terminate();
     }
 }
 
