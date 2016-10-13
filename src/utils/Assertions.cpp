@@ -17,10 +17,10 @@ void utils::runtime_assert(bool condition, error_t type, const char* const msg) 
     LS_LOG_ERR(errorString[type], msg);
 
     if (type == utils::LS_WARNING) {
-        std::exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     else if (type == utils::LS_ERROR) {
-        std::terminate();
+        abort();
     }
 }
 
