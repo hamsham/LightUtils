@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_TUPLE_H__
-#define __LS_UTILS_TUPLE_H__
+#ifndef LS_UTILS_TUPLE_H
+#define LS_UTILS_TUPLE_H
 
 #include <new>
 #include <type_traits>
@@ -470,10 +470,7 @@ template <typename... data_t>
 template <typename arg_t>
 constexpr
 bool Tuple_t<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t*) {
-
-    return new(buffer + offset) arg_t {
-    }
-    != nullptr;
+    return new(buffer + offset) arg_t {} != nullptr;
 }
 
 /*-------------------------------------
@@ -483,14 +480,9 @@ template <typename... data_t>
 template <typename arg_t, typename... args_t>
 constexpr
 bool Tuple_t<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t*, args_t*... args) {
-
-    return new(buffer + offset) arg_t {
-    }
-    != nullptr
-        ?
-        construct_objs < args_t...>(buffer, offset + sizeof (arg_t), args...)
-        :
-        false;
+    return new(buffer + offset) arg_t {} != nullptr
+        ? construct_objs < args_t...>(buffer, offset + sizeof (arg_t), args...)
+        : false;
 }
 
 /*-------------------------------------
@@ -501,10 +493,8 @@ template <typename arg_t>
 constexpr
 bool Tuple_t<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*) {
     return std::is_destructible<arg_t>()
-        ?
-        reinterpret_cast<arg_t*> (buffer + offset)->~arg_t(), true
-        :
-        throw;
+        ? reinterpret_cast<arg_t*> (buffer + offset)->~arg_t(), true
+        : throw;
 }
 
 /*-------------------------------------
@@ -600,8 +590,7 @@ constexpr Tuple_t<data_t...>::Tuple_t(bool) {
  * Constructor
  * ----------------------------------*/
 template <typename... data_t>
-constexpr Tuple_t<data_t...>::Tuple_t()
-    :
+constexpr Tuple_t<data_t...>::Tuple_t() :
     Tuple_t(construct_objs(dataBuffer, 0, ((data_t*) nullptr)...)) {
 }
 
@@ -609,8 +598,7 @@ constexpr Tuple_t<data_t...>::Tuple_t()
  * Copy Constructor
  * ----------------------------------*/
 template <typename... data_t>
-Tuple_t<data_t...>::Tuple_t(const Tuple_t& a)
-    :
+Tuple_t<data_t...>::Tuple_t(const Tuple_t& a) :
     Tuple_t{}
 {
     copy_objs(a, dataBuffer, 0, ((data_t*) nullptr)...);
@@ -620,8 +608,7 @@ Tuple_t<data_t...>::Tuple_t(const Tuple_t& a)
  * Move Constructor
  * ----------------------------------*/
 template <typename... data_t>
-Tuple_t<data_t...>::Tuple_t(Tuple_t&& a)
-    :
+Tuple_t<data_t...>::Tuple_t(Tuple_t&& a) :
     Tuple_t{}
 {
     move_objs(std::forward < Tuple_t < data_t...>>(a), dataBuffer, 0, ((data_t*) nullptr)...);
@@ -665,10 +652,8 @@ template <typename request_t, typename arg_t>
 constexpr
 const request_t* Tuple_t<data_t...>::get_obj_at_offset(unsigned offset, arg_t*) const {
     return std::is_same<request_t, arg_t>()
-        ?
-        (const request_t*) (dataBuffer + offset)
-        :
-        nullptr;
+        ? (const request_t*) (dataBuffer + offset)
+        : nullptr;
 }
 
 /*-------------------------------------
@@ -679,10 +664,8 @@ template <typename request_t, typename arg_t, typename... args_t>
 constexpr
 const request_t* Tuple_t<data_t...>::get_obj_at_offset(unsigned offset, arg_t*, args_t*...) const {
     return std::is_same<request_t, arg_t>()
-        ?
-        (const request_t*) (dataBuffer + offset)
-        :
-        get_obj_at_offset<request_t, args_t...>(sizeof (arg_t) + offset, ((args_t*) nullptr)...);
+        ? (const request_t*) (dataBuffer + offset)
+        : get_obj_at_offset<request_t, args_t...>(sizeof (arg_t) + offset, ((args_t*) nullptr)...);
 }
 
 /*-------------------------------------
@@ -708,10 +691,8 @@ template <typename request_t, typename arg_t>
 inline
 request_t* Tuple_t<data_t...>::get_obj_at_offset(unsigned offset, arg_t*) {
     return std::is_same<request_t, arg_t>()
-        ?
-        (request_t*) (dataBuffer + offset)
-        :
-        nullptr;
+        ? (request_t*) (dataBuffer + offset)
+        : nullptr;
 }
 
 /*-------------------------------------
@@ -722,10 +703,8 @@ template <typename request_t, typename arg_t, typename... args_t>
 inline
 request_t* Tuple_t<data_t...>::get_obj_at_offset(unsigned offset, arg_t*, args_t*...) {
     return std::is_same<request_t, arg_t>()
-        ?
-        (request_t*) (dataBuffer + offset)
-        :
-        get_obj_at_offset<request_t, args_t...>(sizeof (arg_t) + offset, ((args_t*) nullptr)...);
+        ? (request_t*) (dataBuffer + offset)
+        : get_obj_at_offset<request_t, args_t...>(sizeof (arg_t) + offset, ((args_t*) nullptr)...);
 }
 
 /*-------------------------------------
@@ -751,10 +730,8 @@ template <typename arg_t>
 constexpr
 const void* Tuple_t<data_t...>::get_obj_at_index(unsigned index, unsigned offset, arg_t*) const {
     return index == 0
-        ?
-        (const void*) (dataBuffer + offset)
-        :
-        nullptr;
+        ? (const void*) (dataBuffer + offset)
+        : nullptr;
 }
 
 /*-------------------------------------
@@ -765,10 +742,8 @@ template <typename arg_t, typename... args_t>
 constexpr
 const void* Tuple_t<data_t...>::get_obj_at_index(unsigned index, unsigned offset, arg_t*, args_t*...) const {
     return (index == 0)
-        ?
-        (const void*) (dataBuffer + offset)
-        :
-        get_obj_at_index < args_t...>(index - 1, sizeof (arg_t) + offset, ((args_t*) nullptr)...);
+        ? (const void*) (dataBuffer + offset)
+        : get_obj_at_index < args_t...>(index - 1, sizeof (arg_t) + offset, ((args_t*) nullptr)...);
 }
 
 /*-------------------------------------
@@ -793,10 +768,8 @@ template <typename arg_t>
 inline
 void* Tuple_t<data_t...>::get_obj_at_index(unsigned index, unsigned offset, arg_t*) {
     return index == 0
-        ?
-        (void*) (dataBuffer + offset)
-        :
-        nullptr;
+        ? (void*) (dataBuffer + offset)
+        : nullptr;
 }
 
 /*-------------------------------------
@@ -807,10 +780,8 @@ template <typename arg_t, typename... args_t>
 inline
 void* Tuple_t<data_t...>::get_obj_at_index(unsigned index, unsigned offset, arg_t*, args_t*...) {
     return index == 0
-        ?
-        (void*) (dataBuffer + offset)
-        :
-        get_obj_at_index < args_t...>(index - 1, sizeof (arg_t) + offset, ((args_t*) nullptr)...);
+        ? (void*) (dataBuffer + offset)
+        : get_obj_at_index < args_t...>(index - 1, sizeof (arg_t) + offset, ((args_t*) nullptr)...);
 }
 
 /*-------------------------------------
@@ -839,4 +810,4 @@ unsigned Tuple_t<data_t...>::get_num_objects() const {
 } // end utils namespace
 } // end ls namespace
 
-#endif /* __LS_UTILS_TUPLE_H__ */
+#endif /* LS_UTILS_TUPLE_H */

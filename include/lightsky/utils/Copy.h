@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_COPY_H__
-#define __LS_UTILS_COPY_H__
+#ifndef LS_UTILS_COPY_H
+#define LS_UTILS_COPY_H
 
 #include <cstdlib> // std::size_t
 #include <utility> // std::move
@@ -127,4 +127,4 @@ void LS_API fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t co
 } // end utils namespace
 } // end ls namespace
 
-#endif /* __LS_UTILS_COPY_H__ */
+#endif /* LS_UTILS_COPY_H */

@@ -5,8 +5,8 @@
  * Created on June 21, 2013, 1:31 AM
  */
 
-#ifndef __LS_UTILS_BITS_H__
-#define __LS_UTILS_BITS_H__
+#ifndef LS_UTILS_BITS_H
+#define LS_UTILS_BITS_H
 
 #include <climits>
 
@@ -175,4 +175,4 @@ const BitMask* get_byte(const char32_t* str, unsigned iter) {
 } // end utils namespace
 } // end ls namespace
 
-#endif  /* __LS_UTILS_BITS_H__ */
+#endif  /* LS_UTILS_BITS_H */

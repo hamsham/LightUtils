@@ -5,8 +5,8 @@
  * Created on February 1, 2014, 11:09 PM
  */
 
-#ifndef __LS_UTILS_DATA_RESOURCE_H__
-#define __LS_UTILS_DATA_RESOURCE_H__
+#ifndef LS_UTILS_DATA_RESOURCE_H
+#define LS_UTILS_DATA_RESOURCE_H
 
 #include <string>
 
@@ -178,4 +178,4 @@ inline const std::string& DataResource::get_data_as_str() const {
 } // end utils namespace
 } // end ls namespace
 
-#endif  /* __LS_UTILS_DATA_RESOURCE_H__ */
+#endif  /* LS_UTILS_DATA_RESOURCE_H */

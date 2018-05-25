@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_RANDON_H__
-#define __LS_UTILS_RANDON_H__
+#ifndef LS_UTILS_RANDON_H
+#define LS_UTILS_RANDON_H
 
 #include "lightsky/setup/Api.h"
 
@@ -173,4 +173,4 @@ class LS_API RandomNum {
 } // end utils namespace
 } // end ls namespace
 
-#endif /* __LS_UTILS_RANDON_H__ */
+#endif /* LS_UTILS_RANDON_H */

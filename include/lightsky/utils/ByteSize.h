@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_BYTESIZE_H__
-#define __LS_UTILS_BYTESIZE_H__
+#ifndef LS_UTILS_BYTESIZE_H
+#define LS_UTILS_BYTESIZE_H
 
 namespace ls {
 namespace utils {
@@ -62,4 +62,4 @@ unsigned get_byte_size() {
 } // end utils namespace
 } // end ls namespace
 
-#endif /* __LS_UTILS_BYTESIZE_H__ */
+#endif /* LS_UTILS_BYTESIZE_H */

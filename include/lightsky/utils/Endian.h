@@ -7,8 +7,8 @@
  * need to be added and updated over time.
  */
 
-#ifndef __LS_UTILS_ENDIAN_H__
-#define __LS_UTILS_ENDIAN_H__
+#ifndef LS_UTILS_ENDIAN_H
+#define LS_UTILS_ENDIAN_H
 
 #include <cstdint>
 
@@ -186,4 +186,4 @@ num_t btol(num_t n) {
  */
 #define LS_ENDIANNESS ls::utils::get_endian_order()
 
-#endif /* __LS_UTILS_ENDIAN_H__ */
+#endif /* LS_UTILS_ENDIAN_H */

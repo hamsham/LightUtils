@@ -5,8 +5,8 @@
  * Created on November 10, 2014, 10:29 PM
  */
 
-#ifndef __LS_UTILS_POINTER_H__
-#define __LS_UTILS_POINTER_H__
+#ifndef LS_UTILS_POINTER_H
+#define LS_UTILS_POINTER_H
 
 #include "lightsky/setup/Api.h"
 #include "lightsky/setup/Macros.h"
@@ -784,7 +784,7 @@ class LS_API Pointer<data_t[]> {
      * heap-allocated array managed by *this.
      */
     constexpr
-    data_t& operator[](std::size_t i) const {
+    data_t& operator[](const int i) const {
         return pData[i];
     }
 
@@ -799,7 +799,7 @@ class LS_API Pointer<data_t[]> {
      * managed by *this.
      */
     inline
-    data_t& operator[](std::size_t i) {
+    data_t& operator[](const int i) {
         return pData[i];
     }
 
@@ -954,4 +954,4 @@ LS_DECLARE_CLASS_TYPE(ldouble_array, Pointer, long double[]);
 } // end utils namespace
 } // end ls namespace
 
-#endif  /* __LS_UTILS_POINTER_H__ */
+#endif  /* LS_UTILS_POINTER_H */

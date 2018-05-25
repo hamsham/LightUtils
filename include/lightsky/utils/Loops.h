@@ -1,7 +1,7 @@
 
 
-#ifndef __LS_UTILS_LOOPS_H__
-#define __LS_UTILS_LOOPS_H__
+#ifndef LS_UTILS_LOOPS_H
+#define LS_UTILS_LOOPS_H
 
 #include <cstdlib> // std::size_t
 
@@ -108,4 +108,4 @@
 
 
 
-#endif /* __LS_UTILS_LOOPS_H__ */
+#endif /* LS_UTILS_LOOPS_H */

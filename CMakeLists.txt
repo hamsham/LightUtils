@@ -10,17 +10,42 @@ set(OUTPUT_NAME lsutils)
 # -------------------------------------
 # Source Paths
 # -------------------------------------
-include_directories("include")
+include_directories(include)
 
 set(LS_UTILS_SOURCES
-    "src/utils/Assertions.cpp"
-    "src/utils/Copy.cpp"
-    "src/utils/DataResource.cpp"
-    "src/utils/Pointer.cpp"
-    "src/utils/RandomNum.cpp"
-    "src/utils/Resource.cpp"
-    "src/utils/StringUtils.cpp"
-    "src/utils/Tuple.cpp"
+    src/Assertions.cpp
+    src/Copy.cpp
+    src/DataResource.cpp
+    src/Pointer.cpp
+    src/RandomNum.cpp
+    src/Resource.cpp
+    src/StringUtils.cpp
+    src/Tuple.cpp
+    src/WorkerThread.cpp
+)
+
+set(LS_UTILS_HEADERS
+    include/lightsky/utils/Assertions.h
+    include/lightsky/utils/Bits.h
+    include/lightsky/utils/BTree.h
+    include/lightsky/utils/ByteSize.h
+    include/lightsky/utils/Copy.h
+    include/lightsky/utils/DataResource.h
+    include/lightsky/utils/Endian.h
+    include/lightsky/utils/generic/LogImpl.h
+    include/lightsky/utils/android/LogImpl.h
+    include/lightsky/utils/Hash.h
+    include/lightsky/utils/generic/HashImpl.h
+    include/lightsky/utils/Log.h
+    include/lightsky/utils/Loops.h
+    include/lightsky/utils/Pointer.h
+    include/lightsky/utils/RandomNum.h
+    include/lightsky/utils/Resource.h
+    include/lightsky/utils/Setup.h
+    include/lightsky/utils/StringUtils.h
+    include/lightsky/utils/Tuple.h
+    include/lightsky/utils/Utils.h
+    include/lightsky/utils/WorkerThread.hpp
 )
 
 
@@ -30,24 +55,24 @@ set(LS_UTILS_SOURCES
 # -------------------------------------
 option(BUILD_SHARED_LIBS "Build Shared Libraries" OFF)
 
-if (BUILD_SHARED_LIB)
+if (BUILD_SHARED_LIBS)
     add_definitions(-DLS_BUILD_SHARED -DLS_SHARED)
     set(LS_LIB_TYPE SHARED)
 else()
     set(LS_LIB_TYPE STATIC)
 endif()
 
-add_library("${OUTPUT_NAME}" ${LS_LIB_TYPE} "${LS_UTILS_SOURCES}")
+add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
 # Dependencies
-target_link_libraries("${OUTPUT_NAME}" lssetup)
+target_link_libraries(${OUTPUT_NAME} lssetup)
 
 
 
 # -------------------------------------
 # Library Installation Setup
 # -------------------------------------
-install(TARGETS "${OUTPUT_NAME}"
+install(TARGETS ${OUTPUT_NAME}
     RUNTIME DESTINATION bin
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
@@ -59,8 +84,8 @@ install(DIRECTORY include/lightsky/utils DESTINATION include/lightsky)
 # -------------------------------------
 # Library Tests
 # -------------------------------------
-set(LS_BUILD_UTILS_TESTS TRUE CACHE BOOL "Build tests for the LightUtils library.")
+option(LS_BUILD_UTILS_TESTS "Build tests for the LightUtils library." ON)
 
 if(LS_BUILD_UTILS_TESTS)
-    add_subdirectory("tests")
+    add_subdirectory(tests)
 endif()
