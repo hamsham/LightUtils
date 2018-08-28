@@ -10,13 +10,12 @@
 
 #include <atomic> // std::atomic_flag
 #include <condition_variable>
-#include <memory> // std::unique_ptr
 #include <mutex> // std::mutex, std::lock_guard
 #include <thread>
 #include <utility> // std::move
 #include <vector>
 
-#include "lightsky/setup/Macros.h"
+#include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
 
 
@@ -24,6 +23,69 @@ namespace ls
 {
 namespace utils
 {
+
+
+
+/**----------------------------------------------------------------------------
+ * @brief A SpinLock attempts to mimic a mutex object but will allow the CPU
+ * to continue running while it is locked.
+-----------------------------------------------------------------------------*/
+class SpinLock
+{
+  private:
+    std::atomic_flag mLock;
+
+  public:
+    ~SpinLock() noexcept;
+
+    SpinLock() noexcept;
+
+    SpinLock(const SpinLock&) = delete;
+
+    SpinLock(SpinLock&&) = delete;
+
+    SpinLock& operator=(const SpinLock&) = delete;
+
+    SpinLock& operator=(SpinLock&&) = delete;
+
+    void lock() noexcept;
+
+    bool try_lock() noexcept;
+
+    void unlock() noexcept;
+};
+
+
+
+/*-------------------------------------
+ * Mutex Lock
+-------------------------------------*/
+inline void SpinLock::lock() noexcept
+{
+    while (mLock.test_and_set(std::memory_order_acq_rel))
+    {
+    }
+}
+
+
+
+/*-------------------------------------
+ * Attempt to lock
+-------------------------------------*/
+inline bool SpinLock::try_lock() noexcept
+{
+    return !mLock.test_and_set(std::memory_order_acq_rel);
+}
+
+
+
+/*-------------------------------------
+ * Mutex unlock
+-------------------------------------*/
+inline void SpinLock::unlock() noexcept
+{
+    mLock.clear(std::memory_order_consume);
+}
 
 
 
@@ -38,13 +100,13 @@ class Worker
     typedef WorkerTaskType value_type;
 
   protected:
-    std::atomic_bool mIsPaused;
+    std::atomic_bool mBusyWait;
 
-    bool mStoreResults;
+    std::atomic_bool mIsPaused;
 
     int mCurrentBuffer;
 
-    std::atomic_flag mPushLock;
+    mutable ls::utils::SpinLock mPushLock;
 
     std::vector<WorkerTaskType> mInputs[2];
 
@@ -69,21 +131,47 @@ class Worker
 
     void push(const WorkerTaskType& task) noexcept;
 
-    void push(WorkerTaskType&& task) noexcept;
+    void emplace(WorkerTaskType&& task) noexcept;
 
-    virtual void flush() noexcept;
+    void push_active(const WorkerTaskType& task) noexcept;
+
+    void emplace_active(WorkerTaskType&& task) noexcept;
+
+    void push_output(const WorkerTaskType& task) noexcept;
+
+    void emplace_output(WorkerTaskType&& task) noexcept;
 
     bool ready() const noexcept;
 
-    std::vector<WorkerTaskType>& results() noexcept;
+    const std::vector<WorkerTaskType>& inputs() const noexcept;
 
-    void store_results(bool keepTaskOutputs) noexcept;
+    std::vector<WorkerTaskType>& inputs() noexcept;
 
-    bool stores_results() noexcept;
+    const std::vector<WorkerTaskType>& active_inputs() const noexcept;
+
+    std::vector<WorkerTaskType>& active_inputs() noexcept;
+
+    const std::vector<WorkerTaskType>& outputs() const noexcept;
+
+    std::vector<WorkerTaskType>& outputs() noexcept;
+
+    const std::vector<WorkerTaskType>& active_outputs() const noexcept;
+
+    std::vector<WorkerTaskType>& active_outputs() noexcept;
 
     std::size_t num_pending_tasks() const noexcept;
 
+    bool have_pending_tasks() const noexcept;
+
     void clear_pending_tasks() noexcept;
+
+    virtual void flush() noexcept;
+
+    void wait() noexcept;
+
+    bool busy_wait_enabled() const noexcept;
+
+    void busy_waiting(bool useBusyWait) noexcept;
 };
 
 
@@ -109,10 +197,10 @@ Worker<WorkerTaskType>::~Worker() noexcept
 -------------------------------------*/
 template <class WorkerTaskType>
 Worker<WorkerTaskType>::Worker() noexcept :
+    mBusyWait{false},
     mIsPaused{true},
-    mStoreResults{true},
     mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
-    mPushLock{false},
+    mPushLock{},
     mInputs{},
     mOutputs{},
     mMutex{}
@@ -165,12 +253,11 @@ Worker<WorkerTaskType>& Worker<WorkerTaskType>::operator=(const Worker& w) noexc
         // busy wait
     }
 
-    mIsPaused.store(true, std::memory_order_relaxed);
-    mStoreResults = w.mStoreResults;
+    mBusyWait.store(w.mBusyWait.load(std::memory_order_consume), std::memory_order_release);
+
+    mIsPaused.store(true, std::memory_order_release);
 
     mCurrentBuffer = w.mCurrentBuffer;
-
-    mPushLock.clear(std::memory_order_release);
 
     mInputs[0] = w.mInputs[0];
     mInputs[1] = w.mInputs[1];
@@ -204,16 +291,13 @@ Worker<WorkerTaskType>& Worker<WorkerTaskType>::operator=(Worker&& w) noexcept
         // busy wait
     }
 
-    mIsPaused.store(true, std::memory_order_relaxed);
+    mBusyWait.store(w.mBusyWait.load(std::memory_order_consume), std::memory_order_release);
+    w.mBusyWait.store(false, std::memory_order_release);
 
-    mStoreResults = w.mStoreResults;
-    w.mStoreResults = true;
+    mIsPaused.store(true, std::memory_order_release);
 
     mCurrentBuffer = w.mCurrentBuffer;
     w.mCurrentBuffer = -1;
-
-    mPushLock.clear(std::memory_order_release);
-    w.mPushLock.clear(std::memory_order_release);
 
     mInputs[0] = std::move(w.mInputs[0]);
     mInputs[1] = std::move(w.mInputs[1]);
@@ -235,35 +319,33 @@ void Worker<WorkerTaskType>::execute_tasks() noexcept
     // The current I/O buffers were swapped when "flush()" was
     // called. Swap again to read and write to the buffers used on
     // this thread.
-    int currentBuffer;
-    std::vector<WorkerTaskType>* inputQueue;
-    std::vector<WorkerTaskType>* outputQueue;
+    mMutex.lock();
+    mPushLock.lock();
 
-    // The current buffer is only locked only when flushing.
+    // Exit the thread if mCurrentBuffer is less than 0.
+    if (mCurrentBuffer < 0)
     {
-        // Exit the thread if mCurrentBuffer is less than 0.
-        if (mCurrentBuffer < 0)
-        {
-            return;
-        }
-
-        currentBuffer = (mCurrentBuffer + 1) % 2;
-        inputQueue = mInputs + currentBuffer;
-        outputQueue = mOutputs + currentBuffer;
+        mPushLock.unlock();
+        mMutex.unlock();
+        return;
     }
 
-    for (WorkerTaskType& pTask : *inputQueue)
+    int currentBuffer = (mCurrentBuffer + 1) % 2;
+    std::vector<WorkerTaskType>& inputQueue = mInputs[currentBuffer];
+    //std::vector<WorkerTaskType>& outputQueue = mOutputs[currentBuffer];
+
+    mPushLock.unlock();
+
+    for (WorkerTaskType& pTask : inputQueue)
     {
         pTask();
     }
 
-    // tasks are their own results
-    if (mStoreResults)
-    {
-        *outputQueue = std::move(*inputQueue);
-    }
+    inputQueue.clear();
 
-    inputQueue->clear();
+    // Pause the current thread again.
+    mMutex.unlock();
+    mIsPaused.store(true, std::memory_order_release);
 }
 
 
@@ -274,13 +356,9 @@ void Worker<WorkerTaskType>::execute_tasks() noexcept
 template <class WorkerTaskType>
 inline void Worker<WorkerTaskType>::push(const WorkerTaskType& task) noexcept
 {
-    while (mPushLock.test_and_set(std::memory_order_consume))
-    {
-    }
-
+    mPushLock.lock();
     mInputs[mCurrentBuffer].push_back(task);
-
-    mPushLock.clear(std::memory_order_release);
+    mPushLock.unlock();
 }
 
 
@@ -289,15 +367,63 @@ inline void Worker<WorkerTaskType>::push(const WorkerTaskType& task) noexcept
  * Push a task to the pending task queue (move).
 -------------------------------------*/
 template <class WorkerTaskType>
-inline void Worker<WorkerTaskType>::push(WorkerTaskType&& task) noexcept
+inline void Worker<WorkerTaskType>::emplace(WorkerTaskType&& task) noexcept
 {
-    while (mPushLock.test_and_set(std::memory_order_consume))
-    {
-    }
+    mPushLock.lock();
+    mInputs[mCurrentBuffer].emplace_back(std::move(task));
+    mPushLock.unlock();
+}
 
-    mInputs[mCurrentBuffer].push_back(task);
 
-    mPushLock.clear(std::memory_order_release);
+
+/*-------------------------------------
+ * Push a task to the active task queue (copy).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::push_active(const WorkerTaskType& task) noexcept
+{
+    mInputs[(mCurrentBuffer+1)%2].push_back(task);
+}
+
+
+
+/*-------------------------------------
+ * Push a task to the active task queue (move).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::emplace_active(WorkerTaskType&& task) noexcept
+{
+    mInputs[(mCurrentBuffer+1)%2].emplace_back(std::move(task));
+}
+
+
+
+/*-------------------------------------
+ * Push a task to the output task queue (copy).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::push_output(const WorkerTaskType& task) noexcept
+{
+    mPushLock.lock();
+    const int currentBuffer = this->mCurrentBuffer;
+    const int nextBuffer    = (currentBuffer + 1) % 2;
+    mOutputs[nextBuffer].push_back(task);
+    mPushLock.unlock();
+}
+
+
+
+/*-------------------------------------
+ * Push a task to the output task queue (move).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::emplace_output(WorkerTaskType&& task) noexcept
+{
+    mPushLock.lock();
+    const int currentBuffer = this->mCurrentBuffer;
+    const int nextBuffer    = (currentBuffer + 1) % 2;
+    mOutputs[nextBuffer].emplace_back(std::move(task));
+    mPushLock.unlock();
 }
 
 
@@ -308,7 +434,149 @@ inline void Worker<WorkerTaskType>::push(WorkerTaskType&& task) noexcept
 template <class WorkerTaskType>
 inline bool Worker<WorkerTaskType>::ready() const noexcept
 {
-    return mIsPaused.load(std::memory_order_relaxed);
+    return mIsPaused.load(std::memory_order_consume);
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the current set of tasks to be performed asynchronously (should be
+ * called after a flush).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline const std::vector<WorkerTaskType>& Worker<WorkerTaskType>::inputs() const noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return mInputs[mCurrentBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the current set of tasks to be performed asynchronously (should be
+ * called after a flush).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline std::vector<WorkerTaskType>& Worker<WorkerTaskType>::inputs() noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return mInputs[mCurrentBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the current set of tasks actively being worked on.
+-------------------------------------*/
+template <class WorkerTaskType>
+inline const std::vector<WorkerTaskType>& Worker<WorkerTaskType>::active_inputs() const noexcept
+{
+    const int currentBuffer = mCurrentBuffer;
+    const int nextBuffer = (currentBuffer + 1) % 2;
+    return mInputs[nextBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the current set of tasks actively being worked on.
+-------------------------------------*/
+template <class WorkerTaskType>
+inline std::vector<WorkerTaskType>& Worker<WorkerTaskType>::active_inputs() noexcept
+{
+    const int currentBuffer = mCurrentBuffer;
+    const int nextBuffer = (currentBuffer + 1) % 2;
+    return mInputs[nextBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the last set of tasks performed asynchronously (should be called
+ * after a flush).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline const std::vector<WorkerTaskType>& Worker<WorkerTaskType>::outputs() const noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return mOutputs[mCurrentBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the last set of tasks performed asynchronously (should be called
+ * after a flush).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline std::vector<WorkerTaskType>& Worker<WorkerTaskType>::outputs() noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return mOutputs[mCurrentBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the last set of tasks performed asynchronously (should be called
+ * only if this thread is ready for execution).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline const std::vector<WorkerTaskType>& Worker<WorkerTaskType>::active_outputs() const noexcept
+{
+    const int currentBuffer = mCurrentBuffer;
+    const int nextBuffer = (currentBuffer + 1) % 2;
+    return mOutputs[nextBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the last set of tasks performed asynchronously (should be called
+ * only if this thread is ready for execution).
+-------------------------------------*/
+template <class WorkerTaskType>
+inline std::vector<WorkerTaskType>& Worker<WorkerTaskType>::active_outputs() noexcept
+{
+    const int currentBuffer = mCurrentBuffer;
+    const int nextBuffer = (currentBuffer + 1) % 2;
+    return mOutputs[nextBuffer];
+}
+
+
+
+/*-------------------------------------
+ * Get the number of tasks currently queued
+-------------------------------------*/
+template <class WorkerTaskType>
+inline std::size_t Worker<WorkerTaskType>::num_pending_tasks() const noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return mInputs[mCurrentBuffer].size();
+}
+
+
+
+/*-------------------------------------
+ * Get the number of tasks currently queued
+-------------------------------------*/
+template <class WorkerTaskType>
+inline bool Worker<WorkerTaskType>::have_pending_tasks() const noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    return !mInputs[mCurrentBuffer].empty();
+}
+
+
+
+/*-------------------------------------
+ * Clear the currently pending tasks
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::clear_pending_tasks() noexcept
+{
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    mInputs[mCurrentBuffer].clear();
 }
 
 
@@ -320,84 +588,59 @@ inline bool Worker<WorkerTaskType>::ready() const noexcept
 template <class WorkerTaskType>
 void Worker<WorkerTaskType>::flush() noexcept
 {
-    if (mIsPaused.load(std::memory_order_consume))
+    mPushLock.lock();
+    const int currentBuffer = mCurrentBuffer;
+    const int nextBuffer = (currentBuffer + 1) % 2;
+
+    mCurrentBuffer = nextBuffer;
+    const bool unpause = this->mInputs[currentBuffer].empty();
+    mPushLock.unlock();
+
+    mIsPaused.store(unpause, std::memory_order_release);
+
+    execute_tasks();
+}
+
+
+
+/*-------------------------------------
+ * Wait for the current thread to finish execution.
+-------------------------------------*/
+template <class WorkerTaskType>
+inline void Worker<WorkerTaskType>::wait() noexcept
+{
+    // Own the worker's mutex until the intended thread pauses. This should
+    // effectively block the current thread of execution.
+    while (!mIsPaused.load(std::memory_order_consume))
     {
-        mMutex.lock();
-        const int currentBuffer = mCurrentBuffer;
-        const int nextBuffer = (currentBuffer + 1) % 2;
-
-        mCurrentBuffer = nextBuffer;
-
-        const bool haveTasks = !mInputs[currentBuffer].empty();
-        mMutex.unlock();
-
-        if (haveTasks)
+        //if (!mBusyWait.load(std::memory_order_consume))
         {
-            mIsPaused.store(false, std::memory_order_release);
-            execute_tasks();
+            mMutex.lock();
+            mMutex.unlock();
         }
-
-        mIsPaused.store(true, std::memory_order_release);
     }
 }
 
 
 
 /*-------------------------------------
- * Retrieve the last set of tasks performed asynchronously (should be called
- * after a flush).
+ * Determine if busy waiting is enabled
 -------------------------------------*/
 template <class WorkerTaskType>
-inline std::vector<WorkerTaskType>& Worker<WorkerTaskType>::results() noexcept
+inline bool Worker<WorkerTaskType>::busy_wait_enabled() const noexcept
 {
-    std::lock_guard<std::mutex> lock{mMutex};
-    return mOutputs[mCurrentBuffer];
+    return mBusyWait.load(std::memory_order_consume);
 }
 
 
 
 /*-------------------------------------
- * Determine whether the task queues store their results in an output buffer.
+ * Toggle busy waiting
 -------------------------------------*/
 template <class WorkerTaskType>
-void Worker<WorkerTaskType>::store_results(bool keepTaskOutputs) noexcept
+inline void Worker<WorkerTaskType>::busy_waiting(bool useBusyWait) noexcept
 {
-    mStoreResults = keepTaskOutputs;
-}
-
-
-
-/*-------------------------------------
- * Check if task queues store their results in an output buffer
--------------------------------------*/
-template <class WorkerTaskType>
-bool Worker<WorkerTaskType>::stores_results() noexcept
-{
-    return mStoreResults;
-}
-
-
-
-/*-------------------------------------
- * Get the number of tasks currently queued
--------------------------------------*/
-template <class WorkerTaskType>
-std::size_t Worker<WorkerTaskType>::num_pending_tasks() const noexcept
-{
-    std::lock_guard<std::mutex> lock{mMutex};
-    return mInputs[mCurrentBuffer].size();
-}
-
-
-
-/*-------------------------------------
- * Clear the currently pending tasks
--------------------------------------*/
-template <class WorkerTaskType>
-void Worker<WorkerTaskType>::clear_pending_tasks() noexcept
-{
-    std::lock_guard<std::mutex> lock{mMutex};
-    mInputs[mCurrentBuffer].clear();
+    mBusyWait.store(useBusyWait, std::memory_order_release);
 }
 
 
@@ -446,14 +689,18 @@ LS_DECLARE_CLASS_TYPE(DefaultWorkerThread, WorkerThread, void (*)());
 template <class WorkerTaskType>
 WorkerThread<WorkerTaskType>::~WorkerThread() noexcept
 {
+    while (!this->ready())
+    {
+    }
+
+    this->mPushLock.lock();
     this->mMutex.lock();
     this->mCurrentBuffer = -1;
-    this->mIsPaused.store(false, std::memory_order_relaxed);
-    this->mStoreResults = false;
+    this->mIsPaused.store(false, std::memory_order_release);
     this->mMutex.unlock();
-
-    mCondition.notify_one();
-    mThread.join();
+    this->mPushLock.unlock();
+    this->mCondition.notify_all();
+    this->mThread.join();
 }
 
 
@@ -466,7 +713,10 @@ WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
     Worker<WorkerTaskType>{},
     mCondition{},
     mThread{&WorkerThread::thread_loop, this}
-{}
+{
+    // let the thread's loop run until it hits the condition variable
+    std::this_thread::yield();
+}
 
 
 
@@ -528,24 +778,25 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
 {
     while (this->mCurrentBuffer >= 0)
     {
-        // Lock the condition, wait until we're ready to execute.
-        // A while loop should also protect against spurious wake-ups
-        // by the condition variable.
-        //while (mIsPaused)
+        // Busy waiting can be disabled at any time, but waiting on the
+        // condition variable will remain in-place until the next flush.
+        if (this->mBusyWait.load(std::memory_order_relaxed))
+        {
+            if (this->mIsPaused.load(std::memory_order_relaxed))
+            {
+                continue;
+            }
+        }
+        else
         {
             std::unique_lock<std::mutex> cvLock{this->mMutex};
-            this->mCondition.wait(cvLock, [this]
+            this->mCondition.wait(cvLock, [this]()->bool
             {
-                return !(this->mIsPaused.load(std::memory_order_relaxed));
+                return !this->mIsPaused.load(std::memory_order_consume);
             });
-
-            //std::this_thread::yield();
         }
 
-        Worker<WorkerTaskType>::execute_tasks();
-
-        // Pause the current thread again.
-        this->mIsPaused.store(true, std::memory_order_relaxed);
+        this->execute_tasks();
     }
 }
 
@@ -558,27 +809,46 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
 template <class WorkerTaskType>
 void WorkerThread<WorkerTaskType>::flush() noexcept
 {
-    bool bufferSwapped = false;
+    /*
+    this->mPushLock.lock();
+    const int currentBuffer = this->mCurrentBuffer;
 
+    if (this->mInputs[currentBuffer].empty())
     {
-        if (this->mIsPaused.load(std::memory_order_relaxed))
-        {
-            std::lock_guard<std::mutex> lock{this->mMutex};
-
-            const int currentBuffer = this->mCurrentBuffer;
-            const int nextBuffer    = (currentBuffer + 1) % 2;
-            this->mCurrentBuffer    = nextBuffer;
-
-            this->mIsPaused.store(this->mInputs[currentBuffer].empty(), std::memory_order_relaxed);
-
-            bufferSwapped = true;
-        }
+        this->mPushLock.unlock();
+        return;
     }
 
-    if (bufferSwapped)
+    const int nextBuffer = (currentBuffer + 1) % 2;
+    this->mCurrentBuffer = nextBuffer;
+    this->mPushLock.unlock();
+
     {
+        this->mMutex.lock();
+        this->mIsPaused.store(false, std::memory_order_release);
+        this->mMutex.unlock();
+    }
+
+    this->mCondition.notify_one();
+    */
+
+    this->mMutex.lock();
+    this->mPushLock.lock();
+
+    const int currentBuffer = this->mCurrentBuffer;
+
+    // Don't bother waking up the thread if there's nothing to do.
+    if (!this->mInputs[currentBuffer].empty())
+    {
+        const int nextBuffer = (currentBuffer + 1) % 2;
+        this->mCurrentBuffer = nextBuffer;
+
+        this->mIsPaused.store(false, std::memory_order_release);
         this->mCondition.notify_one();
     }
+
+    this->mPushLock.unlock();
+    this->mMutex.unlock();
 }
 
 

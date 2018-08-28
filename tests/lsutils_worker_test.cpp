@@ -49,7 +49,7 @@ int main()
     }
 
     thread.flush();
-    results = std::move(thread.results());
+    results = std::move(thread.outputs());
     assert(results.size() == 4);
 
     std::cout << "Received " << results.size() << " result tasks." << std::endl;
@@ -64,7 +64,7 @@ int main()
     thread2 = std::move(thread);
 
     thread2.flush();
-    results = std::move(thread2.results());
+    results = std::move(thread2.outputs());
     assert(results.size() == numExtraResults);
 
     std::cout << "Received " << results.size() << " more results." << std::endl;
