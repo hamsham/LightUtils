@@ -5,8 +5,8 @@
  * This file contains all includes for the utils module of LightSky.
  */
 
-#ifndef __LS_UTILS_H__
-#define __LS_UTILS_H__
+#ifndef LS_UTILS_H
+#define LS_UTILS_H
 
 #include "lightsky/utils/Setup.h"
 
@@ -24,5 +24,7 @@
 #include "lightsky/utils/Resource.h"
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Tuple.h"
+#include "lightsky/utils/Types.hpp"
+#include "lightsky/utils/WorkerThread.hpp"
 
-#endif /* __LS_UTILS_H__ */
+#endif /* LS_UTILS_H */

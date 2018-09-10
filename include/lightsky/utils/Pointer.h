@@ -5,27 +5,32 @@
  * Created on November 10, 2014, 10:29 PM
  */
 
-#ifndef __LS_UTILS_POINTER_H__
-#define __LS_UTILS_POINTER_H__
+#ifndef LS_UTILS_POINTER_H
+#define LS_UTILS_POINTER_H
 
 #include "lightsky/setup/Api.h"
 #include "lightsky/setup/Macros.h"
 
-namespace ls {
-namespace utils {
+
+
+namespace ls
+{
+namespace utils
+{
 
 
 
 /**----------------------------------------------------------------------------
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
-template <typename data_t>
-class LS_API Pointer {
-    
+template<typename data_t>
+class LS_API Pointer
+{
+
     // public typedefs
   public:
     typedef data_t value_type;
-    
+
   private:
     /**
      * @brief pData represents a Pointer to some data within an application
@@ -35,7 +40,8 @@ class LS_API Pointer {
     /**
      * @brief Clear *this of any data/resources.
      */
-    void clear() {
+    void clear()
+    {
         delete pData;
     }
 
@@ -45,7 +51,8 @@ class LS_API Pointer {
      *
      * Clear *this of any data/resources.
      */
-    ~Pointer() {
+    ~Pointer()
+    {
         clear();
     }
 
@@ -58,7 +65,8 @@ class LS_API Pointer {
     constexpr
     Pointer() :
         pData{nullptr}
-    {}
+    {
+    }
 
     /**
      * @brief Pointer Constructor
@@ -67,9 +75,10 @@ class LS_API Pointer {
      * A Pointer to dynamically-allocated data.
      */
     explicit
-    Pointer(data_t * const p) :
+    Pointer(data_t* const p) :
         pData{p}
-    {}
+    {
+    }
 
     /**
      * @brief NULL Constructor
@@ -79,7 +88,8 @@ class LS_API Pointer {
     constexpr
     Pointer(std::nullptr_t) :
         pData{nullptr}
-    {}
+    {
+    }
 
     /**
      * Copy Constructor -- DELETED
@@ -116,7 +126,8 @@ class LS_API Pointer {
      * @return
      * A reference to *this.
      */
-    Pointer& operator=(Pointer&& p) {
+    Pointer& operator=(Pointer&& p)
+    {
         clear();
 
         pData = p.pData;
@@ -131,7 +142,8 @@ class LS_API Pointer {
      * @return TRUE if *this object points to any data, FALSE if not.
      */
     constexpr
-    bool operator!() const {
+    bool operator!() const
+    {
         return nullptr == pData;
     }
 
@@ -141,7 +153,8 @@ class LS_API Pointer {
      * @return TRUE if *this points to data, FALSE if not.
      */
     explicit constexpr
-    operator bool() const {
+    operator bool() const
+    {
         return nullptr != pData;
     }
 
@@ -155,7 +168,8 @@ class LS_API Pointer {
      * data as *this, FALSE if not.
      */
     constexpr
-    bool operator==(const Pointer& p) const {
+    bool operator==(const Pointer& p) const
+    {
         return pData == p.pData;
     }
 
@@ -169,7 +183,8 @@ class LS_API Pointer {
      * data than *this, FALSE if so.
      */
     constexpr
-    bool operator!=(const Pointer& p) const {
+    bool operator!=(const Pointer& p) const
+    {
         return pData != p.pData;
     }
 
@@ -183,7 +198,8 @@ class LS_API Pointer {
      * data as or less than, or equal to, *this, FALSE if not.
      */
     constexpr
-    bool operator>=(const Pointer& p) const {
+    bool operator>=(const Pointer& p) const
+    {
         return pData >= p.pData;
     }
 
@@ -197,7 +213,8 @@ class LS_API Pointer {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator>(const Pointer& p) const {
+    bool operator>(const Pointer& p) const
+    {
         return pData > p.pData;
     }
 
@@ -211,7 +228,8 @@ class LS_API Pointer {
      * data as or greater than *this, FALSE if not.
      */
     constexpr
-    bool operator<=(const Pointer& p) const {
+    bool operator<=(const Pointer& p) const
+    {
         return pData <= p.pData;
     }
 
@@ -225,7 +243,8 @@ class LS_API Pointer {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator<(const Pointer& p) const {
+    bool operator<(const Pointer& p) const
+    {
         return pData < p.pData;
     }
 
@@ -240,7 +259,8 @@ class LS_API Pointer {
      * data as *this, FALSE if not.
      */
     constexpr
-    bool operator==(const data_t * const p) const {
+    bool operator==(const data_t* const p) const
+    {
         return pData == p;
     }
 
@@ -255,7 +275,8 @@ class LS_API Pointer {
      * data than *this, FALSE if so.
      */
     constexpr
-    bool operator!=(const data_t * const p) const {
+    bool operator!=(const data_t* const p) const
+    {
         return pData != p;
     }
 
@@ -270,7 +291,8 @@ class LS_API Pointer {
      * data as or less than, or equal to, *this, FALSE if not.
      */
     constexpr
-    bool operator>=(const data_t * const p) const {
+    bool operator>=(const data_t* const p) const
+    {
         return pData >= p;
     }
 
@@ -285,7 +307,8 @@ class LS_API Pointer {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator>(const data_t * const p) const {
+    bool operator>(const data_t* const p) const
+    {
         return pData > p;
     }
 
@@ -300,7 +323,8 @@ class LS_API Pointer {
      * data as or greater than *this, FALSE if not.
      */
     constexpr
-    bool operator<=(const data_t * const p) const {
+    bool operator<=(const data_t* const p) const
+    {
         return pData <= p;
     }
 
@@ -315,7 +339,8 @@ class LS_API Pointer {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator<(const data_t * const p) const {
+    bool operator<(const data_t* const p) const
+    {
         return pData < p;
     }
 
@@ -325,7 +350,8 @@ class LS_API Pointer {
      * @return A Pointer to a set of dynamically-allocated data.
      */
     constexpr
-    const data_t* get() const {
+    const data_t* get() const
+    {
         return pData;
     }
 
@@ -335,7 +361,8 @@ class LS_API Pointer {
      * @return A Pointer to a set of dynamically-allocated data.
      */
     inline
-    data_t* get() {
+    data_t* get()
+    {
         return pData;
     }
 
@@ -346,7 +373,8 @@ class LS_API Pointer {
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
-    void swap(Pointer& other) {
+    void swap(Pointer& other)
+    {
         data_t* temp = other.pData;
         other.pData = this->pData;
         this->pData = temp;
@@ -357,7 +385,8 @@ class LS_API Pointer {
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    const data_t& operator*() const {
+    const data_t& operator*() const
+    {
         return *pData;
     }
 
@@ -367,7 +396,8 @@ class LS_API Pointer {
      * @return A reference to the dynamically-allocated data within *this.
      */
     inline
-    data_t& operator*() {
+    data_t& operator*()
+    {
         return *pData;
     }
 
@@ -378,7 +408,8 @@ class LS_API Pointer {
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
-    const data_t* operator->() const {
+    const data_t* operator->() const
+    {
         return pData;
     }
 
@@ -388,7 +419,8 @@ class LS_API Pointer {
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
-    data_t* operator->() {
+    data_t* operator->()
+    {
         return pData;
     }
 
@@ -400,7 +432,8 @@ class LS_API Pointer {
      * contained within *this.
      */
     constexpr
-    operator const data_t*() const {
+    operator const data_t*() const
+    {
         return pData;
     }
 
@@ -412,7 +445,8 @@ class LS_API Pointer {
      * within *this.
      */
     inline
-    operator data_t*() {
+    operator data_t*()
+    {
         return pData;
     }
 
@@ -424,7 +458,8 @@ class LS_API Pointer {
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
-    void reset(data_t* pNewData = nullptr) {
+    void reset(data_t* pNewData = nullptr)
+    {
         clear();
         pData = pNewData;
     }
@@ -440,33 +475,13 @@ class LS_API Pointer {
      * relieved of all internal references.
      */
     inline
-    data_t* release() {
-        data_t * const pRet = pData;
+    data_t* release()
+    {
+        data_t* const pRet = pData;
         pData = nullptr;
         return pRet;
     }
 };
-
-/*-----------------------------------------------------------------------------
- * Dynamic Pointer Types
- * --------------------------------------------------------------------------*/
-LS_DECLARE_CLASS_TYPE(bool_Pointer, Pointer, bool);
-LS_DECLARE_CLASS_TYPE(char_Pointer, Pointer, signed char);
-LS_DECLARE_CLASS_TYPE(uchar_Pointer, Pointer, unsigned char);
-LS_DECLARE_CLASS_TYPE(wchar_Pointer, Pointer, wchar_t);
-LS_DECLARE_CLASS_TYPE(char16_Pointer, Pointer, char16_t);
-LS_DECLARE_CLASS_TYPE(char32_Pointer, Pointer, char32_t);
-LS_DECLARE_CLASS_TYPE(short_Pointer, Pointer, signed short);
-LS_DECLARE_CLASS_TYPE(ushort_Pointer, Pointer, unsigned short);
-LS_DECLARE_CLASS_TYPE(int_Pointer, Pointer, signed int);
-LS_DECLARE_CLASS_TYPE(uint_Pointer, Pointer, unsigned int);
-LS_DECLARE_CLASS_TYPE(long_Pointer, Pointer, signed long);
-LS_DECLARE_CLASS_TYPE(ulong_Pointer, Pointer, unsigned long);
-LS_DECLARE_CLASS_TYPE(llong_Pointer, Pointer, signed long long);
-LS_DECLARE_CLASS_TYPE(ullong_Pointer, Pointer, unsigned long long);
-LS_DECLARE_CLASS_TYPE(float_Pointer, Pointer, float);
-LS_DECLARE_CLASS_TYPE(double_Pointer, Pointer, double);
-LS_DECLARE_CLASS_TYPE(ldouble_Pointer, Pointer, long double);
 
 
 
@@ -474,13 +489,14 @@ LS_DECLARE_CLASS_TYPE(ldouble_Pointer, Pointer, long double);
  * Array Pointer Type
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
-template <typename data_t>
-class LS_API Pointer<data_t[]> {
-    
+template<typename data_t>
+class LS_API Pointer<data_t[]>
+{
+
     // public typedefs
   public:
     typedef data_t value_type;
-    
+
   private:
     /**
      * pData represents a Pointer to some data within an application
@@ -490,8 +506,9 @@ class LS_API Pointer<data_t[]> {
     /**
      * Clear *this of any data/resources.
      */
-    void clear() {
-        delete [] pData;
+    void clear()
+    {
+        delete[] pData;
     }
 
   public:
@@ -501,7 +518,8 @@ class LS_API Pointer<data_t[]> {
      *
      * Clear *this of any data/resources.
      */
-    ~Pointer() {
+    ~Pointer()
+    {
         clear();
     }
 
@@ -514,7 +532,8 @@ class LS_API Pointer<data_t[]> {
     constexpr
     Pointer() :
         pData{nullptr}
-    {}
+    {
+    }
 
     /**
      * @brief Pointer Constructor
@@ -523,9 +542,10 @@ class LS_API Pointer<data_t[]> {
      * A Pointer to dynamically-allocated data.
      */
     explicit
-    Pointer(data_t * const p) :
+    Pointer(data_t* const p) :
         pData{p}
-    {}
+    {
+    }
 
     /**
      * @brief NULL Constructor
@@ -535,7 +555,8 @@ class LS_API Pointer<data_t[]> {
     constexpr
     Pointer(std::nullptr_t) :
         pData{nullptr}
-    {}
+    {
+    }
 
     /**
      * Copy Constructor -- DELETED
@@ -572,7 +593,8 @@ class LS_API Pointer<data_t[]> {
      * @return
      * A reference to *this.
      */
-    Pointer& operator=(Pointer&& p) {
+    Pointer& operator=(Pointer&& p)
+    {
         clear();
         pData = p.pData;
         p.pData = nullptr;
@@ -585,7 +607,8 @@ class LS_API Pointer<data_t[]> {
      * @return TRUE if *this object points to any data, FALSE if not.
      */
     constexpr
-    bool operator!() const {
+    bool operator!() const
+    {
         return nullptr == pData;
     }
 
@@ -595,7 +618,8 @@ class LS_API Pointer<data_t[]> {
      * @return TRUE if *this points to data, FALSE if not.
      */
     explicit constexpr
-    operator bool() const {
+    operator bool() const
+    {
         return nullptr != pData;
     }
 
@@ -609,7 +633,8 @@ class LS_API Pointer<data_t[]> {
      * data as *this, FALSE if not.
      */
     constexpr
-    bool operator==(const Pointer& p) const {
+    bool operator==(const Pointer& p) const
+    {
         return pData == p.pData;
     }
 
@@ -623,7 +648,8 @@ class LS_API Pointer<data_t[]> {
      * data than *this, FALSE if so.
      */
     constexpr
-    bool operator!=(const Pointer& p) const {
+    bool operator!=(const Pointer& p) const
+    {
         return pData != p.pData;
     }
 
@@ -637,7 +663,8 @@ class LS_API Pointer<data_t[]> {
      * data as or less than, or equal to, *this, FALSE if not.
      */
     constexpr
-    bool operator>=(const Pointer& p) const {
+    bool operator>=(const Pointer& p) const
+    {
         return pData >= p.pData;
     }
 
@@ -651,7 +678,8 @@ class LS_API Pointer<data_t[]> {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator>(const Pointer& p) const {
+    bool operator>(const Pointer& p) const
+    {
         return pData > p.pData;
     }
 
@@ -665,7 +693,8 @@ class LS_API Pointer<data_t[]> {
      * data as or greater than *this, FALSE if not.
      */
     constexpr
-    bool operator<=(const Pointer& p) const {
+    bool operator<=(const Pointer& p) const
+    {
         return pData <= p.pData;
     }
 
@@ -679,7 +708,8 @@ class LS_API Pointer<data_t[]> {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator<(const Pointer& p) const {
+    bool operator<(const Pointer& p) const
+    {
         return pData < p.pData;
     }
 
@@ -694,7 +724,8 @@ class LS_API Pointer<data_t[]> {
      * data as *this, FALSE if not.
      */
     constexpr
-    bool operator==(const data_t * const p) const {
+    bool operator==(const data_t* const p) const
+    {
         return pData == p;
     }
 
@@ -709,7 +740,8 @@ class LS_API Pointer<data_t[]> {
      * data than *this, FALSE if so.
      */
     constexpr
-    bool operator!=(const data_t * const p) const {
+    bool operator!=(const data_t* const p) const
+    {
         return pData != p;
     }
 
@@ -724,7 +756,8 @@ class LS_API Pointer<data_t[]> {
      * data as or less than, or equal to, *this, FALSE if not.
      */
     constexpr
-    bool operator>=(const data_t * const p) const {
+    bool operator>=(const data_t* const p) const
+    {
         return pData >= p;
     }
 
@@ -739,7 +772,8 @@ class LS_API Pointer<data_t[]> {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator>(const data_t * const p) const {
+    bool operator>(const data_t* const p) const
+    {
         return pData > p;
     }
 
@@ -754,7 +788,8 @@ class LS_API Pointer<data_t[]> {
      * data as or greater than *this, FALSE if not.
      */
     constexpr
-    bool operator<=(const data_t * const p) const {
+    bool operator<=(const data_t* const p) const
+    {
         return pData <= p;
     }
 
@@ -769,7 +804,8 @@ class LS_API Pointer<data_t[]> {
      * value than *this, FALSE if not.
      */
     constexpr
-    bool operator<(const data_t * const p) const {
+    bool operator<(const data_t* const p) const
+    {
         return pData < p;
     }
 
@@ -785,7 +821,12 @@ class LS_API Pointer<data_t[]> {
      */
     template <typename index_t>
     constexpr
+<<<<<<< HEAD
     data_t& operator[](const index_t& i) const {
+=======
+    data_t& operator[](const int i) const
+    {
+>>>>>>> lsdraw_0.1.x
         return pData[i];
     }
 
@@ -801,7 +842,12 @@ class LS_API Pointer<data_t[]> {
      */
     template <typename index_t>
     inline
+<<<<<<< HEAD
     data_t& operator[](const index_t& i) {
+=======
+    data_t& operator[](const int i)
+    {
+>>>>>>> lsdraw_0.1.x
         return pData[i];
     }
 
@@ -811,7 +857,8 @@ class LS_API Pointer<data_t[]> {
      * @return A Pointer to a set of dynamically-allocated data.
      */
     constexpr
-    const data_t* get() const {
+    const data_t* get() const
+    {
         return pData;
     }
 
@@ -821,7 +868,8 @@ class LS_API Pointer<data_t[]> {
      * @return A Pointer to a set of dynamically-allocated data.
      */
     inline
-    data_t* get() {
+    data_t* get()
+    {
         return pData;
     }
 
@@ -832,7 +880,8 @@ class LS_API Pointer<data_t[]> {
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
-    void swap(Pointer& other) {
+    void swap(Pointer& other)
+    {
         data_t* temp = other.pData;
         other.pData = this->pData;
         this->pData = temp;
@@ -843,7 +892,8 @@ class LS_API Pointer<data_t[]> {
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    const data_t& operator*() const {
+    const data_t& operator*() const
+    {
         return *pData;
     }
 
@@ -852,7 +902,8 @@ class LS_API Pointer<data_t[]> {
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    data_t& operator*() {
+    data_t& operator*()
+    {
         return *pData;
     }
 
@@ -863,7 +914,8 @@ class LS_API Pointer<data_t[]> {
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
-    const data_t* operator->() const {
+    const data_t* operator->() const
+    {
         return pData;
     }
 
@@ -873,7 +925,8 @@ class LS_API Pointer<data_t[]> {
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
-    data_t* operator->() {
+    data_t* operator->()
+    {
         return pData;
     }
 
@@ -885,7 +938,8 @@ class LS_API Pointer<data_t[]> {
      * contained within *this.
      */
     constexpr
-    operator const data_t*() const {
+    operator const data_t*() const
+    {
         return pData;
     }
 
@@ -897,7 +951,8 @@ class LS_API Pointer<data_t[]> {
      * within *this.
      */
     inline
-    operator data_t*() {
+    operator data_t*()
+    {
         return pData;
     }
 
@@ -909,7 +964,8 @@ class LS_API Pointer<data_t[]> {
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
-    void reset(data_t* pNewData = nullptr) {
+    void reset(data_t* pNewData = nullptr)
+    {
         clear();
         pData = pNewData;
     }
@@ -925,35 +981,19 @@ class LS_API Pointer<data_t[]> {
      * relieved of all internal references.
      */
     inline
-    data_t* release() {
-        data_t * const pRet = pData;
+    data_t* release()
+    {
+        data_t* const pRet = pData;
         pData = nullptr;
         return pRet;
     }
 };
 
-/*-----------------------------------------------------------------------------
- * Dynamic Array Types
- * --------------------------------------------------------------------------*/
-LS_DECLARE_CLASS_TYPE(bool_array, Pointer, bool[]);
-LS_DECLARE_CLASS_TYPE(char_array, Pointer, signed char[]);
-LS_DECLARE_CLASS_TYPE(uchar_array, Pointer, unsigned char[]);
-LS_DECLARE_CLASS_TYPE(wchar_array, Pointer, wchar_t[]);
-LS_DECLARE_CLASS_TYPE(char16_array, Pointer, char16_t[]);
-LS_DECLARE_CLASS_TYPE(char32_array, Pointer, char32_t[]);
-LS_DECLARE_CLASS_TYPE(short_array, Pointer, signed short[]);
-LS_DECLARE_CLASS_TYPE(ushort_array, Pointer, unsigned short[]);
-LS_DECLARE_CLASS_TYPE(int_array, Pointer, signed int[]);
-LS_DECLARE_CLASS_TYPE(uint_array, Pointer, unsigned int[]);
-LS_DECLARE_CLASS_TYPE(long_array, Pointer, signed long[]);
-LS_DECLARE_CLASS_TYPE(ulong_array, Pointer, unsigned long[]);
-LS_DECLARE_CLASS_TYPE(llong_array, Pointer, signed long long[]);
-LS_DECLARE_CLASS_TYPE(ullong_array, Pointer, unsigned long long[]);
-LS_DECLARE_CLASS_TYPE(float_array, Pointer, float[]);
-LS_DECLARE_CLASS_TYPE(double_array, Pointer, double[]);
-LS_DECLARE_CLASS_TYPE(ldouble_array, Pointer, long double[]);
+
 
 } // end utils namespace
 } // end ls namespace
 
-#endif  /* __LS_UTILS_POINTER_H__ */
+
+
+#endif  /* LS_UTILS_POINTER_H */

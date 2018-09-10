@@ -7,8 +7,8 @@
  * stream.
  */
 
-#ifndef __LS_UTILS_LOG_H__
-#define __LS_UTILS_LOG_H__
+#ifndef LS_UTILS_LOG_H
+#define LS_UTILS_LOG_H
 
 #include "lightsky/setup/OS.h"
 
@@ -138,4 +138,4 @@ int LS_LOG_ERR(const arg_t&, const args_t&...) {
 }
 #endif
 
-#endif /* __LS_UTILS_LOG_H__ */
+#endif /* LS_UTILS_LOG_H */

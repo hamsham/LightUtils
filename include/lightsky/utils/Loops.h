@@ -1,7 +1,7 @@
 
 
-#ifndef __LS_UTILS_LOOPS_H__
-#define __LS_UTILS_LOOPS_H__
+#ifndef LS_UTILS_LOOPS_H
+#define LS_UTILS_LOOPS_H
 
 #include <cstdlib> // std::size_t
 
@@ -12,8 +12,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_8
     #define LS_UTILS_LOOP_UNROLL_8(count, op) { \
-        const std::size_t numUnrolls = count % 8; \
-        std::size_t n = (count + 7) / 8; \
+        const std::size_t numUnrolls = (count) % 8; \
+        std::size_t n = ((count) + 7) / 8; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 7:         op; \
@@ -35,8 +35,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_16
     #define LS_UTILS_LOOP_UNROLL_16(count, op) { \
-        const std::size_t numUnrolls = count % 16; \
-        std::size_t n = (count + 15) / 16; \
+        const std::size_t numUnrolls = (count) % 16; \
+        std::size_t n = ((count) + 15) / 16; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 15:        op; \
@@ -66,8 +66,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_32
     #define LS_UTILS_LOOP_UNROLL_32(count, op) { \
-        const std::size_t numUnrolls = count % 32; \
-        std::size_t n = (count + 31) / 32; \
+        const std::size_t numUnrolls = (count) % 32; \
+        std::size_t n = ((count) + 31) / 32; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 31:        op; \
@@ -108,4 +108,4 @@
 
 
 
-#endif /* __LS_UTILS_LOOPS_H__ */
+#endif /* LS_UTILS_LOOPS_H */

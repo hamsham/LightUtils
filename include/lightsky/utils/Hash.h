@@ -13,8 +13,8 @@
  *  Please ignore the magic numbers, they were found alongside each algorithm.
  */
 
-#ifndef __LS_UTILS_HASH_H__
-#define __LS_UTILS_HASH_H__
+#ifndef LS_UTILS_HASH_H
+#define LS_UTILS_HASH_H
 
 #include <cstdint> // uint32_t
 
@@ -101,4 +101,4 @@ constexpr hash_t string_hash(const char* str) noexcept {
 
 #include "lightsky/utils/generic/HashImpl.h"
 
-#endif  /* __LS_UTILS_HASH_H__ */
+#endif  /* LS_UTILS_HASH_H */

@@ -6,12 +6,13 @@
  */
 
 #include <cstdlib> // std::wcstombs
-#include <cstring> // std::memset, std::wcslen
 #include <string> // std::wstring
 
 #include "lightsky/utils/StringUtils.h"
 
 namespace ls {
+
+
 
 /*-------------------------------------
  * Wide-String to Multi-Byte
@@ -39,5 +40,7 @@ std::string utils::wide_to_mb_string(const std::wstring& wstr) {
 
     return ret;
 }
+
+
 
 } // end ls namespace

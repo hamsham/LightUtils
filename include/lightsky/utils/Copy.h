@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_COPY_H__
-#define __LS_UTILS_COPY_H__
+#ifndef LS_UTILS_COPY_H
+#define LS_UTILS_COPY_H
 
 #include <cstdlib> // std::size_t
 #include <utility> // std::move
@@ -54,8 +54,12 @@ void* LS_API fast_memcpy(void* const dest, const void* const src, const std::siz
  * Specifies the number of items which will be copied.
  */
 template <typename dest_t, typename src_t>
-void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t count) {
-    LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = *src++))
+inline void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t count)
+{
+    if (count)
+    {
+        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = *src++))
+    }
 }
 
 
@@ -77,8 +81,12 @@ void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t count) {
  * Specifies the number of items which will be moved.
  */
 template <typename dest_t, typename src_t>
-void LS_API fast_move(dest_t* dest, src_t* src, const std::size_t count) {
-    LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = std::move(*src++)))
+inline void LS_API fast_move(dest_t* dest, src_t* src, const std::size_t count)
+{
+    if (count)
+    {
+        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = std::move(*src++)))
+    }
 }
 
 
@@ -118,8 +126,12 @@ void* LS_API fast_memset(void* const dest, const unsigned char fillByte, const s
  * Specifies the number of items which will be filled.
  */
 template <typename dest_t, typename fill_t>
-void LS_API fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t count) {
-    LS_UTILS_LOOP_UNROLL_16(count, (*dest++ = fillType))
+inline void LS_API fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t count)
+{
+    if (count)
+    {
+        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = fillType))
+    }
 }
 
 
@@ -127,4 +139,4 @@ void LS_API fast_fill(dest_t* dest, const fill_t& fillType, const std::size_t co
 } // end utils namespace
 } // end ls namespace
 
-#endif /* __LS_UTILS_COPY_H__ */
+#endif /* LS_UTILS_COPY_H */

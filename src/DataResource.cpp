@@ -7,7 +7,6 @@
 
 #include <utility> // std::move
 #include <new> // std::nothrow
-#include <algorithm> // std::copy
 #include <fstream> // std::fstream
 #include <string>
 #include <sstream>

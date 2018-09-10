@@ -1,6 +1,6 @@
 
-#ifndef __LS_UTILS_ASSERT_H__
-#define __LS_UTILS_ASSERT_H__
+#ifndef LS_UTILS_ASSERT_H
+#define LS_UTILS_ASSERT_H
 
 #include <cassert>
 
@@ -105,4 +105,4 @@ void LS_API runtime_assert(bool condition, error_t type, const char* const msg);
     #define LS_ALERT( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::LS_ALERT)
 #endif /* ASSERT_ALERT */
 
-#endif /* __LS_UTILS_ASSERT_H__ */
+#endif /* LS_UTILS_ASSERT_H */

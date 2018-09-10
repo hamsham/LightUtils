@@ -5,8 +5,8 @@
  * Created on May 23, 2014, 7:10 PM
  */
 
-#ifndef __LS_UTILS_STRING_UTILS_H__
-#define __LS_UTILS_STRING_UTILS_H__
+#ifndef LS_UTILS_STRING_UTILS_H
+#define LS_UTILS_STRING_UTILS_H
 
 #include <string>
 #include <sstream>
@@ -55,4 +55,4 @@ std::string LS_API wide_to_mb_string(const std::wstring& wstr);
 } // end utils namespace
 } // end ls namespace
 
-#endif  /* __LS_UTILS_STRING_UTILS_H__ */
+#endif  /* LS_UTILS_STRING_UTILS_H */
