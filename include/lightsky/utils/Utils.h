@@ -24,5 +24,7 @@
 #include "lightsky/utils/Resource.h"
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Tuple.h"
+#include "lightsky/utils/Types.hpp"
+#include "lightsky/utils/WorkerThread.hpp"
 
 #endif /* LS_UTILS_H */

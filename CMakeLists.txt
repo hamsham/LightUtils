@@ -16,11 +16,9 @@ set(LS_UTILS_SOURCES
     src/Assertions.cpp
     src/Copy.cpp
     src/DataResource.cpp
-    src/Pointer.cpp
     src/RandomNum.cpp
     src/Resource.cpp
     src/StringUtils.cpp
-    src/Tuple.cpp
     src/WorkerThread.cpp
 )
 
@@ -44,6 +42,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Setup.h
     include/lightsky/utils/StringUtils.h
     include/lightsky/utils/Tuple.h
+    include/lightsky/utils/Types.hpp
     include/lightsky/utils/Utils.h
     include/lightsky/utils/WorkerThread.hpp
 )

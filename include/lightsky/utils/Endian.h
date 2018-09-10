@@ -1,5 +1,5 @@
 /*
- * File:   bytes/endian.h
+ * File:   Endian.h
  * Author: Miles Lacey
  *
  * This file contains methods to determine the current system's endian order at

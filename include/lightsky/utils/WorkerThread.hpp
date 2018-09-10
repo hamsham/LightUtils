@@ -15,8 +15,12 @@
 #include <utility> // std::move
 #include <vector>
 
+#include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
+#ifdef LS_ARCH_X86
+    #include <xmmintrin.h>
+#endif
 
 
 namespace ls
@@ -62,8 +66,11 @@ class SpinLock
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    while (mLock.test_and_set(std::memory_order_acq_rel))
+    while (mLock.test_and_set(std::memory_order_acquire))
     {
+        #ifdef LS_ARCH_X86
+            _mm_pause();
+        #endif
     }
 }
 
@@ -74,7 +81,7 @@ inline void SpinLock::lock() noexcept
 -------------------------------------*/
 inline bool SpinLock::try_lock() noexcept
 {
-    return !mLock.test_and_set(std::memory_order_acq_rel);
+    return !mLock.test_and_set(std::memory_order_acquire);
 }
 
 
@@ -84,7 +91,7 @@ inline bool SpinLock::try_lock() noexcept
 -------------------------------------*/
 inline void SpinLock::unlock() noexcept
 {
-    mLock.clear(std::memory_order_consume);
+    mLock.clear(std::memory_order_release);
 }
 
 
@@ -809,29 +816,6 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
 template <class WorkerTaskType>
 void WorkerThread<WorkerTaskType>::flush() noexcept
 {
-    /*
-    this->mPushLock.lock();
-    const int currentBuffer = this->mCurrentBuffer;
-
-    if (this->mInputs[currentBuffer].empty())
-    {
-        this->mPushLock.unlock();
-        return;
-    }
-
-    const int nextBuffer = (currentBuffer + 1) % 2;
-    this->mCurrentBuffer = nextBuffer;
-    this->mPushLock.unlock();
-
-    {
-        this->mMutex.lock();
-        this->mIsPaused.store(false, std::memory_order_release);
-        this->mMutex.unlock();
-    }
-
-    this->mCondition.notify_one();
-    */
-
     this->mMutex.lock();
     this->mPushLock.lock();
 

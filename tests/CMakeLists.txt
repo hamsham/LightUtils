@@ -29,7 +29,11 @@ set(
 # -------------------------------------
 function(LS_UTILS_ADD_TARGET target sources)
     add_executable(${target} ${sources} ${ARGN})
-    target_link_libraries(${target} lsutils pthread)
+	if (NOT MSVC)
+		target_link_libraries(${target} lsutils pthread)
+	else()
+		target_link_libraries(${target} lsutils)
+	endif()
 endfunction(LS_UTILS_ADD_TARGET)
 
 LS_UTILS_ADD_TARGET(ls_utils_tuple_test lsutils_tuple_test.cpp)
