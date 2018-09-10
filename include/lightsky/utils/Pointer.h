@@ -819,14 +819,9 @@ class LS_API Pointer<data_t[]>
      * A constant reference to some data contained within the
      * heap-allocated array managed by *this.
      */
-    template <typename index_t>
     constexpr
-<<<<<<< HEAD
-    data_t& operator[](const index_t& i) const {
-=======
     data_t& operator[](const int i) const
     {
->>>>>>> lsdraw_0.1.x
         return pData[i];
     }
 
@@ -840,14 +835,9 @@ class LS_API Pointer<data_t[]>
      * A reference to some data contained within the heap-allocated array
      * managed by *this.
      */
-    template <typename index_t>
     inline
-<<<<<<< HEAD
-    data_t& operator[](const index_t& i) {
-=======
     data_t& operator[](const int i)
     {
->>>>>>> lsdraw_0.1.x
         return pData[i];
     }
 
