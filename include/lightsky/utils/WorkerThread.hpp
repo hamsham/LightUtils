@@ -66,7 +66,7 @@ class SpinLock
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    while (mLock.test_and_set(std::memory_order_acquire))
+    while (mLock.test_and_set(std::memory_order_consume))
     {
         #ifdef LS_ARCH_X86
             _mm_pause();
@@ -81,7 +81,7 @@ inline void SpinLock::lock() noexcept
 -------------------------------------*/
 inline bool SpinLock::try_lock() noexcept
 {
-    return !mLock.test_and_set(std::memory_order_acquire);
+    return !mLock.test_and_set(std::memory_order_consume);
 }
 
 
@@ -799,7 +799,7 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
             std::unique_lock<std::mutex> cvLock{this->mMutex};
             this->mCondition.wait(cvLock, [this]()->bool
             {
-                return !this->mIsPaused.load(std::memory_order_consume);
+                return !this->mIsPaused.load(std::memory_order_relaxed);
             });
         }
 

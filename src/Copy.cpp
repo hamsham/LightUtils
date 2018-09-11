@@ -6,6 +6,8 @@
 
 #ifdef LS_ARCH_X86
     #include <emmintrin.h>
+#elif defined(LS_ARCH_ARM)
+    #include <arm_neon.h>
 #endif
 
 
@@ -38,21 +40,21 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         }
     #elif defined(LS_ARCH_ARM)
         const std::size_t stragglers = count % sizeof(uint32x4_t);
-            const std::size_t simdCount  = (count-stragglers)/sizeof(uint32x4_t);
-            const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
-            uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
+        const std::size_t simdCount  = (count-stragglers)/sizeof(uint32x4_t);
+        const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
+        uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
 
-            if (simdCount)
-            {
-                LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
-            }
+        if (simdCount)
+        {
+            LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+        }
 
-            const char* s = reinterpret_cast<const char*>(src) + simdCount;
-            char*       d = reinterpret_cast<char*>(dst) + simdCount;
-            for (std::size_t i = stragglers; i --> 0;)
-            {
-                *d++ = *s++;
-            }
+        const char* s = reinterpret_cast<const char*>(src) + simdCount;
+        char*       d = reinterpret_cast<char*>(dst) + simdCount;
+        for (std::size_t i = stragglers; i --> 0;)
+        {
+            *d++ = *s++;
+        }
     #else
         char* to = reinterpret_cast<char*>(dst);
         const char* from = reinterpret_cast<const char*>(src);
@@ -92,7 +94,7 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
     #elif defined(LS_ARCH_ARM)
         const std::size_t stragglers   = count % sizeof(uint32x4_t);
         const std::size_t simdCount    = (count-stragglers)/sizeof(uint32x4_t);
-        const uint32_t    fillByteU32  = ((uint32_t)fillByte) | (fillByte << 8) | (fillByte << 16) | (fillByte << 24)
+        const uint32_t    fillByteU32  = ((uint32_t)fillByte) | (fillByte << 8) | (fillByte << 16) | (fillByte << 24);
         const uint32x4_t  simdFillByte = vdupq_n_u32(fillByteU32);
         uint32x4_t*       simdTo       = reinterpret_cast<uint32x4_t*>(dst);
 
