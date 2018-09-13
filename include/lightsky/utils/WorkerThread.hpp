@@ -19,7 +19,7 @@
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
 #ifdef LS_ARCH_X86
-    #include <xmmintrin.h>
+    #include <emmintrin.h> // _mm_pause()
 #endif
 
 
