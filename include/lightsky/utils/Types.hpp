@@ -17,6 +17,55 @@ namespace utils
 
 
 /*-----------------------------------------------------------------------------
+ * Helper types to reduce implementation boilerplace
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * EnableIf True Helper
+-------------------------------------*/
+template <typename data_t>
+struct TrueType
+{
+    typedef data_t value_type;
+
+    static constexpr bool value = true;
+
+    constexpr explicit operator bool() const noexcept
+    {
+        return true;
+    }
+
+    constexpr bool operator() () const noexcept
+    {
+        return true;
+    }
+};
+
+
+
+/*-------------------------------------
+ * EnableIf False Helper
+-------------------------------------*/
+template <typename data_t>
+struct FalseType
+{
+    typedef data_t value_type;
+
+    static constexpr bool value = false;
+
+    constexpr explicit operator bool() const noexcept
+    {
+        return false;
+    }
+
+    constexpr bool operator() () const noexcept
+    {
+        return false;
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
  * Implementation of std::enable_if
 -----------------------------------------------------------------------------*/
 /*-------------------------------------

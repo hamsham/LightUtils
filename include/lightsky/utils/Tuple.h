@@ -22,7 +22,7 @@ namespace utils
 
 
 /**----------------------------------------------------------------------------
- * @Brief Helper class for indexing the types within a Tuple
+ * @brief Helper class for indexing the types within a Tuple
 -----------------------------------------------------------------------------*/
 template <unsigned N, typename T0, typename... T>
 struct TupleElement;
@@ -69,7 +69,7 @@ struct TupleElement
 
 
 /**----------------------------------------------------------------------------
- * @Brief Helper class for locating the types within a Tuple
+ * @brief Helper class for locating the types within a Tuple
 -----------------------------------------------------------------------------*/
 template <typename R, typename T0, typename... T>
 struct TupleMatcher;
@@ -116,7 +116,7 @@ struct TupleMatcher
 
 
 /**----------------------------------------------------------------------------
- * @Brief Helper class for indexing the types within a Tuple at runtime
+ * @brief Helper class for indexing the types within a Tuple at runtime
 -----------------------------------------------------------------------------*/
 template <typename... data_t>
 struct TupleIndexer
