@@ -321,7 +321,7 @@ Worker<WorkerTaskType>& Worker<WorkerTaskType>::operator=(Worker&& w) noexcept
  * Push a task to the pending task queue (copy).
 -------------------------------------*/
 template <class WorkerTaskType>
-void Worker<WorkerTaskType>::execute_tasks() noexcept
+inline void Worker<WorkerTaskType>::execute_tasks() noexcept
 {
     // The current I/O buffers were swapped when "flush()" was
     // called. Swap again to read and write to the buffers used on
@@ -605,7 +605,7 @@ void Worker<WorkerTaskType>::flush() noexcept
 
     mIsPaused.store(unpause, std::memory_order_release);
 
-    execute_tasks();
+    this->execute_tasks();
 }
 
 
@@ -827,12 +827,17 @@ void WorkerThread<WorkerTaskType>::flush() noexcept
         const int nextBuffer = (currentBuffer + 1) % 2;
         this->mCurrentBuffer = nextBuffer;
 
+        this->mPushLock.unlock();
+        this->mMutex.unlock();
+
         this->mIsPaused.store(false, std::memory_order_release);
         this->mCondition.notify_one();
     }
-
-    this->mPushLock.unlock();
-    this->mMutex.unlock();
+    else
+    {
+        this->mPushLock.unlock();
+        this->mMutex.unlock();
+    }
 }
 
 
