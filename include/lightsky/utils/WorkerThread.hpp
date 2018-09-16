@@ -824,20 +824,14 @@ void WorkerThread<WorkerTaskType>::flush() noexcept
     // Don't bother waking up the thread if there's nothing to do.
     if (!this->mInputs[currentBuffer].empty())
     {
-        const int nextBuffer = (currentBuffer + 1) % 2;
-        this->mCurrentBuffer = nextBuffer;
-
-        this->mPushLock.unlock();
-        this->mMutex.unlock();
+        this->mCurrentBuffer = (currentBuffer + 1) & 1;
 
         this->mIsPaused.store(false, std::memory_order_release);
         this->mCondition.notify_one();
     }
-    else
-    {
-        this->mPushLock.unlock();
-        this->mMutex.unlock();
-    }
+
+    this->mPushLock.unlock();
+    this->mMutex.unlock();
 }
 
 
