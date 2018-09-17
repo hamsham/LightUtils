@@ -28,6 +28,14 @@ int main()
 {
     srand(time(nullptr));
 
+    std::cout
+        << "Data Alignment:"
+        << "\n\tMutex:       " << sizeof(std::mutex)
+        << "\n\tSpinLock:    " << sizeof(ls::utils::SpinLock)
+        << "\n\tWorker (ST): " << sizeof(ls::utils::DefaultWorker)
+        << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerThread)
+        << std::endl;
+
     WorkerThread<SampleTask> thread{};
     std::vector<SampleTask> results;
     std::vector<SampleTask>::size_type numExtraResults = 0;

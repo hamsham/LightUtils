@@ -326,7 +326,6 @@ inline void Worker<WorkerTaskType>::execute_tasks() noexcept
     // The current I/O buffers were swapped when "flush()" was
     // called. Swap again to read and write to the buffers used on
     // this thread.
-    mMutex.lock();
     mPushLock.lock();
 
     // Exit the thread if mCurrentBuffer is less than 0.
@@ -342,6 +341,7 @@ inline void Worker<WorkerTaskType>::execute_tasks() noexcept
     //std::vector<WorkerTaskType>& outputQueue = mOutputs[currentBuffer];
 
     mPushLock.unlock();
+    mMutex.lock();
 
     for (WorkerTaskType& pTask : inputQueue)
     {
@@ -351,8 +351,8 @@ inline void Worker<WorkerTaskType>::execute_tasks() noexcept
     inputQueue.clear();
 
     // Pause the current thread again.
-    mMutex.unlock();
     mIsPaused.store(true, std::memory_order_release);
+    mMutex.unlock();
 }
 
 
@@ -593,7 +593,7 @@ inline void Worker<WorkerTaskType>::clear_pending_tasks() noexcept
  * this->ready() returns true).
 -------------------------------------*/
 template <class WorkerTaskType>
-void Worker<WorkerTaskType>::flush() noexcept
+inline void Worker<WorkerTaskType>::flush() noexcept
 {
     mPushLock.lock();
     const int currentBuffer = mCurrentBuffer;
@@ -618,9 +618,39 @@ inline void Worker<WorkerTaskType>::wait() noexcept
 {
     // Own the worker's mutex until the intended thread pauses. This should
     // effectively block the current thread of execution.
+    /*
     while (!mIsPaused.load(std::memory_order_consume))
     {
-        //if (!mBusyWait.load(std::memory_order_consume))
+        if (!mBusyWait.load(std::memory_order_consume))
+        {
+            mMutex.lock();
+            mMutex.unlock();
+        }
+    }
+    */
+
+    /*
+    if (mBusyWait.load(std::memory_order_acquire))
+    {
+        while (!mIsPaused.load(std::memory_order_consume))
+        {
+        }
+    }
+
+    while (!mIsPaused.load(std::memory_order_consume))
+    {
+        mMutex.lock();
+        mMutex.unlock();
+    }
+    */
+
+    while (!mIsPaused.load(std::memory_order_consume))
+    {
+        if (mBusyWait.load(std::memory_order_consume))
+        {
+            continue;
+        }
+        else
         {
             mMutex.lock();
             mMutex.unlock();
@@ -787,20 +817,20 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
     {
         // Busy waiting can be disabled at any time, but waiting on the
         // condition variable will remain in-place until the next flush.
-        if (this->mBusyWait.load(std::memory_order_relaxed))
+        if (this->mIsPaused.load(std::memory_order_acquire))
         {
-            if (this->mIsPaused.load(std::memory_order_relaxed))
+            if (this->mBusyWait.load(std::memory_order_acquire))
             {
                 continue;
             }
-        }
-        else
-        {
-            std::unique_lock<std::mutex> cvLock{this->mMutex};
-            this->mCondition.wait(cvLock, [this]()->bool
+            else
             {
-                return !this->mIsPaused.load(std::memory_order_relaxed);
-            });
+                std::unique_lock<std::mutex> cvLock{this->mMutex};
+                this->mCondition.wait(cvLock, [this]()->bool
+                {
+                    return !this->mIsPaused.load(std::memory_order_acquire);
+                });
+            }
         }
 
         this->execute_tasks();
@@ -816,22 +846,20 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
 template <class WorkerTaskType>
 void WorkerThread<WorkerTaskType>::flush() noexcept
 {
-    this->mMutex.lock();
     this->mPushLock.lock();
-
     const int currentBuffer = this->mCurrentBuffer;
+    const int swapped = !this->mInputs[currentBuffer].empty();
+    this->mCurrentBuffer = (currentBuffer + swapped) & 1;
+    this->mPushLock.unlock();
 
     // Don't bother waking up the thread if there's nothing to do.
-    if (!this->mInputs[currentBuffer].empty())
+    if (swapped)
     {
-        this->mCurrentBuffer = (currentBuffer + 1) & 1;
-
+        this->mMutex.lock();
         this->mIsPaused.store(false, std::memory_order_release);
         this->mCondition.notify_one();
+        this->mMutex.unlock();
     }
-
-    this->mPushLock.unlock();
-    this->mMutex.unlock();
 }
 
 
