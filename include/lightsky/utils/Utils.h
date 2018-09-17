@@ -10,6 +10,7 @@
 
 #include "lightsky/utils/Setup.h"
 
+#include "lightsky/utils/Algorithm.hPP"
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Bits.h"
 #include "lightsky/utils/BTree.h"
@@ -22,6 +23,7 @@
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/RandomNum.h"
 #include "lightsky/utils/Resource.h"
+#include "lightsky/utils/Sort.hpp"
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Tuple.h"
 #include "lightsky/utils/Types.hpp"

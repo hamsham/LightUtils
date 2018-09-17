@@ -23,6 +23,8 @@ set(LS_UTILS_SOURCES
 )
 
 set(LS_UTILS_HEADERS
+    include/lightsky/utils/Algorithm.hpp
+    include/lightsky/utils/generic/AlgorithmImpl.hpp
     include/lightsky/utils/Assertions.h
     include/lightsky/utils/Bits.h
     include/lightsky/utils/BTree.h
@@ -40,6 +42,8 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/RandomNum.h
     include/lightsky/utils/Resource.h
     include/lightsky/utils/Setup.h
+    include/lightsky/utils/Sort.hpp
+    include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/StringUtils.h
     include/lightsky/utils/Tuple.h
     include/lightsky/utils/Types.hpp
