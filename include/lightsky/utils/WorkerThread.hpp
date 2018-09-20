@@ -600,12 +600,14 @@ inline void Worker<WorkerTaskType>::flush() noexcept
     const int nextBuffer = (currentBuffer + 1) % 2;
 
     mCurrentBuffer = nextBuffer;
-    const bool unpause = this->mInputs[currentBuffer].empty();
+    const bool unpause = !this->mInputs[currentBuffer].empty();
     mPushLock.unlock();
 
-    mIsPaused.store(unpause, std::memory_order_release);
-
-    this->execute_tasks();
+    if (unpause)
+    {
+        mIsPaused.store(unpause, std::memory_order_release);
+        this->execute_tasks();
+    }
 }
 
 

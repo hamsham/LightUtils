@@ -40,6 +40,7 @@ class LS_API Pointer
     /**
      * @brief Clear *this of any data/resources.
      */
+    inline
     void clear()
     {
         delete pData;
@@ -51,6 +52,7 @@ class LS_API Pointer
      *
      * Clear *this of any data/resources.
      */
+    inline
     ~Pointer()
     {
         clear();
@@ -104,6 +106,7 @@ class LS_API Pointer
      * @param p
      * A Pointer type containing dynamically-allocated data.
      */
+    inline
     Pointer(Pointer&& p) :
         pData{p.pData}
     {
@@ -126,6 +129,7 @@ class LS_API Pointer
      * @return
      * A reference to *this.
      */
+    inline
     Pointer& operator=(Pointer&& p)
     {
         clear();
@@ -373,6 +377,7 @@ class LS_API Pointer
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
+    inline
     void swap(Pointer& other)
     {
         data_t* temp = other.pData;
@@ -385,6 +390,7 @@ class LS_API Pointer
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
+    inline
     const data_t& operator*() const
     {
         return *pData;
@@ -408,6 +414,7 @@ class LS_API Pointer
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
+    inline
     const data_t* operator->() const
     {
         return pData;
@@ -419,6 +426,7 @@ class LS_API Pointer
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
+    inline
     data_t* operator->()
     {
         return pData;
@@ -458,6 +466,7 @@ class LS_API Pointer
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
+    inline
     void reset(data_t* pNewData = nullptr)
     {
         clear();
@@ -506,6 +515,7 @@ class LS_API Pointer<data_t[]>
     /**
      * Clear *this of any data/resources.
      */
+    inline
     void clear()
     {
         delete[] pData;
@@ -518,6 +528,7 @@ class LS_API Pointer<data_t[]>
      *
      * Clear *this of any data/resources.
      */
+    inline
     ~Pointer()
     {
         clear();
@@ -571,6 +582,7 @@ class LS_API Pointer<data_t[]>
      * @param p
      * A Pointer type containing dynamically-allocated data.
      */
+    inline
     Pointer(Pointer&& p) :
         pData{p.pData}
     {
@@ -593,6 +605,7 @@ class LS_API Pointer<data_t[]>
      * @return
      * A reference to *this.
      */
+    inline
     Pointer& operator=(Pointer&& p)
     {
         clear();
@@ -870,6 +883,7 @@ class LS_API Pointer<data_t[]>
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
+    inline
     void swap(Pointer& other)
     {
         data_t* temp = other.pData;
@@ -882,6 +896,7 @@ class LS_API Pointer<data_t[]>
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
+    inline
     const data_t& operator*() const
     {
         return *pData;
@@ -892,6 +907,7 @@ class LS_API Pointer<data_t[]>
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
+    inline
     data_t& operator*()
     {
         return *pData;
@@ -904,6 +920,7 @@ class LS_API Pointer<data_t[]>
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
+    inline
     const data_t* operator->() const
     {
         return pData;
@@ -915,6 +932,7 @@ class LS_API Pointer<data_t[]>
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
+    inline
     data_t* operator->()
     {
         return pData;
@@ -954,6 +972,7 @@ class LS_API Pointer<data_t[]>
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
+    inline
     void reset(data_t* pNewData = nullptr)
     {
         clear();
