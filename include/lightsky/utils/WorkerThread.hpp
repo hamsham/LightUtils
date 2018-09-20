@@ -18,10 +18,6 @@
 #include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
-#ifdef LS_ARCH_X86
-    #include <emmintrin.h> // _mm_pause()
-#endif
-
 
 namespace ls
 {
@@ -68,9 +64,6 @@ inline void SpinLock::lock() noexcept
 {
     while (mLock.test_and_set(std::memory_order_consume))
     {
-        #ifdef LS_ARCH_X86
-            _mm_pause();
-        #endif
     }
 }
 
