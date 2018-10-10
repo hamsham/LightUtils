@@ -19,6 +19,7 @@ set(LS_UTILS_SOURCES
     src/RandomNum.cpp
     src/Resource.cpp
     src/StringUtils.cpp
+    src/Time.cpp
     src/WorkerThread.cpp
 )
 
@@ -45,6 +46,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Sort.hpp
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/StringUtils.h
+    include/lightsky/utils/Time.hpp
     include/lightsky/utils/Tuple.h
     include/lightsky/utils/Types.hpp
     include/lightsky/utils/Utils.h
