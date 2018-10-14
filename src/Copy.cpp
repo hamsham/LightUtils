@@ -27,6 +27,8 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         const __m128i*    simdSrc    = reinterpret_cast<const __m128i*>(src);
         __m128i*          simdDst    = reinterpret_cast<__m128i*>(dst);
 
+        // Using stream intrinsics here is NOT OK because we need the cache for
+        // reading "simdSrc."
         if (simdCount)
         {
             LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
@@ -46,7 +48,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 
         if (simdCount)
         {
-            LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+            LS_UTILS_LOOP_UNROLL_32(simdCount, vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), *simdSrc++))
         }
 
         const char* s = reinterpret_cast<const char*>(src) + simdCount;
@@ -81,9 +83,11 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
         const __m128i     simdFillByte = _mm_set1_epi8(fillByte);
         __m128i*          simdTo       = reinterpret_cast<__m128i*>(dst);
 
+        // Using stream intrinsics here is OK because we're not reading data
+        // from memory
         if (simdCount)
         {
-                LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdTo++ = simdFillByte))
+                LS_UTILS_LOOP_UNROLL_8(simdCount, _mm_stream_si128(simdTo++, simdFillByte))
         }
 
         char* to = reinterpret_cast<char*>(dst) + simdCount;
@@ -98,7 +102,7 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
         const uint32x4_t  simdFillByte = vdupq_n_u32(fillByteU32);
         uint32x4_t*       simdTo       = reinterpret_cast<uint32x4_t*>(dst);
 
-        LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdTo++ = simdFillByte))
+        LS_UTILS_LOOP_UNROLL_8(simdCount, vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), simdFillByte))
 
         char* to = reinterpret_cast<char*>(dst) + simdCount;
         for (std::size_t i = stragglers; i --> 0;)
