@@ -21,9 +21,34 @@ namespace utils
 
 
 /**----------------------------------------------------------------------------
+ * Pointer Deleter Type
+ * --------------------------------------------------------------------------*/
+template <typename data_t>
+struct PointerDeleter
+{
+    constexpr void operator() (void* const p) const noexcept
+    {
+        delete p;
+    }
+};
+
+
+
+template <typename data_t>
+struct PointerDeleter<data_t[]>
+{
+    constexpr void operator() (data_t* const p) const noexcept
+    {
+        delete [] p;
+    }
+};
+
+
+
+/**----------------------------------------------------------------------------
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
-template<typename data_t>
+template<typename data_t, class Deleter = PointerDeleter<data_t>>
 class LS_API Pointer
 {
 
@@ -43,7 +68,8 @@ class LS_API Pointer
     inline
     void clear()
     {
-        delete pData;
+        constexpr Deleter d = Deleter();
+        d(pData);
     }
 
   public:
@@ -498,8 +524,8 @@ class LS_API Pointer
  * Array Pointer Type
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
-template<typename data_t>
-class LS_API Pointer<data_t[]>
+template<typename data_t, class Deleter>
+class LS_API Pointer<data_t[], Deleter>
 {
 
     // public typedefs
@@ -518,7 +544,8 @@ class LS_API Pointer<data_t[]>
     inline
     void clear()
     {
-        delete[] pData;
+        constexpr Deleter d = Deleter();
+        d(pData);
     }
 
   public:
