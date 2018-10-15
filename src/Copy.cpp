@@ -1,5 +1,6 @@
 
 #include "lightsky/setup/Arch.h"
+#include "lightsky/setup/Compiler.h"
 
 #include "lightsky/utils/Bits.h"
 #include "lightsky/utils/Copy.h"
@@ -87,7 +88,11 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
         // from memory
         if (simdCount)
         {
+            #ifdef LS_COMPILER_MSC
+                LS_UTILS_LOOP_UNROLL_8(simdCount, (*simdTo++ = simdFillByte))
+            #else
                 LS_UTILS_LOOP_UNROLL_8(simdCount, _mm_stream_si128(simdTo++, simdFillByte))
+            #endif
         }
 
         char* to = reinterpret_cast<char*>(dst) + simdCount;

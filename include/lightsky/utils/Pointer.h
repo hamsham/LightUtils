@@ -26,7 +26,7 @@ namespace utils
 template <typename data_t>
 struct PointerDeleter
 {
-    constexpr void operator() (void* const p) const noexcept
+    constexpr void operator() (data_t* p) const noexcept
     {
         delete p;
     }
@@ -37,7 +37,7 @@ struct PointerDeleter
 template <typename data_t>
 struct PointerDeleter<data_t[]>
 {
-    constexpr void operator() (data_t* const p) const noexcept
+    constexpr void operator() (data_t* p) const noexcept
     {
         delete [] p;
     }
@@ -60,7 +60,7 @@ class LS_API Pointer
     /**
      * @brief pData represents a Pointer to some data within an application
      */
-    mutable data_t* pData = nullptr;
+    mutable data_t* pData;
 
     /**
      * @brief Clear *this of any data/resources.
@@ -68,7 +68,7 @@ class LS_API Pointer
     inline
     void clear()
     {
-        constexpr Deleter d = Deleter();
+        Deleter d;
         d(pData);
     }
 
@@ -536,7 +536,7 @@ class LS_API Pointer<data_t[], Deleter>
     /**
      * pData represents a Pointer to some data within an application
      */
-    mutable data_t* pData = nullptr;
+    mutable data_t* pData;
 
     /**
      * Clear *this of any data/resources.
@@ -544,7 +544,7 @@ class LS_API Pointer<data_t[], Deleter>
     inline
     void clear()
     {
-        constexpr Deleter d = Deleter();
+        Deleter d;
         d(pData);
     }
 
