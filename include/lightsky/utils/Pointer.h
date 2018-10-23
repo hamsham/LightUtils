@@ -9,7 +9,13 @@
 #define LS_UTILS_POINTER_H
 
 #include "lightsky/setup/Api.h"
+#include "lightsky/setup/Arch.h"
 #include "lightsky/setup/Macros.h"
+
+#if defined(LS_ARCH_X86)
+    #include <xmmintrin.h> // _mm_malloc(), _mm_free()
+    #include <cstdlib> // size_t
+#endif
 
 
 
@@ -21,12 +27,37 @@ namespace utils
 
 
 /**----------------------------------------------------------------------------
+ * Aligned Dynamic Memory
+ * --------------------------------------------------------------------------*/
+inline void* aligned_malloc(size_t numBytes) noexcept
+{
+    #ifdef LS_ARCH_X86
+        return _mm_malloc(numBytes, sizeof(__m128));
+    #else
+        return malloc(numBytes);
+    #endif
+}
+
+
+
+inline void aligned_free(void* const p) noexcept
+{
+    #ifdef LS_ARCH_X86
+        _mm_free(p);
+    #else
+        free(p);
+    #endif
+}
+
+
+
+/**----------------------------------------------------------------------------
  * Pointer Deleter Type
  * --------------------------------------------------------------------------*/
 template <typename data_t>
 struct PointerDeleter
 {
-    constexpr void operator() (data_t* p) const noexcept
+    inline void operator() (data_t* p) const noexcept
     {
         delete p;
     }
@@ -37,9 +68,19 @@ struct PointerDeleter
 template <typename data_t>
 struct PointerDeleter<data_t[]>
 {
-    constexpr void operator() (data_t* p) const noexcept
+    inline void operator() (data_t* p) const noexcept
     {
         delete [] p;
+    }
+};
+
+
+
+struct AlignedDeleter
+{
+    inline void operator() (void* p) const noexcept
+    {
+        aligned_free(p);
     }
 };
 
