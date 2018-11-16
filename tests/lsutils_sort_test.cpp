@@ -47,17 +47,8 @@ void printnums(
     FILE* pFile
 );
 
-// Merge Sort
-void mergesort(int* const nums, long count);
-
-// Merge Sort Implementation #2
-void mergesort2(int* const nums, long count);
-
 // Quick Sort (iterative)
 void quicksort2(int* const nums, long count);
-
-// Quick Sort (with insertion sort)
-void quicksort3(int* const nums, long count);
 
 // Quick Sort - Reference Implementation
 void qsortreference(int* const nums, long count);
@@ -80,7 +71,7 @@ int main(void)
         &ls::utils::merge_sort<int>,
         &ls::utils::quick_sort<int>,
         &quicksort2,
-        &quicksort3,
+        &ls::utils::quick_iterative_sort<int>,
         &qsortreference
     };
 
@@ -232,69 +223,6 @@ long issorted(int* const nums, long count)
 
 
 /*-----------------------------------------------------------------------------
- * Merge Sort (Iterative)
------------------------------------------------------------------------------*/
-// Helper function to do a merge sort on arrays
-void mergesorthelper(int* const nums, int* const temp, long left, long right)
-{
-    long i, i1, i2, curr;
-    const long mid = (left + right) >> 1;
-
-    if (left == right)
-    {
-        return;
-    }
-
-    mergesorthelper(nums, temp, left, mid);
-    mergesorthelper(nums, temp, mid + 1, right);
-
-    for (i = left; i <= right; ++i)
-    {
-        temp[i] = nums[i];
-    }
-
-    i1 = left;
-    i2 = mid + 1;
-
-    for (curr = left; curr <= right; ++curr)
-    {
-        if (i1 == mid + 1)
-        {
-            nums[curr] = temp[i2++];
-        }
-        else if (i2 > right)
-        {
-            nums[curr] = temp[i1++];
-        }
-        else if (temp[i1] < temp[i2])
-        {
-            nums[curr] = temp[i1++];
-        }
-        else
-        {
-            nums[curr] = temp[i2++];
-        }
-    }
-}
-
-// Merge Sort
-void mergesort(int* const nums, long count)
-{
-    int* const temp = (int*)malloc(sizeof(int) * count);
-
-    if (!temp)
-    {
-        return;
-    }
-
-    mergesorthelper(nums, temp, 0, count);
-
-    free(temp);
-}
-
-
-
-/*-----------------------------------------------------------------------------
  * Quick Sort (iterative)
 -----------------------------------------------------------------------------*/
 // Function to partition an array during a quicksort
@@ -373,61 +301,6 @@ void quicksort2(int* const nums, long count)
         else
         {
             break;
-        }
-    }
-}
-
-
-
-/*-----------------------------------------------------------------------------
- * Quick Sort (with insertion sort)
------------------------------------------------------------------------------*/
-// Quicksort With Insertion Sort
-void quicksort3(int* const nums, long count)
-{
-    long stack[64];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
-
-    while (true)
-    {
-        const long remaining = r - l;
-
-        if (remaining < 63)
-        {
-            ls::utils::insertion_sort(nums + l, remaining + 1);
-
-            if (space > 0)
-            {
-                space -= 2;
-                l = stack[space];
-                r = stack[space + 1];
-            }
-            else
-            {
-                break;
-            }
-        }
-        else
-        {
-            mid = partitionqsort2(nums, l, r);
-
-            if (mid < ((l + r) >> 1))
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
-
-            space += 2;
         }
     }
 }

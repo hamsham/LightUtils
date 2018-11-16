@@ -58,10 +58,18 @@ inline void merge_sort(data_type* const items, long count);
 
 
 /*-------------------------------------
- * Quick Sort
+ * Quick Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 inline void quick_sort(data_type* const items, long count);
+
+
+
+/*-------------------------------------
+ * Quick Sort (iterative)
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+inline void quick_iterative_sort(data_type* const items, long count);
 
 
 

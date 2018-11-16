@@ -900,8 +900,9 @@ class LS_API Pointer<data_t[], Deleter>
      * A constant reference to some data contained within the
      * heap-allocated array managed by *this.
      */
+    template <typename index_t>
     constexpr
-    data_t& operator[](const int i) const
+    data_t& operator[](const index_t i) const
     {
         return pData[i];
     }
@@ -916,8 +917,9 @@ class LS_API Pointer<data_t[], Deleter>
      * A reference to some data contained within the heap-allocated array
      * managed by *this.
      */
+    template <typename index_t>
     inline
-    data_t& operator[](const int i)
+    data_t& operator[](const index_t i)
     {
         return pData[i];
     }
