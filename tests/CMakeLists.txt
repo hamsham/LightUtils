@@ -38,3 +38,4 @@ endfunction(LS_UTILS_ADD_TARGET)
 
 LS_UTILS_ADD_TARGET(ls_utils_tuple_test lsutils_tuple_test.cpp)
 LS_UTILS_ADD_TARGET(ls_utils_worker_test lsutils_worker_test.cpp)
+LS_UTILS_ADD_TARGET(ls_utils_sort_test lsutils_sort_test.cpp)
