@@ -64,14 +64,15 @@ int* genRandomNumList(int* const nums, long count);
 int main(void)
 {
     void (* pTests[])(int* const, long) = {
-        &ls::utils::bubble_sort<int>,
-        &ls::utils::selection_sort<int>,
-        &ls::utils::insertion_sort<int>,
-        &ls::utils::shell_sort<int>,
-        &ls::utils::merge_sort<int>,
-        &ls::utils::quick_sort<int>,
+        &ls::utils::sort_bubble<int>,
+        &ls::utils::sort_selection<int>,
+        &ls::utils::sort_insertion<int>,
+        &ls::utils::sort_shell<int>,
+        &ls::utils::sort_merge<int>,
+        &ls::utils::sort_merge_iterative<int>,
+        &ls::utils::sort_quick<int>,
         &quicksort2,
-        &ls::utils::quick_iterative_sort<int>,
+        &ls::utils::sort_quick_iterative<int>,
         &qsortreference
     };
 
@@ -80,7 +81,8 @@ int main(void)
         "Selection Sort",
         "Insertion Sort",
         "Shell Sort",
-        "Merge Sort",
+        "Merge Sort (recursive)",
+        "Merge Sort (iterative)",
         "Quick Sort (recursive)",
         "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",

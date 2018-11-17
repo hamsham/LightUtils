@@ -18,7 +18,7 @@ namespace impl
  * Insertion sort that's meant to be used specifically with a shell sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void shell_inssort(data_type* const items, const long count, const long increment)
+void sort_shell_insert(data_type* const items, const long count, const long increment)
 {
     constexpr Comparator cmp;
 
@@ -42,10 +42,54 @@ void shell_inssort(data_type* const items, const long count, const long incremen
 
 
 /*-------------------------------------
+ * Recursive Merge Sort
+-------------------------------------*/
+template <typename data_type, class Comparator>
+void sort_merge_impl(data_type* const items, data_type* const temp, long left, long right)
+{
+    if (right-left < 1)
+    {
+        return;
+    }
+
+    constexpr Comparator cmp;
+    long i, j, k;
+    const long mid = (left+right) >> 1;
+    const long rightMid = right-mid;
+
+    sort_merge_impl<data_type, Comparator>(items, temp, left, mid);
+    sort_merge_impl<data_type, Comparator>(items, temp, mid+1, right);
+
+    for (i = mid; i >= left; --i)
+    {
+        temp[i] = items[i];
+    }
+
+    for (j = 1; j <= rightMid; ++j)
+    {
+        temp[right-j+1] = items[j+mid];
+    }
+
+    for (i = left, j = right, k = left; k <= right; ++k)
+    {
+        if (cmp(temp[i], temp[j]))
+        {
+            items[k] = temp[i++];
+        }
+        else
+        {
+            items[k] = temp[j--];
+        }
+    }
+}
+
+
+
+/*-------------------------------------
  * Quick Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void quick_sort_impl(data_type* const items, const long l, const long r)
+inline void sort_quick_impl(data_type* const items, const long l, const long r)
 {
     constexpr Comparator cmp;
     data_type temp;
@@ -80,8 +124,8 @@ inline void quick_sort_impl(data_type* const items, const long l, const long r)
     items[m] = items[r];
     items[r] = temp;
 
-    quick_sort_impl<data_type, Comparator>(items, l, m - 1);
-    quick_sort_impl<data_type, Comparator>(items, m + 1, r);
+    sort_quick_impl<data_type, Comparator>(items, l, m - 1);
+    sort_quick_impl<data_type, Comparator>(items, m + 1, r);
 }
 
 
@@ -90,7 +134,7 @@ inline void quick_sort_impl(data_type* const items, const long l, const long r)
  * Quick Sort Partitioning
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline long quick_partition_impl(data_type* const items, const long l, const long r)
+inline long sort_quick_partition(data_type* const items, const long l, const long r)
 {
     constexpr Comparator cmp;
     data_type temp;
@@ -141,7 +185,7 @@ inline long quick_partition_impl(data_type* const items, const long l, const lon
  * Bubble Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::bubble_sort(data_type* const items, long count)
+inline void utils::sort_bubble(data_type* const items, long count)
 {
     constexpr Comparator cmp;
 
@@ -165,7 +209,7 @@ inline void utils::bubble_sort(data_type* const items, long count)
  * Selection Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::selection_sort(data_type* const items, long count)
+inline void utils::sort_selection(data_type* const items, long count)
 {
     constexpr Comparator cmp;
 
@@ -195,7 +239,7 @@ inline void utils::selection_sort(data_type* const items, long count)
  * Insertion Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::insertion_sort(data_type* const items, long count)
+inline void utils::sort_insertion(data_type* const items, long count)
 {
     constexpr Comparator cmp;
 
@@ -220,26 +264,38 @@ inline void utils::insertion_sort(data_type* const items, long count)
  * Shell Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::shell_sort(data_type* const items, long count)
+inline void utils::sort_shell(data_type* const items, long count)
 {
     for (long i = count >> 2; i > 4; i >>= 2)
     {
         for (long j = 0; j < i; ++j)
         {
-            impl::shell_inssort<data_type, Comparator>(items+j, count-j, i);
+            impl::sort_shell_insert<data_type, Comparator>(items + j, count - j, i);
         }
     }
 
-    impl::shell_inssort<data_type, Comparator>(items, count, 1);
+    impl::sort_shell_insert<data_type, Comparator>(items, count, 1);
 }
 
 
 
 /*-------------------------------------
- * Shell Sort
+ * Merge Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::merge_sort(data_type* const items, long count)
+inline void utils::sort_merge(data_type* const items, long count)
+{
+    ls::utils::Pointer<data_type[]> temp{new data_type[count]};
+    impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count);
+}
+
+
+
+/*-------------------------------------
+ * Merge Sort (iterative)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+inline void utils::sort_merge_iterative(data_type* const items, long count)
 {
     constexpr Comparator cmp;
     long left, rght, rend;
@@ -312,9 +368,9 @@ inline void utils::merge_sort(data_type* const items, long count)
  * Quick Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::quick_sort(data_type* const items, long count)
+inline void utils::sort_quick(data_type* const items, long count)
 {
-    impl::quick_sort_impl<data_type, Comparator>(items, 0, count-1);
+    impl::sort_quick_impl<data_type, Comparator>(items, 0, count - 1);
 }
 
 
@@ -326,7 +382,7 @@ inline void utils::quick_sort(data_type* const items, long count)
  * https://kabas.online/tutor/sorting.html
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::quick_iterative_sort(data_type* const items, long count)
+inline void utils::sort_quick_iterative(data_type* const items, long count)
 {
     long stack[64];
     long mid;
@@ -340,7 +396,7 @@ inline void utils::quick_iterative_sort(data_type* const items, long count)
 
         if (remaining < 63)
         {
-            ls::utils::insertion_sort<data_type, Comparator>(items + l, remaining + 1);
+            ls::utils::sort_insertion<data_type, Comparator>(items + l, remaining + 1);
 
             if (space > 0)
             {
@@ -355,7 +411,7 @@ inline void utils::quick_iterative_sort(data_type* const items, long count)
         }
         else
         {
-            mid = impl::quick_partition_impl<data_type, Comparator>(items, l, r);
+            mid = impl::sort_quick_partition<data_type, Comparator>(items, l, r);
 
             if (mid < ((l + r) >> 1))
             {

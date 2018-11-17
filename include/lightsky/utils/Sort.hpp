@@ -21,7 +21,7 @@ namespace utils
  * Bubble Sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void bubble_sort(data_type* const items, long count);
+inline void sort_bubble(data_type* const items, long count);
 
 
 
@@ -29,7 +29,7 @@ inline void bubble_sort(data_type* const items, long count);
  * Selection Sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void selection_sort(data_type* const items, long count);
+inline void sort_selection(data_type* const items, long count);
 
 
 
@@ -37,7 +37,7 @@ inline void selection_sort(data_type* const items, long count);
  * Insertion Sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void insertion_sort(data_type* const items, long count);
+inline void sort_insertion(data_type* const items, long count);
 
 
 
@@ -45,7 +45,7 @@ inline void insertion_sort(data_type* const items, long count);
  * Shell Sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void shell_sort(data_type* const items, long count);
+inline void sort_shell(data_type* const items, long count);
 
 
 
@@ -53,7 +53,15 @@ inline void shell_sort(data_type* const items, long count);
  * Merge Sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void merge_sort(data_type* const items, long count);
+inline void sort_merge(data_type* const items, long count);
+
+
+
+/*-------------------------------------
+ * Merge Sort (iterative)
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+inline void sort_merge_iterative(data_type* const items, long count);
 
 
 
@@ -61,7 +69,7 @@ inline void merge_sort(data_type* const items, long count);
  * Quick Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void quick_sort(data_type* const items, long count);
+inline void sort_quick(data_type* const items, long count);
 
 
 
@@ -69,7 +77,7 @@ inline void quick_sort(data_type* const items, long count);
  * Quick Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void quick_iterative_sort(data_type* const items, long count);
+inline void sort_quick_iterative(data_type* const items, long count);
 
 
 
