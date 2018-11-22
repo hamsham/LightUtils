@@ -13,7 +13,7 @@
 
 
 
-#if 1
+#if 0
 enum {
     MAX_RAND_NUMS = 123456
 };
@@ -64,9 +64,9 @@ int* genRandomNumList(int* const nums, long count);
 int main(void)
 {
     void (* pTests[])(int* const, long) = {
-        &ls::utils::sort_bubble<int>,
-        &ls::utils::sort_selection<int>,
-        &ls::utils::sort_insertion<int>,
+        //&ls::utils::sort_bubble<int>,
+        //&ls::utils::sort_selection<int>,
+        //&ls::utils::sort_insertion<int>,
         &ls::utils::sort_shell<int>,
         &ls::utils::sort_merge<int>,
         &ls::utils::sort_merge_iterative<int>,
@@ -77,9 +77,9 @@ int main(void)
     };
 
     const char* test_names[] = {
-        "Bubble Sort",
-        "Selection Sort",
-        "Insertion Sort",
+        //"Bubble Sort",
+        //"Selection Sort",
+        //"Insertion Sort",
         "Shell Sort",
         "Merge Sort (recursive)",
         "Merge Sort (iterative)",
