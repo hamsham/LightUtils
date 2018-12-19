@@ -23,7 +23,7 @@ namespace ls {
 void* utils::fast_memcpy(void* const dst, const void* const src, const std::size_t count)
 {
     #ifdef LS_ARCH_X86
-        const std::size_t stragglers = count % sizeof(__m128i);
+        std::size_t       stragglers = count % sizeof(__m128i);
         const std::size_t simdCount  = (count-stragglers)/sizeof(__m128i);
         const __m128i*    simdSrc    = reinterpret_cast<const __m128i*>(src);
         __m128i*          simdDst    = reinterpret_cast<__m128i*>(dst);
@@ -35,14 +35,14 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
             LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
         }
 
-        const char* s = reinterpret_cast<const char*>(src) + simdCount;
-        char*       d = reinterpret_cast<char*>(dst) + simdCount;
-        for (std::size_t i = stragglers; i --> 0;)
+        const char* s = reinterpret_cast<const char*>(simdSrc);
+        char*       d = reinterpret_cast<char*>(simdDst);
+        while (stragglers --> 0)
         {
             *d++ = *s++;
         }
     #elif defined(LS_ARCH_ARM)
-        const std::size_t stragglers = count % sizeof(uint32x4_t);
+        std::size_t       stragglers = count % sizeof(uint32x4_t);
         const std::size_t simdCount  = (count-stragglers)/sizeof(uint32x4_t);
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
@@ -52,9 +52,9 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
             LS_UTILS_LOOP_UNROLL_32(simdCount, vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), *simdSrc++))
         }
 
-        const char* s = reinterpret_cast<const char*>(src) + simdCount;
-        char*       d = reinterpret_cast<char*>(dst) + simdCount;
-        for (std::size_t i = stragglers; i --> 0;)
+        const char* s = reinterpret_cast<const char*>(simdSrc);
+        char*       d = reinterpret_cast<char*>(simdDst);
+        while (stragglers --> 0)
         {
             *d++ = *s++;
         }
@@ -79,7 +79,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t count)
 {
     #ifdef LS_ARCH_X86
-        const std::size_t stragglers   = count % sizeof(__m128i);
+        std::size_t       stragglers   = count % sizeof(__m128i);
         const std::size_t simdCount    = (count-stragglers)/sizeof(__m128i);
         const __m128i     simdFillByte = _mm_set1_epi8(fillByte);
         __m128i*          simdTo       = reinterpret_cast<__m128i*>(dst);
@@ -95,13 +95,13 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
             #endif
         }
 
-        char* to = reinterpret_cast<char*>(dst) + simdCount;
-        for (std::size_t i = stragglers; i --> 0;)
+        char* to = reinterpret_cast<char*>(simdTo);
+        while (stragglers --> 0)
         {
             *to++ = fillByte;
         }
     #elif defined(LS_ARCH_ARM)
-        const std::size_t stragglers   = count % sizeof(uint32x4_t);
+        std::size_t       stragglers   = count % sizeof(uint32x4_t);
         const std::size_t simdCount    = (count-stragglers)/sizeof(uint32x4_t);
         const uint32_t    fillByteU32  = ((uint32_t)fillByte) | (fillByte << 8) | (fillByte << 16) | (fillByte << 24);
         const uint32x4_t  simdFillByte = vdupq_n_u32(fillByteU32);
@@ -109,8 +109,8 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
 
         LS_UTILS_LOOP_UNROLL_8(simdCount, vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), simdFillByte))
 
-        char* to = reinterpret_cast<char*>(dst) + simdCount;
-        for (std::size_t i = stragglers; i --> 0;)
+        char* to = reinterpret_cast<char*>(simdTo);
+        while (stragglers --> 0)
         {
             *to++ = fillByte;
         }
