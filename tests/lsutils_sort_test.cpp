@@ -727,7 +727,7 @@ void _shear_sort_impl(const ShearArgs<data_type> args)
 
 
 
-template <typename data_type, class LessComparator = ls::utils::IsLess<data_type>, class GreaterComparator = ls::utils::IsGreater<data_type>>
+template <typename data_type, class LessComparator, class GreaterComparator>
 void shear_sort_parallel(data_type* const nums, long count)
 {
     struct ShearArgs<data_type> args[MAX_THREADS];
