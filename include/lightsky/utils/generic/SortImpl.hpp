@@ -286,7 +286,7 @@ template <typename data_type, class Comparator>
 inline void utils::sort_merge(data_type* const items, long count)
 {
     ls::utils::Pointer<data_type[]> temp{new data_type[count]};
-    impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count);
+    impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count-1);
 }
 
 
