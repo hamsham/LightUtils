@@ -15,6 +15,8 @@
 #if defined(LS_ARCH_X86)
     #include <xmmintrin.h> // _mm_malloc(), _mm_free()
     #include <cstdlib> // size_t
+#else
+#include <cstdlib> // malloc(), free()
 #endif
 
 
