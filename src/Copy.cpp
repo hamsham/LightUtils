@@ -6,7 +6,7 @@
 #include "lightsky/utils/Copy.h"
 
 #ifdef LS_ARCH_X86
-    #include <emmintrin.h>
+    #include <immintrin.h>
 #elif defined(LS_ARCH_ARM)
     #include <arm_neon.h>
 #endif
@@ -23,16 +23,17 @@ namespace ls {
 void* utils::fast_memcpy(void* const dst, const void* const src, const std::size_t count)
 {
     #ifdef LS_ARCH_X86
-        std::size_t       stragglers = count % sizeof(__m128i);
-        const std::size_t simdCount  = (count-stragglers)/sizeof(__m128i);
-        const __m128i*    simdSrc    = reinterpret_cast<const __m128i*>(src);
-        __m128i*          simdDst    = reinterpret_cast<__m128i*>(dst);
+        std::size_t       stragglers = count % sizeof(__m256i);
+        const std::size_t simdCount  = (count-stragglers)/sizeof(__m256i);
+        const __m256i*    simdSrc    = reinterpret_cast<const __m256i*>(src);
+        __m256i*          simdDst    = reinterpret_cast<__m256i*>(dst);
 
         // Using stream intrinsics here is NOT OK because we need the cache for
         // reading "simdSrc."
         if (simdCount)
         {
-            LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+            //LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+            LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++)))
         }
 
         const char* s = reinterpret_cast<const char*>(simdSrc);
@@ -79,16 +80,16 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t count)
 {
     #ifdef LS_ARCH_X86
-        std::size_t       stragglers   = count % sizeof(__m128i);
-        const std::size_t simdCount    = (count-stragglers)/sizeof(__m128i);
-        const __m128i     simdFillByte = _mm_set1_epi8(fillByte);
-        __m128i*          simdTo       = reinterpret_cast<__m128i*>(dst);
+        std::size_t       stragglers   = count % sizeof(__m256i);
+        const std::size_t simdCount    = (count-stragglers)/sizeof(__m256i);
+        const __m256i     simdFillByte = _mm256_set1_epi8(fillByte);
+        __m256i*          simdTo       = reinterpret_cast<__m256i*>(dst);
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
         if (simdCount)
         {
-            LS_UTILS_LOOP_UNROLL_8(simdCount, (*simdTo++ = simdFillByte))
+            LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdTo++, simdFillByte))
         }
 
         char* to = reinterpret_cast<char*>(simdTo);
