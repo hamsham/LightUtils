@@ -32,7 +32,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         // reading "simdSrc."
         if (simdCount)
         {
-            LS_UTILS_LOOP_UNROLL_32(simdCount, *simdDst++ = *simdSrc++)
+            LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
         }
 
         const char* s = reinterpret_cast<const char*>(simdSrc);
