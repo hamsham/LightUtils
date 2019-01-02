@@ -32,7 +32,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         // reading "simdSrc."
         if (simdCount)
         {
-            LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+            LS_UTILS_LOOP_UNROLL_32(simdCount, *simdDst++ = *simdSrc++)
         }
 
         const char* s = reinterpret_cast<const char*>(simdSrc);
@@ -88,11 +88,7 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
         // from memory
         if (simdCount)
         {
-            #ifdef LS_COMPILER_MSC
-                LS_UTILS_LOOP_UNROLL_8(simdCount, (*simdTo++ = simdFillByte))
-            #else
-                LS_UTILS_LOOP_UNROLL_8(simdCount, _mm_stream_si128(simdTo++, simdFillByte))
-            #endif
+            LS_UTILS_LOOP_UNROLL_8(simdCount, (*simdTo++ = simdFillByte))
         }
 
         char* to = reinterpret_cast<char*>(simdTo);
