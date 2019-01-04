@@ -18,9 +18,6 @@
 #include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
-#ifdef LS_ARCH_X86
-    #include <emmintrin.h> // _mm_pause()
-#endif
 
 
 namespace ls
@@ -833,12 +830,6 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
         }
 
         this->execute_tasks();
-
-        #ifdef LS_ARCH_X86
-            _mm_pause();
-        #else
-            std::this_thread::yield();
-        #endif
     }
 }
 
