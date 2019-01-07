@@ -15,8 +15,11 @@
 #if defined(LS_ARCH_X86)
     #include <xmmintrin.h> // _mm_malloc(), _mm_free()
     #include <cstdlib> // size_t
+#elif defined(LS_ARCH_ARM)
+#include <arm_neon.h> // sizeof(float32x4_t) for 16-byte alignment
+    #include <stdlib.h> // POSIX aligned_alloc()
 #else
-#include <cstdlib> // malloc(), free()
+    #include <cstdlib> // malloc(), free()
 #endif
 
 
@@ -35,6 +38,15 @@ inline void* aligned_malloc(size_t numBytes) noexcept
 {
     #ifdef LS_ARCH_X86
         return _mm_malloc(numBytes, sizeof(__m128));
+    #elif defined(LS_ARCH_ARM) && defined(LS_COMPILER_GNU)
+        if (numBytes % sizeof(float32x4_t) == 0)
+        {
+            return aligned_alloc(sizeof(float32x4_t), numBytes);
+        }
+        else
+        {
+            return aligned_alloc(sizeof(float32x4_t), numBytes + sizeof(float32x4_t) - (numBytes%sizeof(float32x4_t)));
+        }
     #else
         return malloc(numBytes);
     #endif
