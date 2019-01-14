@@ -43,7 +43,7 @@ class LS_API Resource {
      * dataSize holds the current size, in bytes, of the memory being used
      * by pData.
      */
-    long dataSize = 0l;
+    size_t dataSize = 0;
 
   public:
     /**
@@ -114,8 +114,7 @@ class LS_API Resource {
      *
      * @return true if the file was successfully loaded. False if not.
      */
-    virtual
-    bool load_file(const std::string& filename) = 0;
+    virtual bool load_file(const std::string& filename) = 0;
 
     /**
      * @brief Load a file using a c-style wide string.
@@ -129,8 +128,7 @@ class LS_API Resource {
      *
      * @return true if the file was successfully loaded. False if not.
      */
-    virtual
-    bool load_file(const std::wstring& filename);
+    virtual bool load_file(const std::wstring& filename);
 
     /**
      * @brief Save a file
@@ -144,8 +142,7 @@ class LS_API Resource {
      *
      * @return true if the file was successfully saved. False if not.
      */
-    virtual
-    bool save_file(const std::string& filename) const = 0;
+    virtual bool save_file(const std::string& filename) const = 0;
 
     /**
      * @brief Save a file using a c-style string of wide (UTF-8) characters
@@ -159,16 +156,14 @@ class LS_API Resource {
      *
      * @return true if the file was successfully saved. False if not.
      */
-    virtual
-    bool save_file(const std::wstring& filename) const;
+    virtual bool save_file(const std::wstring& filename) const;
 
     /**
      * @brief Unload
      *
      * Free all memory used by *this.
      */
-    virtual
-    void unload() = 0;
+    virtual void unload() = 0;
 
     /**
      *  Get the size, in bytes, of the current file loaded into memory.
@@ -176,8 +171,7 @@ class LS_API Resource {
      *  @return a long integral type, used to determine how many bytes
      *  had been loaded from a file.
      */
-    virtual
-    long get_num_bytes() const;
+    virtual size_t get_num_bytes() const;
 
     /**
      *  @brief Get the raw, loaded, data contained within *this.
@@ -189,31 +183,28 @@ class LS_API Resource {
      *
      *  @return a pointer to a chunk of data loaded from a file.
      */
-    virtual
-    void* get_data() const;
+    virtual void* get_data() const;
 };
 
 /*-------------------------------------
  * Get the size, in bytes, of the current file loaded into memory.
  * ----------------------------------*/
 inline
-long Resource::get_num_bytes() const {
+size_t Resource::get_num_bytes() const {
     return dataSize;
 }
 
 /*-------------------------------------
  * Get the raw, loaded, data contained within *this.
  * ----------------------------------*/
-inline
-void* Resource::get_data() const {
+inline void* Resource::get_data() const {
     return pData;
 }
 
 /*-------------------------------------
  * Open a file with UTF-8
  * ----------------------------------*/
-inline
-bool Resource::load_file(const std::wstring& filename) {
+inline bool Resource::load_file(const std::wstring& filename) {
     // attempt to load the file
     return load_file(wide_to_mb_string(filename));
 }
@@ -221,8 +212,7 @@ bool Resource::load_file(const std::wstring& filename) {
 /*-------------------------------------
  * Save with an UTF-8 filename
  * ----------------------------------*/
-inline
-bool Resource::save_file(const std::wstring& filename) const {
+inline bool Resource::save_file(const std::wstring& filename) const {
     // attempt to save the file using a multi-byte string.
     return save_file(wide_to_mb_string(filename));
 }

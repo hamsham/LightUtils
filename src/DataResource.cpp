@@ -166,7 +166,7 @@ bool DataResource::save_file(const std::string& filename) const {
 /*-------------------------------------
  * Set a resource's data
  * ----------------------------------*/
-bool DataResource::set_data(const char* const data, long size) {
+bool DataResource::set_data(const char* const data, size_t size) {
     unload();
 
     if (data == nullptr || size == 0) {
@@ -174,8 +174,8 @@ bool DataResource::set_data(const char* const data, long size) {
     }
 
 
-    const unsigned byteSize = sizeof (decltype(fileData)::value_type);
-    const unsigned valueSize = (size / byteSize) + (size % byteSize);
+    const size_t byteSize = sizeof (decltype(fileData)::value_type);
+    const size_t valueSize = (size / byteSize) + (size % byteSize);
 
     fileData.assign(data, valueSize);
     reassign_base_members();

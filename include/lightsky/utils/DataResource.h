@@ -157,7 +157,7 @@ class LS_API DataResource final : public Resource {
      *
      * @return true if the copy was successful. False if otherwise.
      */
-    bool set_data(const char* const data, long size);
+    bool set_data(const char* const data, size_t size);
 
     /**
      * Retrieve the currently loaded file data as a plain string of bytes.
