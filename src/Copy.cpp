@@ -22,7 +22,7 @@ namespace ls {
 -------------------------------------*/
 void* utils::fast_memcpy(void* const dst, const void* const src, const std::size_t count)
 {
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         std::size_t       stragglers = count % sizeof(__m256i);
         const std::size_t simdCount  = (count-stragglers)/sizeof(__m256i);
         const __m256i*    simdSrc    = reinterpret_cast<const __m256i*>(src);
@@ -63,7 +63,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         char* to = reinterpret_cast<char*>(dst);
         const char* from = reinterpret_cast<const char*>(src);
 
-        if (simdCount)
+        if (count)
         {
             LS_UTILS_LOOP_UNROLL_32(count, (*to++ = *from++))
         }
@@ -79,7 +79,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 -------------------------------------*/
 void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t count)
 {
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         std::size_t       stragglers   = count % sizeof(__m256i);
         const std::size_t simdCount    = (count-stragglers)/sizeof(__m256i);
         const __m256i     simdFillByte = _mm256_set1_epi8(fillByte);
@@ -113,7 +113,11 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
         }
     #else
         char* to = reinterpret_cast<char*>(dst);
-        LS_UTILS_LOOP_UNROLL_32(count, (*to++ = fillByte))
+
+        if (count)
+        {
+            LS_UTILS_LOOP_UNROLL_32(count, (*to++ = fillByte))
+        }
     #endif
 
     return dst;
