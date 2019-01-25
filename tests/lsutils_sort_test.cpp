@@ -16,7 +16,7 @@
 
 
 
-#if 1
+#if 0
 enum {
     MAX_RAND_NUMS = 65535
 };

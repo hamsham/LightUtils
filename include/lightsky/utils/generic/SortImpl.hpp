@@ -1,4 +1,6 @@
 
+#include <climits> // CHAR_BIT
+
 #include "lightsky/utils/Pointer.h"
 
 namespace ls
@@ -96,6 +98,12 @@ inline void sort_quick_impl(data_type* const items, const long l, const long r)
 
     if (r <= l)
     {
+        return;
+    }
+
+    if (r-l < (CHAR_BIT*sizeof(int)))
+    {
+        ls::utils::sort_insertion<data_type, Comparator>(items + l, (r-l) + 1);
         return;
     }
 

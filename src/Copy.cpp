@@ -32,7 +32,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         // reading "simdSrc."
         if (simdCount)
         {
-            //LS_UTILS_LOOP_UNROLL_32(simdCount, (*simdDst++ = *simdSrc++))
+            //LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdDst++, _mm256_loadu_si256(simdSrc++)))
             LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++)))
         }
 
