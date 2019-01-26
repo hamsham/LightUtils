@@ -101,7 +101,7 @@ inline void sort_quick_impl(data_type* const items, const long l, const long r)
         return;
     }
 
-    if (r-l < (CHAR_BIT*sizeof(int)))
+    if (r-l < (long)(CHAR_BIT*sizeof(long)))
     {
         ls::utils::sort_insertion<data_type, Comparator>(items + l, (r-l) + 1);
         return;
