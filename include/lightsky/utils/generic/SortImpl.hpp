@@ -392,7 +392,7 @@ inline void utils::sort_quick(data_type* const items, long count)
 template <typename data_type, class Comparator>
 inline void utils::sort_quick_iterative(data_type* const items, long count)
 {
-    long stack[64];
+    long stack[CHAR_BIT*sizeof(long)];
     long mid;
     long space = 0;
     long l = 0;
@@ -402,7 +402,7 @@ inline void utils::sort_quick_iterative(data_type* const items, long count)
     {
         const long remaining = r - l;
 
-        if (remaining < 63)
+        if (remaining < (long)(CHAR_BIT*sizeof(long))-1l)
         {
             ls::utils::sort_insertion<data_type, Comparator>(items + l, remaining + 1);
 
