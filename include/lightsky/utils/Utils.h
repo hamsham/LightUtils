@@ -10,7 +10,7 @@
 
 #include "lightsky/utils/Setup.h"
 
-#include "lightsky/utils/Algorithm.hPP"
+#include "lightsky/utils/Algorithm.hpp"
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Bits.h"
 #include "lightsky/utils/BTree.h"
