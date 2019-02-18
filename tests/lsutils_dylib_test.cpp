@@ -24,7 +24,7 @@ int main()
     }
     else
     {
-        std::cout << "Successfully loaded the OpenGL library." << std::endl;
+        std::cout << "Successfully loaded the OpenGL library: " << lib.name() << std::endl;
     }
 
     void* testFunction = lib.symbol("glActiveTexture");

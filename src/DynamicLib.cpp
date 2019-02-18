@@ -50,6 +50,18 @@ DynamicLib::DynamicLib() noexcept :
 
 
 /*-------------------------------------
+ * Library Constructor
+-------------------------------------*/
+DynamicLib::DynamicLib(const char* libPath) noexcept :
+    mLibName{nullptr},
+    mHandle{nullptr}
+{
+    load(libPath);
+}
+
+
+
+/*-------------------------------------
  * Copy Constructor
 -------------------------------------*/
 DynamicLib::DynamicLib(const DynamicLib& d) noexcept
