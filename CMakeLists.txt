@@ -16,6 +16,7 @@ set(LS_UTILS_SOURCES
     src/Assertions.cpp
     src/Copy.cpp
     src/DataResource.cpp
+    src/DynamicLib.cpp
     src/RandomNum.cpp
     src/Resource.cpp
     src/StringUtils.cpp
@@ -32,6 +33,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/ByteSize.h
     include/lightsky/utils/Copy.h
     include/lightsky/utils/DataResource.h
+    include/lightsky/utils/DynamicLib.hpp
     include/lightsky/utils/Endian.h
     include/lightsky/utils/generic/LogImpl.h
     include/lightsky/utils/android/LogImpl.h
@@ -56,6 +58,22 @@ set(LS_UTILS_HEADERS
 
 
 # -------------------------------------
+# Extra Libraries
+# -------------------------------------
+if (NOT WIN32)
+    find_library(LS_UTILS_DL_LIB dl)
+    if (LS_UTILS_DL_LIB)
+        message("-- Found libdl.so: ${LS_UTILS_DL_LIB}")
+    else()
+        message(FATAL_ERROR "Could not find libdl.so")
+    endif()
+else()
+    set(LS_UTILS_DL_LIB "")
+endif()
+
+
+
+# -------------------------------------
 # Library Setup
 # -------------------------------------
 option(BUILD_SHARED_LIBS "Build Shared Libraries" OFF)
@@ -70,7 +88,7 @@ endif()
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
 # Dependencies
-target_link_libraries(${OUTPUT_NAME} lssetup)
+target_link_libraries(${OUTPUT_NAME} ${LS_UTILS_DL_LIB} lssetup)
 
 
 

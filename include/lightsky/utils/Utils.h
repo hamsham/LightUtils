@@ -17,6 +17,7 @@
 #include "lightsky/utils/ByteSize.h"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/DataResource.h"
+#include "lightsky/utils/DynamicLib.hpp"
 #include "lightsky/utils/Endian.h"
 #include "lightsky/utils/Hash.h"
 #include "lightsky/utils/Log.h"
