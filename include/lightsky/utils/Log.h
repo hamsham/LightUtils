@@ -104,38 +104,41 @@ void log_err(const arg_t& arg, const args_t&... args);
     Debugging Various Messages.
 -----------------------------------------------------------------------------*/
 #ifdef LS_DEBUG
-#ifndef LS_LOG_MSG
-#define LS_LOG_MSG(...) ls::utils::log_msg(__VA_ARGS__)
-#endif
+    #ifndef LS_LOG_MSG
+        #define LS_LOG_MSG(...) ls::utils::log_msg(__VA_ARGS__)
+    #endif
 
-#ifndef LS_LOG_ERR
-#define LS_LOG_ERR(...) ls::utils::log_err(__VA_ARGS__)
-#endif
+    #ifndef LS_LOG_ERR
+        #define LS_LOG_ERR(...) ls::utils::log_err(__VA_ARGS__)
+    #endif
 #else
+    template <typename arg_t>
+    constexpr
+    int LS_LOG_MSG(const arg_t&)
+    {
+        return 0;
+    }
 
-template <typename arg_t>
-constexpr
-int LS_LOG_MSG(const arg_t&) {
-    return 0;
-}
+    template <typename arg_t, typename... args_t>
+    constexpr
+    int LS_LOG_MSG(const arg_t&, const args_t&...)
+    {
+        return 0;
+    }
 
-template <typename arg_t, typename... args_t>
-constexpr
-int LS_LOG_MSG(const arg_t&, const args_t&...) {
-    return 0;
-}
+    template <typename arg_t>
+    constexpr
+    int LS_LOG_ERR(const arg_t&)
+    {
+        return 0;
+    }
 
-template <typename arg_t>
-constexpr
-int LS_LOG_ERR(const arg_t&) {
-    return 0;
-}
-
-template <typename arg_t, typename... args_t>
-constexpr
-int LS_LOG_ERR(const arg_t&, const args_t&...) {
-    return 0;
-}
+    template <typename arg_t, typename... args_t>
+    constexpr
+    int LS_LOG_ERR(const arg_t&, const args_t&...)
+    {
+        return 0;
+    }
 #endif
 
 #endif /* LS_UTILS_LOG_H */
