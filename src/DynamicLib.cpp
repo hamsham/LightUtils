@@ -196,7 +196,7 @@ void* DynamicLib::symbol(const char* pSymName) const noexcept
     LS_DEBUG_ASSERT(mHandle != nullptr);
 
     #ifdef LS_OS_WINDOWS
-        return GetProcAddress(mHandle, pSymName);
+        return GetProcAddress((HMODULE)const_cast<void*>(mHandle), pSymName);
     #else
         return dlsym(mHandle, pSymName);
     #endif
