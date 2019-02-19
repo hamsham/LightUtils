@@ -26,19 +26,17 @@ DataResource::~DataResource() {
 /*-------------------------------------
  * Constructor
  * ----------------------------------*/
-DataResource::DataResource()
-    :
-    Resource {},
-fileData {}
+DataResource::DataResource() :
+    Resource{},
+    fileData{}
 {
 }
 
 /*-------------------------------------
  * Copy Constructor
  * ----------------------------------*/
-DataResource::DataResource(const DataResource& f)
-    :
-    Resource {}
+DataResource::DataResource(const DataResource& f) :
+    Resource{}
 {
     set_data(const_cast<char*>(f.pData), f.dataSize);
 }
@@ -46,10 +44,9 @@ DataResource::DataResource(const DataResource& f)
 /*-------------------------------------
  * Move Constructor
  * ----------------------------------*/
-DataResource::DataResource(DataResource&& f)
-    :
-    Resource {},
-fileData {std::move(f.fileData)}
+DataResource::DataResource(DataResource&& f) :
+    Resource{},
+    fileData{std::move(f.fileData)}
 {
     pData = &fileData[0];
     reassign_base_members();
