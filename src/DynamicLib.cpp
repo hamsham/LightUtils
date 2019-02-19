@@ -144,7 +144,7 @@ int DynamicLib::load(const char* libPath) noexcept
     }
 
     #ifdef LS_OS_WINDOWS
-        HMODULE pHandle = LoadLibraryA(libPath);
+        void* pHandle = (void*)LoadLibraryA(libPath);
     #else
         void* pHandle = dlopen(libPath, RTLD_NOW | RTLD_LOCAL);
     #endif
@@ -177,7 +177,7 @@ void DynamicLib::unload() noexcept
     }
 
     #ifdef LS_OS_WINDOWS
-        FreeLibrary(mLibHandle);
+        FreeLibrary((HMODULE)mLibHandle);
     #else
         dlclose(mHandle);
     #endif
