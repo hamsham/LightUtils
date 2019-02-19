@@ -177,7 +177,7 @@ void DynamicLib::unload() noexcept
     }
 
     #ifdef LS_OS_WINDOWS
-        FreeLibrary((HMODULE)mLibHandle);
+        FreeLibrary((HMODULE)mHandle);
     #else
         dlclose(mHandle);
     #endif
