@@ -27,7 +27,7 @@ enum
 };
 #endif /* DEBUG */
 
-static const unsigned int MAX_THREADS = 8;
+static const unsigned int MAX_THREADS = 4;
 
 
 
