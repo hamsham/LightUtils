@@ -16,9 +16,9 @@
 
 
 
-#if 0
+#if 1
 enum {
-    MAX_RAND_NUMS = 65535
+    MAX_RAND_NUMS = 12345678
 };
 #else
 enum
@@ -27,7 +27,7 @@ enum
 };
 #endif /* DEBUG */
 
-static const unsigned int MAX_THREADS = 8;
+static const unsigned int MAX_THREADS = 16;
 
 
 
@@ -82,8 +82,8 @@ int main(void)
         &ls::utils::sort_quick<int>,
         &quick_sort_2,
         &ls::utils::sort_quick_iterative<int>,
-        &quick_sort_ref
-        //&shear_sort_parallel<int>
+        &quick_sort_ref,
+        &shear_sort_parallel<int>
     };
 
     const char* testNames[] = {
@@ -96,8 +96,8 @@ int main(void)
         "Quick Sort (recursive)",
         "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
-        "Quick Sort-Reference"
-        //"Shear Sort (Parallel)"
+        "Quick Sort-Reference",
+        "Shear Sort (Parallel)"
     };
 
     int numTests = sizeof(testNames) / sizeof(char*);
@@ -137,7 +137,7 @@ void gen_rand_nums(int* const nums, long count)
 -----------------------------------------------------------------------------*/
 int bench_sorts(
     int numTests,
-    void (* pTests[])(int* const, long),
+    void (*pTests[])(int* const, long),
     const char* const* testNames
 )
 {
@@ -363,12 +363,13 @@ long int_sqrt(long x)
 
 float fast_log2(float n)
 {
-    long* exp;
-    long x;
-    long log2;
+    static_assert(sizeof(int) == sizeof(float), "Failed test for data-type aliasing");
+    int* exp;
+    int x;
+    int log2;
     float ret;
 
-    exp = (long*)&n;
+    exp = (int*)&n;
     x = *exp;
 
     log2 = ((x >> 23) & 255) - 128;
@@ -600,7 +601,7 @@ void _shear_sort_impl(const ShearArgs<data_type> args)
      * Calculate the total number of times needed to iterate over each row &
      * column
      */
-    long totalPhases = 2 * (long)fast_log(count) + 1;
+    long totalPhases = 2l * (long)fast_log(count) + 1l;
 
     /*
      * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
@@ -623,17 +624,22 @@ void _shear_sort_impl(const ShearArgs<data_type> args)
      */
     long numFullRows = count / numTotalCols;
 
+    /*
+     * Count of the elements in a square matrix
+     */
+    long numSquared = numFullRows*numTotalCols;
+
     #if 0
     if (!args.threadId)
     {
-        printf("\nThread Count:   %d", MAX_THREADS);
+        printf("\nThread Count:   %ld", MAX_THREADS);
         printf("\nSortable Nums:  %ld", count);
         printf("\nTotal Phases:   %ld", totalPhases);
-        printf("\nN X N Dimens:   %ld", numTotalCols);
-        printf("\nRemaining Nums: %ld", numFullCols);
+        printf("\nN x N Dimens:   %ld", numTotalCols);
+        printf("\nN x X Count:    %ld", numSquared);
         printf("\nTotal Rows:     %ld", numTotalRows);
         printf("\nFull Rows:      %ld", numFullRows);
-        printf("\nFinal Row:      %ld\n", numFullCols);
+        printf("\nFinal Row:      %ld\n", numFinalCol);
     }
     #endif
 
@@ -684,45 +690,49 @@ void _shear_sort_impl(const ShearArgs<data_type> args)
          * sorting rows to sorting columns).
          */
         args.numPhases->fetch_add(1, std::memory_order_relaxed);
-        while (args.numPhases->load(std::memory_order_relaxed) < (unsigned)(phase+1)*MAX_THREADS);
-
         if ((phase+1) == totalPhases)
         {
             break;
         }
+
+        while (args.numPhases->load(std::memory_order_relaxed) < (unsigned)(phase+1)*MAX_THREADS);
+    }
+
+    /*
+     * Ensure all threads have finished their initial sorting.
+     */
+    args.numFinished->fetch_add(1, std::memory_order_relaxed);
+    while (args.numFinished->load(std::memory_order_relaxed) < MAX_THREADS)
+    {
     }
 
     /*
      * The traditional shear-sort algorithm contains alternating rows of
-     * increasing and decreasing values. Use one final check to see if we need
-     * to re-sort any rows.
-     * Don't sort the last row just yet (see comment below).
+     * increasing and decreasing values. Use one final sort to re-order the
+     * final rows.
      */
-    for (i = (args.threadId*2)+1; i < numFullRows; i += 2*MAX_THREADS)
-    {
-        const long offset = i * numTotalCols;
+    const long offsetIncrement = numTotalCols*MAX_THREADS*2l;
 
-        //if (nums[offset] > nums[offset+(numTotalCols-1)])
+    for (i = (args.threadId*2*numTotalCols); i < numSquared; i += offsetIncrement)
+    {
+        const long offset = i;
+        long numsToSort = numTotalCols * 2;
+
+        /*
+         * ensure the last row gets sorted with a full row
+         */
+        if (i+numsToSort >= numSquared)
         {
-            //printf("%ld\n", i);
-            shear_sort_lt<data_type, LessComparator>(nums, numTotalCols, offset, 1);
+            numsToSort = count - i;
         }
+
+        shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1);
     }
 
     /*
-     * The last thread that finishes needs to sort the last two rows due to
-     * the fact we're sorting an MxN+R matrix, where R represents the extra
-     * values. The first thread to reach this point can do the sorting.
+     * Indicate that the sort has completed.
      */
-    if (args.numFinished->fetch_add(1, std::memory_order_relaxed) == args.numThreads-1)
-    {
-        shear_sort_lt<data_type, LessComparator>(nums, numTotalCols+numFullCols, numTotalCols*(numFullRows-1), 1);
-
-        /*
-         * Let the other threads know they can exit.
-         */
-        args.numFinished->fetch_add(1, std::memory_order_relaxed);
-    }
+    args.numFinished->fetch_add(1, std::memory_order_relaxed);
 }
 
 
@@ -756,7 +766,7 @@ void shear_sort_parallel(data_type* const nums, long count)
     /*
      * Sync
      */
-    while (numFinished.load(std::memory_order_relaxed) <= MAX_THREADS);
+    while (numFinished.load(std::memory_order_acquire) < MAX_THREADS*2);
 
     #if 0
     for (long i = 0, j = 0; i < count; ++i)

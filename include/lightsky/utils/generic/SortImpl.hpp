@@ -20,7 +20,7 @@ namespace impl
  * Insertion sort that's meant to be used specifically with a shell sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_shell_insert(data_type* const items, const long count, const long increment)
+void sort_shell_insert(data_type* const items, const long count, const long increment) noexcept
 {
     constexpr Comparator cmp;
 
@@ -47,7 +47,7 @@ void sort_shell_insert(data_type* const items, const long count, const long incr
  * Recursive Merge Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_merge_impl(data_type* const items, data_type* const temp, long left, long right)
+void sort_merge_impl(data_type* const items, data_type* const temp, long left, long right) noexcept
 {
     if (right-left < 1)
     {
@@ -91,7 +91,7 @@ void sort_merge_impl(data_type* const items, data_type* const temp, long left, l
  * Quick Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void sort_quick_impl(data_type* const items, const long l, const long r)
+inline void sort_quick_impl(data_type* const items, const long l, const long r) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
@@ -142,7 +142,7 @@ inline void sort_quick_impl(data_type* const items, const long l, const long r)
  * Quick Sort Partitioning
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline long sort_quick_partition(data_type* const items, const long l, const long r)
+inline long sort_quick_partition(data_type* const items, const long l, const long r) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
@@ -181,6 +181,269 @@ inline long sort_quick_partition(data_type* const items, const long l, const lon
 
 
 
+/*-----------------------------------------------------------------------------
+ * Threaded Shear Sort Implementation
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Integral nearest-square-root
+-------------------------------------*/
+inline long int_sqrt(long x) noexcept
+{
+    long i, j;
+
+    if (x < 2)
+    {
+        x = -(x > 0) & x;
+    }
+    else
+    {
+        i = int_sqrt(x >> 2) << 1;
+        j = i + 1;
+        x = ((j * j) > x) ? i : j;
+    }
+
+    return x;
+}
+
+
+
+/*-------------------------------------
+ * fast, approximate log-base 2
+-------------------------------------*/
+inline float fast_log2(float n) noexcept
+{
+    static_assert(sizeof(int) == sizeof(float), "Failed test for data-type aliasing");
+    int* exp;
+    int x;
+    int log2;
+    float ret;
+
+    exp = (int*)&n;
+    x = *exp;
+
+    log2 = ((x >> 23) & 255) - 128;
+
+    x &= ~(255 << 23);
+    x += 127 << 23;
+
+    *exp = x;
+    ret = ((-1.f / 3.f) * n + 2.f) * n - 2.f / 3.f;
+
+    return ret + log2;
+}
+
+
+
+/*-------------------------------------
+ * fast, approximate ln
+-------------------------------------*/
+inline float fast_log(float n) noexcept
+{
+    return fast_log2(n) * 0.693147181f; /* ln( 2 ) */
+}
+
+
+
+/*-------------------------------------
+ * shear-sort partitioning for less-than comparison
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+long shear_partition_lt(data_type* items, long l, long r, long offset, long stride) noexcept
+{
+    constexpr Comparator cmp;
+    data_type temp;
+    data_type pivot;
+    long i;
+    long i0;
+    long mid = (l + r) / 2;
+
+    long mid0 = offset+(mid*stride);
+    long l0 = offset+(l*stride);
+
+    temp = items[mid0];
+    items[mid0] = items[l0];
+    items[l0] = temp;
+
+    pivot = items[l0];
+    mid = l;
+    i = l + 1;
+
+    i0 = offset+(i*stride);
+    mid0 = offset+(mid*stride);
+
+    while (i <= r)
+    {
+        if (cmp(items[i0], pivot))
+        {
+            ++mid;
+            mid0 = offset+(mid*stride);
+
+            temp = items[i0];
+            items[i0] = items[mid0];
+            items[mid0] = temp;
+        }
+
+        ++i;
+        i0 = offset+(i*stride);
+    }
+
+    temp = items[l0];
+    items[l0] = items[mid0];
+    items[mid0] = temp;
+
+    return mid;
+}
+
+
+
+/*-------------------------------------
+ * shear-sort with less-than comparison
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+void shear_sort_lt(data_type* const items, long count, long offset, long stride) noexcept
+{
+    long stack[64];
+    long mid;
+    long space = 0;
+    long l = 0;
+    long r = count - 1;
+
+    while (1)
+    {
+        if (l < r)
+        {
+            mid = shear_partition_lt<data_type, Comparator>(items, l, r, offset, stride);
+
+            if (mid < (l + r) / 2)
+            {
+                stack[space] = mid + 1;
+                stack[space + 1] = r;
+                r = mid - 1;
+            }
+            else
+            {
+                stack[space] = l;
+                stack[space + 1] = mid - 1;
+                l = mid + 1;
+            }
+
+            space += 2;
+        }
+        else if (space > 0)
+        {
+            space -= 2;
+            l = stack[space];
+            r = stack[space + 1];
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * shear-sort partitioning for greater-than comparison
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
+long shear_partition_gt(data_type* items, long l, long r, long offset, long stride) noexcept
+{
+    constexpr Comparator cmp;
+    data_type temp;
+    data_type pivot;
+    long i;
+    long i0;
+    long mid = (l + r) / 2;
+
+    long mid0 = offset+(mid*stride);
+    long l0 = offset+(l*stride);
+
+    temp = items[mid0];
+    items[mid0] = items[l0];
+    items[l0] = temp;
+
+    pivot = items[l0];
+    mid = l;
+    i = l + 1;
+
+    i0 = offset+(i*stride);
+    mid0 = offset+(mid*stride);
+
+    while (i <= r)
+    {
+        if (cmp(items[i0], pivot))
+        {
+            ++mid;
+            mid0 = offset+(mid*stride);
+
+            temp = items[i0];
+            items[i0] = items[mid0];
+            items[mid0] = temp;
+        }
+
+        ++i;
+        i0 = offset+(i*stride);
+    }
+
+    temp = items[l0];
+    items[l0] = items[mid0];
+    items[mid0] = temp;
+
+    return mid;
+}
+
+
+
+/*-------------------------------------
+ * shear-sort with greater-than comparison
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
+void shear_sort_gt(data_type* const items, long count, long offset, long stride) noexcept
+{
+    long stack[64];
+    long mid;
+    long space = 0;
+    long l = 0;
+    long r = count - 1;
+
+    while (1)
+    {
+        if (l < r)
+        {
+            mid = shear_partition_gt<data_type, Comparator>(items, l, r, offset, stride);
+
+            if (mid < (l + r) / 2)
+            {
+                stack[space] = mid + 1;
+                stack[space + 1] = r;
+                r = mid - 1;
+            }
+            else
+            {
+                stack[space] = l;
+                stack[space + 1] = mid - 1;
+                l = mid + 1;
+            }
+
+            space += 2;
+        }
+        else if (space > 0)
+        {
+            space -= 2;
+            l = stack[space];
+            r = stack[space + 1];
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+
+
 } // end impl namespace
 } // end utils namespace
 
@@ -193,7 +456,7 @@ inline long sort_quick_partition(data_type* const items, const long l, const lon
  * Bubble Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_bubble(data_type* const items, long count)
+inline void utils::sort_bubble(data_type* const items, long count) noexcept
 {
     constexpr Comparator cmp;
 
@@ -217,7 +480,7 @@ inline void utils::sort_bubble(data_type* const items, long count)
  * Selection Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_selection(data_type* const items, long count)
+inline void utils::sort_selection(data_type* const items, long count) noexcept
 {
     constexpr Comparator cmp;
 
@@ -247,7 +510,7 @@ inline void utils::sort_selection(data_type* const items, long count)
  * Insertion Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_insertion(data_type* const items, long count)
+inline void utils::sort_insertion(data_type* const items, long count) noexcept
 {
     constexpr Comparator cmp;
 
@@ -272,7 +535,7 @@ inline void utils::sort_insertion(data_type* const items, long count)
  * Shell Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_shell(data_type* const items, long count)
+inline void utils::sort_shell(data_type* const items, long count) noexcept
 {
     for (long i = count >> 2; i > 4; i >>= 2)
     {
@@ -291,7 +554,7 @@ inline void utils::sort_shell(data_type* const items, long count)
  * Merge Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge(data_type* const items, long count)
+inline void utils::sort_merge(data_type* const items, long count) noexcept
 {
     ls::utils::Pointer<data_type[]> temp{new data_type[count]};
     impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count-1);
@@ -303,7 +566,7 @@ inline void utils::sort_merge(data_type* const items, long count)
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge_iterative(data_type* const items, long count)
+inline void utils::sort_merge_iterative(data_type* const items, long count) noexcept
 {
     constexpr Comparator cmp;
     long left, rght, rend;
@@ -376,7 +639,7 @@ inline void utils::sort_merge_iterative(data_type* const items, long count)
  * Quick Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_quick(data_type* const items, long count)
+inline void utils::sort_quick(data_type* const items, long count) noexcept
 {
     impl::sort_quick_impl<data_type, Comparator>(items, 0, count - 1);
 }
@@ -390,7 +653,7 @@ inline void utils::sort_quick(data_type* const items, long count)
  * https://kabas.online/tutor/sorting.html
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_quick_iterative(data_type* const items, long count)
+inline void utils::sort_quick_iterative(data_type* const items, long count) noexcept
 {
     long stack[CHAR_BIT*sizeof(long)];
     long mid;
@@ -439,6 +702,156 @@ inline void utils::sort_quick_iterative(data_type* const items, long count)
     }
 }
 
+
+
+/*-------------------------------------
+ * Shear Sort for parallel sorting
+-------------------------------------*/
+template <typename data_type, class LessComparator, class GreaterComparator>
+void utils::sort_sheared(
+    data_type* const items,
+    long count,
+    std::size_t numThreads,
+    std::size_t threadId,
+    std::atomic_size_t* numThreadsFinished,
+    std::atomic_size_t* numSortPhases) noexcept
+{
+    /*
+     * Attempt to sort the numbers as if they were an MxN matrix.
+     */
+    data_type* nums = items;
+    long i;
+    long phase;
+    long numSortable;
+
+    /*
+     * Calculate the total number of times needed to iterate over each row &
+     * column
+     */
+    long totalPhases = 2l * (long)impl::fast_log((float)count) + 1l;
+
+    /*
+     * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
+     * NxN matrix then sort the numFullCols values later.
+     */
+    long numTotalCols = impl::int_sqrt(count);
+
+    /*
+     * How many overall rows exist in both the largest and smallest columns.
+     */
+    long numTotalRows = (count/numTotalCols) + ((count % numTotalCols) != 0);
+
+    /*
+     * Retrieve the number of elements in the final row.
+     */
+    long numFullCols = count % numTotalCols;
+
+    /*
+     * How many rows exist in only the smallest columns
+     */
+    long numFullRows = count / numTotalCols;
+
+    /*
+     * Count of the elements in a square matrix
+     */
+    long numSquared = numFullRows*numTotalCols;
+
+    /*
+     * A phase counts as a single pass over the rows or  columns of the MxM
+     * matrix. The upper-bound on the number of phases is equal to 2*ln(N)+1,
+     * where M is equal to the number of total input values.
+     */
+    for (phase = 0; phase < totalPhases; ++phase)
+    {
+        if (phase & 1)
+        {
+            /*
+             * When the phase is even, sort all columns of the matrix.
+             */
+            for (i = threadId; i < numTotalCols; i += numThreads)
+            {
+                numSortable = (i < numFullCols) ? numTotalRows : numFullRows;
+                impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i, numTotalCols);
+            }
+        }
+        else
+        {
+            /*
+             * When the phase is odd, sort all rows of the matrix.
+             */
+            for (i = threadId; i < numFullRows; i += numThreads)
+            {
+                numSortable = (i < numFullRows) ? numTotalCols : (numTotalCols+numFullCols);
+
+                /*
+                 * The original shear sort algorithm sorts alternating rows
+                 * from smallest to largest, then largest to smallest.
+                 */
+                if (i & 1)
+                {
+                    impl::shear_sort_gt<data_type, GreaterComparator>(nums, numSortable, i*numTotalCols, 1);
+                }
+                else
+                {
+                    impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i*numTotalCols, 1);
+                }
+            }
+        }
+
+        /*
+         * Sync all threads before moving onto a new phase (i.e., switch from
+         * sorting rows to sorting columns).
+         */
+        numSortPhases->fetch_add(1, std::memory_order_relaxed);
+        if ((phase+1) == totalPhases)
+        {
+            break;
+        }
+
+        while (numSortPhases->load(std::memory_order_relaxed) < (unsigned)(phase+1)*numThreads);
+    }
+
+    /*
+     * Ensure all threads have finished their initial sorting.
+     */
+    numThreadsFinished->fetch_add(1, std::memory_order_relaxed);
+    while (numThreadsFinished->load(std::memory_order_relaxed) < numThreads)
+    {
+    }
+
+    /*
+     * The traditional shear-sort algorithm contains alternating rows of
+     * increasing and decreasing values. Use one final sort to re-order the
+     * final rows.
+     */
+    const long offsetIncrement = numTotalCols*numThreads*2l;
+
+    for (i = (threadId*2*numTotalCols); i < numSquared; i += offsetIncrement)
+    {
+        const long offset = i;
+        long numsToSort = numTotalCols * 2;
+
+        /*
+         * ensure the last row gets sorted with a full row
+         */
+        if (i+numsToSort >= numSquared)
+        {
+            numsToSort = count - i;
+        }
+
+        impl::shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1);
+    }
+
+    /*
+     * Indicate that the sort has completed.
+     */
+    numThreadsFinished->fetch_add(1, std::memory_order_relaxed);
+
+    /*
+     * Sync
+     */
+    while (numThreadsFinished->load(std::memory_order_acquire) < numThreads*2);
+}
 
 
 
