@@ -732,7 +732,7 @@ void utils::sort_sheared(
 
     /*
      * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
-     * NxN matrix then sort the numFullCols values later.
+     * NxN matrix then sort the numFinalCol values later.
      */
     long numTotalCols = impl::int_sqrt(count);
 
@@ -744,7 +744,7 @@ void utils::sort_sheared(
     /*
      * Retrieve the number of elements in the final row.
      */
-    long numFullCols = count % numTotalCols;
+    long numFinalCol = count % numTotalCols;
 
     /*
      * How many rows exist in only the smallest columns
@@ -755,6 +755,25 @@ void utils::sort_sheared(
      * Count of the elements in a square matrix
      */
     long numSquared = numFullRows*numTotalCols;
+
+    /*
+     * Increment of which rows should be modified in the last sorting phase.
+     */
+    long offsetIncrement = numTotalCols * numThreads * 2l;
+
+    #if 0
+    if (!threadId)
+    {
+        printf("\nThread Count:   %zd", numThreads);
+        printf("\nSortable Nums:  %ld", count);
+        printf("\nTotal Phases:   %ld", totalPhases);
+        printf("\nN x N Dimens:   %ld", numTotalCols);
+        printf("\nN x X Count:    %ld", numSquared);
+        printf("\nTotal Rows:     %ld", numTotalRows);
+        printf("\nFull Rows:      %ld", numFullRows);
+        printf("\nFinal Row:      %ld\n", numFinalCol);
+    }
+    #endif
 
     /*
      * A phase counts as a single pass over the rows or  columns of the MxM
@@ -770,7 +789,7 @@ void utils::sort_sheared(
              */
             for (i = threadId; i < numTotalCols; i += numThreads)
             {
-                numSortable = (i < numFullCols) ? numTotalRows : numFullRows;
+                numSortable = (i < numFinalCol) ? numTotalRows : numFullRows;
                 impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i, numTotalCols);
             }
         }
@@ -781,7 +800,7 @@ void utils::sort_sheared(
              */
             for (i = threadId; i < numFullRows; i += numThreads)
             {
-                numSortable = (i < numFullRows) ? numTotalCols : (numTotalCols+numFullCols);
+                numSortable = (i < numFullRows) ? numTotalCols : (numTotalCols+numFinalCol);
 
                 /*
                  * The original shear sort algorithm sorts alternating rows
@@ -824,19 +843,21 @@ void utils::sort_sheared(
      * increasing and decreasing values. Use one final sort to re-order the
      * final rows.
      */
-    const long offsetIncrement = numTotalCols*numThreads*2l;
-
-    for (i = (threadId*2*numTotalCols); i < numSquared; i += offsetIncrement)
+    for (i = (threadId*2l+1l)*numTotalCols; i <= numSquared; i += offsetIncrement)
     {
-        const long offset = i;
-        long numsToSort = numTotalCols * 2;
+        long offset = i;
 
-        /*
-         * ensure the last row gets sorted with a full row
-         */
-        if (i+numsToSort >= numSquared)
+        /* ensure the last row gets sorted with a full row */
+        long numsToSort = numTotalCols;
+
+        if (i+numTotalCols >= numSquared)
         {
-            numsToSort = count - i;
+            if (count-i < numTotalCols)
+            {
+                offset -= numTotalCols;
+            }
+
+            numsToSort = count-offset;
         }
 
         impl::shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1);
@@ -851,6 +872,18 @@ void utils::sort_sheared(
      * Sync
      */
     while (numThreadsFinished->load(std::memory_order_acquire) < numThreads*2);
+
+    #if 0
+    for (long k = 0, j = 0; k < count; ++k)
+    {
+        if (!(k % impl::int_sqrt(count)))
+        {
+            printf("\n%ld: ", j++);
+        }
+
+        printf("%d ", nums[k]);
+    }
+    #endif
 }
 
 

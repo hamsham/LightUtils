@@ -18,7 +18,7 @@
 
 #if 1
 enum {
-    MAX_RAND_NUMS = 12345678
+    MAX_RAND_NUMS = 1234567
 };
 #else
 enum
@@ -27,7 +27,7 @@ enum
 };
 #endif /* DEBUG */
 
-static const unsigned int MAX_THREADS = 16;
+static const unsigned int MAX_THREADS = 8;
 
 
 
@@ -41,6 +41,7 @@ long is_sorted(int* const nums, long count);
 int bench_sorts(
     int numTests,
     void (* pTests[])(int* const nums, long count),
+    void (* pThreadedTest)(int* const items, long count, std::size_t numThreads, std::size_t threadId, std::atomic_size_t* numThreadsFinished, std::atomic_size_t* numSortPhases),
     const char* const* testNames
 );
 
@@ -57,10 +58,6 @@ void quick_sort_2(int* const nums, long count);
 
 // Quick Sort - Reference Implementation
 void quick_sort_ref(int* const nums, long count);
-
-// Quick Sort - Reference Implementation
-template <typename data_type, class LessComparator = ls::utils::IsLess<data_type>, class GreaterComparator = ls::utils::IsGreater<data_type>>
-void shear_sort_parallel(data_type* const nums, long count);
 
 // Function to populate a list of random numbers
 void gen_rand_nums(int* const nums, long count);
@@ -83,7 +80,7 @@ int main(void)
         &quick_sort_2,
         &ls::utils::sort_quick_iterative<int>,
         &quick_sort_ref,
-        &shear_sort_parallel<int>
+        nullptr
     };
 
     const char* testNames[] = {
@@ -104,7 +101,7 @@ int main(void)
 
     srand(time(nullptr));
 
-    if (!bench_sorts(numTests, pTests, testNames))
+    if (!bench_sorts(numTests, pTests, &ls::utils::sort_sheared<int>, testNames))
     {
         fprintf(stderr, "An error occurred while running sorting tests.\n");
         return -1;
@@ -138,6 +135,7 @@ void gen_rand_nums(int* const nums, long count)
 int bench_sorts(
     int numTests,
     void (*pTests[])(int* const, long),
+    void (* pThreadedTest)(int* const, long, std::size_t, std::size_t, std::atomic_size_t*, std::atomic_size_t*),
     const char* const* testNames
 )
 {
@@ -167,7 +165,20 @@ int bench_sorts(
         // Time the current sort method
         ticks.start(); // start time
 
-        (*pTests[i])(nums, MAX_RAND_NUMS); // pointer to the sort function
+        if (pTests[i])
+        {
+            (*pTests[i])(nums, MAX_RAND_NUMS); // pointer to the sort function
+        }
+        else
+        {
+            std::atomic_size_t numThreadsFinished{0};
+            std::atomic_size_t numSortPhases{0};
+            for (unsigned t = 1; t < MAX_THREADS; ++t)
+            {
+                std::thread{pThreadedTest, nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases}.detach();
+            }
+            pThreadedTest(nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases);
+        }
 
         ticks.tick(); // stop time
 
@@ -337,447 +348,3 @@ void quick_sort_ref(int* const nums, long count)
 {
     qsort(nums, (size_t)count, sizeof(int), &qsortcompare);
 }
-
-
-
-/*-----------------------------------------------------------------------------
- * Threaded Shear Sort Implementation
------------------------------------------------------------------------------*/
-long int_sqrt(long x)
-{
-    long i, j;
-
-    if (x < 2)
-    {
-        x = -(x > 0) & x;
-    }
-    else
-    {
-        i = int_sqrt(x >> 2) << 1;
-        j = i + 1;
-        x = ((j * j) > x) ? i : j;
-    }
-
-    return x;
-}
-
-float fast_log2(float n)
-{
-    static_assert(sizeof(int) == sizeof(float), "Failed test for data-type aliasing");
-    int* exp;
-    int x;
-    int log2;
-    float ret;
-
-    exp = (int*)&n;
-    x = *exp;
-
-    log2 = ((x >> 23) & 255) - 128;
-
-    x &= ~(255 << 23);
-    x += 127 << 23;
-
-    *exp = x;
-    ret = ((-1.f / 3.f) * n + 2.f) * n - 2.f / 3.f;
-
-    return ret + log2;
-}
-
-float fast_log(float n)
-{
-    return fast_log2(n) * 0.693147181f; /* ln( 2 ) */
-}
-
-template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-long shear_partition_lt(data_type* nums, long l, long r, long offset, long stride)
-{
-    constexpr Comparator cmp;
-    data_type temp;
-    long pivot;
-    long i;
-    long i0;
-    long mid = (l + r) / 2;
-
-    long mid0 = offset+(mid*stride);
-    long l0 = offset+(l*stride);
-
-    temp = nums[mid0];
-    nums[mid0] = nums[l0];
-    nums[l0] = temp;
-
-    pivot = nums[l0];
-    mid = l;
-    i = l + 1;
-
-    i0 = offset+(i*stride);
-    mid0 = offset+(mid*stride);
-
-    while (i <= r)
-    {
-        if (cmp(nums[i0], pivot))
-        {
-            ++mid;
-            mid0 = offset+(mid*stride);
-
-            temp = nums[i0];
-            nums[i0] = nums[mid0];
-            nums[mid0] = temp;
-        }
-
-        ++i;
-        i0 = offset+(i*stride);
-    }
-
-    temp = nums[l0];
-    nums[l0] = nums[mid0];
-    nums[mid0] = temp;
-
-    return mid;
-}
-
-/* Insertion sort that's meant to be used specifically with a shear sort */
-template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-void shear_sort_lt(data_type* const nums, long count, long offset, long stride)
-{
-    long stack[64];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
-
-    while (1)
-    {
-        if (l < r)
-        {
-            mid = shear_partition_lt<data_type, Comparator>(nums, l, r, offset, stride);
-
-            if (mid < (l + r) / 2)
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
-
-            space += 2;
-        }
-        else if (space > 0)
-        {
-            space -= 2;
-            l = stack[space];
-            r = stack[space + 1];
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
-long shear_partition_gt(data_type* nums, long l, long r, long offset, long stride)
-{
-    constexpr Comparator cmp;
-    data_type temp;
-    long pivot;
-    long i;
-    long i0;
-    long mid = (l + r) / 2;
-
-    long mid0 = offset+(mid*stride);
-    long l0 = offset+(l*stride);
-
-    temp = nums[mid0];
-    nums[mid0] = nums[l0];
-    nums[l0] = temp;
-
-    pivot = nums[l0];
-    mid = l;
-    i = l + 1;
-
-    i0 = offset+(i*stride);
-    mid0 = offset+(mid*stride);
-
-    while (i <= r)
-    {
-        if (cmp(nums[i0], pivot))
-        {
-            ++mid;
-            mid0 = offset+(mid*stride);
-
-            temp = nums[i0];
-            nums[i0] = nums[mid0];
-            nums[mid0] = temp;
-        }
-
-        ++i;
-        i0 = offset+(i*stride);
-    }
-
-    temp = nums[l0];
-    nums[l0] = nums[mid0];
-    nums[mid0] = temp;
-
-    return mid;
-}
-
-/* Insertion sort that's meant to be used specifically with a shear sort */
-template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
-void shear_sort_gt(data_type* const nums, long count, long offset, long stride)
-{
-    long stack[64];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
-
-    while (1)
-    {
-        if (l < r)
-        {
-            mid = shear_partition_gt<data_type, Comparator>(nums, l, r, offset, stride);
-
-            if (mid < (l + r) / 2)
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
-
-            space += 2;
-        }
-        else if (space > 0)
-        {
-            space -= 2;
-            l = stack[space];
-            r = stack[space + 1];
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-
-
-template <typename data_type>
-struct ShearArgs
-{
-    long threadId;
-    long count;
-    data_type* nums;
-    std::atomic_uint* numPhases;
-    std::atomic_uint* numFinished;
-    long numThreads;
-};
-
-
-
-template <typename data_type, class LessComparator = ls::utils::IsLess<data_type>, class GreaterComparator = ls::utils::IsGreater<data_type>>
-void _shear_sort_impl(const ShearArgs<data_type> args)
-{
-    /*
-     * Attempt to sort the numbers as if they were an MxN matrix.
-     */
-    long count = args.count;
-    data_type* nums = args.nums;
-    long i;
-    long phase;
-    long numSortable;
-
-    /*
-     * Calculate the total number of times needed to iterate over each row &
-     * column
-     */
-    long totalPhases = 2l * (long)fast_log(count) + 1l;
-
-    /*
-     * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
-     * NxN matrix then sort the numFullCols values later.
-     */
-    long numTotalCols = int_sqrt(count);
-
-    /*
-     * How many overall rows exist in both the largest and smallest columns.
-     */
-    long numTotalRows = (count/numTotalCols) + ((count % numTotalCols) != 0);
-
-    /*
-     * Retrieve the number of elements in the final row.
-     */
-    long numFullCols = count % numTotalCols;
-
-    /*
-     * How many rows exist in only the smallest columns
-     */
-    long numFullRows = count / numTotalCols;
-
-    /*
-     * Count of the elements in a square matrix
-     */
-    long numSquared = numFullRows*numTotalCols;
-
-    #if 0
-    if (!args.threadId)
-    {
-        printf("\nThread Count:   %ld", MAX_THREADS);
-        printf("\nSortable Nums:  %ld", count);
-        printf("\nTotal Phases:   %ld", totalPhases);
-        printf("\nN x N Dimens:   %ld", numTotalCols);
-        printf("\nN x X Count:    %ld", numSquared);
-        printf("\nTotal Rows:     %ld", numTotalRows);
-        printf("\nFull Rows:      %ld", numFullRows);
-        printf("\nFinal Row:      %ld\n", numFinalCol);
-    }
-    #endif
-
-    /*
-     * A phase counts as a single pass over the rows or  columns of the MxM
-     * matrix. The upper-bound on the number of phases is equal to 2*ln(N)+1,
-     * where M is equal to the number of total input values.
-     */
-    for (phase = 0; phase < totalPhases; ++phase)
-    {
-        if (phase & 1)
-        {
-            /*
-             * When the phase is even, sort all columns of the matrix.
-             */
-            for (i = args.threadId; i < numTotalCols; i += MAX_THREADS)
-            {
-                numSortable = (i < numFullCols) ? numTotalRows : numFullRows;
-                shear_sort_lt<data_type, LessComparator>(nums, numSortable, i, numTotalCols);
-            }
-        }
-        else
-        {
-            /*
-             * When the phase is odd, sort all rows of the matrix.
-             */
-            for (i = args.threadId; i < numFullRows; i += MAX_THREADS)
-            {
-                numSortable = (i < numFullRows) ? numTotalCols : (numTotalCols+numFullCols);
-
-                /*
-                 * The original shear sort algorithm sorts alternating rows
-                 * from smallest to largest, then largest to smallest.
-                 */
-                if (i & 1)
-                {
-                    shear_sort_gt<data_type, GreaterComparator>(nums, numSortable, i*numTotalCols, 1);
-                }
-                else
-                {
-                    shear_sort_lt<data_type, LessComparator>(nums, numSortable, i*numTotalCols, 1);
-                }
-            }
-        }
-
-        /*
-         * Sync all threads before moving onto a new phase (i.e., switch from
-         * sorting rows to sorting columns).
-         */
-        args.numPhases->fetch_add(1, std::memory_order_relaxed);
-        if ((phase+1) == totalPhases)
-        {
-            break;
-        }
-
-        while (args.numPhases->load(std::memory_order_relaxed) < (unsigned)(phase+1)*MAX_THREADS);
-    }
-
-    /*
-     * Ensure all threads have finished their initial sorting.
-     */
-    args.numFinished->fetch_add(1, std::memory_order_relaxed);
-    while (args.numFinished->load(std::memory_order_relaxed) < MAX_THREADS)
-    {
-    }
-
-    /*
-     * The traditional shear-sort algorithm contains alternating rows of
-     * increasing and decreasing values. Use one final sort to re-order the
-     * final rows.
-     */
-    const long offsetIncrement = numTotalCols*MAX_THREADS*2l;
-
-    for (i = (args.threadId*2*numTotalCols); i < numSquared; i += offsetIncrement)
-    {
-        const long offset = i;
-        long numsToSort = numTotalCols * 2;
-
-        /*
-         * ensure the last row gets sorted with a full row
-         */
-        if (i+numsToSort >= numSquared)
-        {
-            numsToSort = count - i;
-        }
-
-        shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1);
-    }
-
-    /*
-     * Indicate that the sort has completed.
-     */
-    args.numFinished->fetch_add(1, std::memory_order_relaxed);
-}
-
-
-
-template <typename data_type, class LessComparator, class GreaterComparator>
-void shear_sort_parallel(data_type* const nums, long count)
-{
-    struct ShearArgs<data_type> args[MAX_THREADS];
-    std::thread threads[MAX_THREADS];
-    std::atomic_uint numPhases{0};
-    std::atomic_uint numFinished{0};
-
-    for (long i = 0; i < (long)MAX_THREADS; ++i)
-    {
-        args[i].threadId = i;
-        args[i].count = count;
-        args[i].nums = nums;
-        args[i].numPhases = &numPhases;
-        args[i].numFinished = &numFinished;
-        args[i].numThreads = MAX_THREADS;
-
-        if (i > 0)
-        {
-            threads[i] = std::thread{&_shear_sort_impl<data_type, LessComparator, GreaterComparator>, args[i]};
-            threads[i].detach();
-        }
-    }
-
-    _shear_sort_impl<data_type, LessComparator, GreaterComparator>(args[0]);
-
-    /*
-     * Sync
-     */
-    while (numFinished.load(std::memory_order_acquire) < MAX_THREADS*2);
-
-    #if 0
-    for (long i = 0, j = 0; i < count; ++i)
-    {
-        if (!(i % int_sqrt(count)))
-        {
-            printf("\n%ld: ", j++);
-        }
-
-        printf("%d ", nums[i]);
-    }
-    #endif
-}
-
