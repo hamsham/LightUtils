@@ -23,21 +23,20 @@ namespace ls {
 void* utils::fast_memcpy(void* const dst, const void* const src, const std::size_t count)
 {
     #if defined(LS_ARCH_X86)
-        std::size_t       stragglers = count % sizeof(__m256i);
-        const std::size_t simdCount  = (count-stragglers)/sizeof(__m256i);
-        const __m256i*    simdSrc    = reinterpret_cast<const __m256i*>(src);
-        __m256i*          simdDst    = reinterpret_cast<__m256i*>(dst);
+        std::size_t    stragglers = count % sizeof(__m256i);
+        std::size_t    simdCount  = (count-stragglers)/sizeof(__m256i);
+        const __m256i* simdSrc    = reinterpret_cast<const __m256i*>(src);
+        __m256i*       simdDst    = reinterpret_cast<__m256i*>(dst);
 
         // Using stream intrinsics here is NOT OK because we need the cache for
         // reading "simdSrc."
-        if (simdCount)
+        while (simdCount --> 0)
         {
-            //LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdDst++, _mm256_loadu_si256(simdSrc++)))
-            LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++)))
+            _mm256_store_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
         }
 
-        const char* s = reinterpret_cast<const char*>(simdSrc);
-        char*       d = reinterpret_cast<char*>(simdDst);
+        const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
+        char*       d = reinterpret_cast<char*>(simdDst) - stragglers;
         while (stragglers --> 0)
         {
             *d++ = *s++;
@@ -53,8 +52,8 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
             vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), vld1q_u32(reinterpret_cast<const uint32_t*>(simdSrc++)));
         }
 
-        const char* s = reinterpret_cast<const char*>(simdSrc);
-        char*       d = reinterpret_cast<char*>(simdDst);
+        const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
+        char*       d = reinterpret_cast<char*>(simdDst) - stragglers;
         while (stragglers --> 0)
         {
             *d++ = *s++;
@@ -80,19 +79,19 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t count)
 {
     #if defined(LS_ARCH_X86)
-        std::size_t       stragglers   = count % sizeof(__m256i);
-        const std::size_t simdCount    = (count-stragglers)/sizeof(__m256i);
         const __m256i     simdFillByte = _mm256_set1_epi8(fillByte);
         __m256i*          simdTo       = reinterpret_cast<__m256i*>(dst);
+        std::size_t       stragglers   = count % sizeof(__m256i);
+        std::size_t       simdCount    = (count-stragglers)/sizeof(__m256i);
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
-        if (simdCount)
+        while (simdCount --> 0)
         {
-            LS_UTILS_LOOP_UNROLL_32(simdCount, _mm256_storeu_si256(simdTo++, simdFillByte))
+            _mm256_stream_si256(simdTo++, simdFillByte);
         }
 
-        char* to = reinterpret_cast<char*>(simdTo);
+        char* to = reinterpret_cast<char*>(dst) + count - stragglers;
         while (stragglers --> 0)
         {
             *to++ = fillByte;
@@ -109,14 +108,13 @@ void* utils::fast_memset(void* dst, const unsigned char fillByte, std::size_t co
             vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), vld1q_u32(fillByteU32x4));
         }
 
-        char* to = reinterpret_cast<char*>(simdTo);
+        char* to = reinterpret_cast<char*>(dst) + count - stragglers;
         while (stragglers --> 0)
         {
             *to++ = fillByte;
         }
     #else
         char* to = reinterpret_cast<char*>(dst);
-
         if (count)
         {
             LS_UTILS_LOOP_UNROLL_32(count, (*to++ = fillByte))
