@@ -47,13 +47,15 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Setup.h
     include/lightsky/utils/Sort.hpp
     include/lightsky/utils/generic/SortImpl.hpp
+    include/lightsky/utils/SpinLock.hpp
+    include/lightsky/utils/generic/SpinLockImpl.hpp
     include/lightsky/utils/StringUtils.h
     include/lightsky/utils/Time.hpp
     include/lightsky/utils/Tuple.h
     include/lightsky/utils/Types.hpp
     include/lightsky/utils/Utils.h
     include/lightsky/utils/WorkerThread.hpp
-)
+    include/lightsky/utils/generic/WorkerThreadImpl.hpp)
 
 
 
