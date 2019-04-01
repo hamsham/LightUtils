@@ -375,8 +375,10 @@ template <class WorkerTaskType>
 WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
     Worker<WorkerTaskType>{},
     mExecCond{},
-    mThread{&WorkerThread::thread_loop, this}
+    mThread{}
 {
+    mThread = std::thread{&WorkerThread::thread_loop, this};
+
     // let the thread's loop run until it hits the condition variable
     std::this_thread::yield();
 }

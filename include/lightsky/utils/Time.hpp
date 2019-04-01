@@ -5,7 +5,7 @@
 #include <chrono>
 #include <ctime> // localtime, std::tm
 
-#include "lightsky/utils/WorkerThread.hpp" // SpinLock
+#include "lightsky/utils/SpinLock.hpp"
 
 
 namespace ls
