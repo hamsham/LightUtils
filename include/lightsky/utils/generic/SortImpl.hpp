@@ -20,14 +20,14 @@ namespace impl
  * Insertion sort that's meant to be used specifically with a shell sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_shell_insert(data_type* const items, const long count, const long increment) noexcept
+void sort_shell_insert(data_type* const items, const size_t count, const size_t increment) noexcept
 {
     constexpr Comparator cmp;
 
-    for (long i = increment; i < count; i += increment)
+    for (size_t i = increment; i < count; i += increment)
     {
-        long j = i;
-        long k = j-increment;
+        size_t j = i;
+        size_t k = j-increment;
 
         while ((j >= increment) && cmp(items[j], items[k]))
         {
@@ -47,7 +47,7 @@ void sort_shell_insert(data_type* const items, const long count, const long incr
  * Recursive Merge Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_merge_impl(data_type* const items, data_type* const temp, long left, long right) noexcept
+void sort_merge_impl(data_type* const items, data_type* const temp, size_t left, size_t right) noexcept
 {
     if (right-left < 1)
     {
@@ -55,9 +55,9 @@ void sort_merge_impl(data_type* const items, data_type* const temp, long left, l
     }
 
     constexpr Comparator cmp;
-    long i, j, k;
-    const long mid = (left+right) >> 1;
-    const long rightMid = right-mid;
+    size_t i, j, k;
+    const size_t mid = (left+right) >> 1;
+    const size_t rightMid = right-mid;
 
     sort_merge_impl<data_type, Comparator>(items, temp, left, mid);
     sort_merge_impl<data_type, Comparator>(items, temp, mid+1, right);
@@ -91,7 +91,7 @@ void sort_merge_impl(data_type* const items, data_type* const temp, long left, l
  * Quick Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void sort_quick_impl(data_type* const items, const long l, const long r) noexcept
+inline void sort_quick_impl(data_type* const items, const size_t l, const size_t r) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
@@ -101,21 +101,21 @@ inline void sort_quick_impl(data_type* const items, const long l, const long r) 
         return;
     }
 
-    if (r-l < (long)(CHAR_BIT*sizeof(long)))
+    if (r-l < (size_t)(CHAR_BIT*sizeof(size_t)))
     {
         ls::utils::sort_insertion<data_type, Comparator>(items + l, (r-l) + 1);
         return;
     }
 
-    //const long pivotIndex = (l+r)/2l;
-    const long pivotIndex = (l+r) >> 1l;
+    //const size_t pivotIndex = (l+r)/2l;
+    const size_t pivotIndex = (l+r) >> 1l;
 
     temp = items[pivotIndex];
     items[pivotIndex] = items[r];
     items[r] = temp;
 
-    long m = l - 1;
-    long n = r;
+    size_t m = l - 1;
+    size_t n = r;
     const data_type pivot = items[r];
 
     do
@@ -142,13 +142,13 @@ inline void sort_quick_impl(data_type* const items, const long l, const long r) 
  * Quick Sort Partitioning
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline long sort_quick_partition(data_type* const items, const long l, const long r) noexcept
+inline size_t sort_quick_partition(data_type* const items, const size_t l, const size_t r) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
     data_type pivot;
-    long i;
-    long mid = (l + r) >> 1;
+    size_t i;
+    size_t mid = (l + r) >> 1;
 
     temp = items[mid];
     items[mid] = items[l];
@@ -187,9 +187,9 @@ inline long sort_quick_partition(data_type* const items, const long l, const lon
 /*-------------------------------------
  * Integral nearest-square-root
 -------------------------------------*/
-inline long int_sqrt(long x) noexcept
+inline size_t int_sqrt(size_t x) noexcept
 {
-    long i, j;
+    size_t i, j;
 
     if (x < 2)
     {
@@ -248,17 +248,17 @@ inline float fast_log(float n) noexcept
  * shear-sort partitioning for less-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-long shear_partition_lt(data_type* items, long l, long r, long offset, long stride) noexcept
+size_t shear_partition_lt(data_type* items, size_t l, size_t r, size_t offset, size_t stride) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
     data_type pivot;
-    long i;
-    long i0;
-    long mid = (l + r) / 2;
+    size_t i;
+    size_t i0;
+    size_t mid = (l + r) / 2;
 
-    long mid0 = offset+(mid*stride);
-    long l0 = offset+(l*stride);
+    size_t mid0 = offset+(mid*stride);
+    size_t l0 = offset+(l*stride);
 
     temp = items[mid0];
     items[mid0] = items[l0];
@@ -300,13 +300,13 @@ long shear_partition_lt(data_type* items, long l, long r, long offset, long stri
  * shear-sort with less-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-void shear_sort_lt(data_type* const items, long count, long offset, long stride) noexcept
+void shear_sort_lt(data_type* const items, size_t count, size_t offset, size_t stride) noexcept
 {
-    long stack[64];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
+    size_t stack[64];
+    size_t mid;
+    size_t space = 0;
+    size_t l = 0;
+    size_t r = count - 1;
 
     while (1)
     {
@@ -348,17 +348,17 @@ void shear_sort_lt(data_type* const items, long count, long offset, long stride)
  * shear-sort partitioning for greater-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
-long shear_partition_gt(data_type* items, long l, long r, long offset, long stride) noexcept
+size_t shear_partition_gt(data_type* items, size_t l, size_t r, size_t offset, size_t stride) noexcept
 {
     constexpr Comparator cmp;
     data_type temp;
     data_type pivot;
-    long i;
-    long i0;
-    long mid = (l + r) / 2;
+    size_t i;
+    size_t i0;
+    size_t mid = (l + r) / 2;
 
-    long mid0 = offset+(mid*stride);
-    long l0 = offset+(l*stride);
+    size_t mid0 = offset+(mid*stride);
+    size_t l0 = offset+(l*stride);
 
     temp = items[mid0];
     items[mid0] = items[l0];
@@ -400,13 +400,13 @@ long shear_partition_gt(data_type* items, long l, long r, long offset, long stri
  * shear-sort with greater-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsGreater<data_type>>
-void shear_sort_gt(data_type* const items, long count, long offset, long stride) noexcept
+void shear_sort_gt(data_type* const items, size_t count, size_t offset, size_t stride) noexcept
 {
-    long stack[64];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
+    size_t stack[64];
+    size_t mid;
+    size_t space = 0;
+    size_t l = 0;
+    size_t r = count - 1;
 
     while (1)
     {
@@ -456,13 +456,13 @@ void shear_sort_gt(data_type* const items, long count, long offset, long stride)
  * Bubble Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_bubble(data_type* const items, long count) noexcept
+inline void utils::sort_bubble(data_type* const items, size_t count) noexcept
 {
     constexpr Comparator cmp;
 
-    for (long i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
-        for (long j = count-1; j > i; --j)
+        for (size_t j = count-1; j > i; --j)
         {
             if (cmp(items[j], items[i]))
             {
@@ -480,15 +480,15 @@ inline void utils::sort_bubble(data_type* const items, long count) noexcept
  * Selection Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_selection(data_type* const items, long count) noexcept
+inline void utils::sort_selection(data_type* const items, size_t count) noexcept
 {
     constexpr Comparator cmp;
 
-    for (long i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
-        long minIdx = i;
+        size_t minIdx = i;
 
-        for (long j = count-1; j > i; --j)
+        for (size_t j = count-1; j > i; --j)
         {
             if (cmp(items[j], items[minIdx]))
             {
@@ -510,14 +510,14 @@ inline void utils::sort_selection(data_type* const items, long count) noexcept
  * Insertion Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_insertion(data_type* const items, long count) noexcept
+inline void utils::sort_insertion(data_type* const items, size_t count) noexcept
 {
     constexpr Comparator cmp;
 
-    for (long i = 1; i < count; ++i)
+    for (size_t i = 1; i < count; ++i)
     {
         const data_type x = items[i];
-        long j = i - 1;
+        size_t j = i - 1;
 
         while (j >= 0 && cmp(x, items[j]))
         {
@@ -535,11 +535,11 @@ inline void utils::sort_insertion(data_type* const items, long count) noexcept
  * Shell Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_shell(data_type* const items, long count) noexcept
+inline void utils::sort_shell(data_type* const items, size_t count) noexcept
 {
-    for (long i = count >> 2; i > 4; i >>= 2)
+    for (size_t i = count >> 2; i > 4; i >>= 2)
     {
-        for (long j = 0; j < i; ++j)
+        for (size_t j = 0; j < i; ++j)
         {
             impl::sort_shell_insert<data_type, Comparator>(items + j, count - j, i);
         }
@@ -554,7 +554,7 @@ inline void utils::sort_shell(data_type* const items, long count) noexcept
  * Merge Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge(data_type* const items, long count) noexcept
+inline void utils::sort_merge(data_type* const items, size_t count) noexcept
 {
     ls::utils::Pointer<data_type[]> temp{new data_type[count]};
     impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count-1);
@@ -566,11 +566,11 @@ inline void utils::sort_merge(data_type* const items, long count) noexcept
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge_iterative(data_type* const items, long count) noexcept
+inline void utils::sort_merge_iterative(data_type* const items, size_t count) noexcept
 {
     constexpr Comparator cmp;
-    long left, rght, rend;
-    long i,j,k,m;
+    size_t left, rght, rend;
+    size_t i,j,k,m;
     ls::utils::Pointer<data_type[]> temp{new data_type[count]};
 
     if (!temp)
@@ -639,7 +639,7 @@ inline void utils::sort_merge_iterative(data_type* const items, long count) noex
  * Quick Sort (recursive)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_quick(data_type* const items, long count) noexcept
+inline void utils::sort_quick(data_type* const items, size_t count) noexcept
 {
     impl::sort_quick_impl<data_type, Comparator>(items, 0, count - 1);
 }
@@ -653,19 +653,19 @@ inline void utils::sort_quick(data_type* const items, long count) noexcept
  * https://kabas.online/tutor/sorting.html
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_quick_iterative(data_type* const items, long count) noexcept
+inline void utils::sort_quick_iterative(data_type* const items, size_t count) noexcept
 {
-    long stack[CHAR_BIT*sizeof(long)];
-    long mid;
-    long space = 0;
-    long l = 0;
-    long r = count - 1;
+    size_t stack[CHAR_BIT*sizeof(size_t)];
+    size_t mid;
+    size_t space = 0;
+    size_t l = 0;
+    size_t r = count - 1;
 
     while (true)
     {
-        const long remaining = r - l;
+        const size_t remaining = r - l;
 
-        if (remaining < (long)(CHAR_BIT*sizeof(long))-1l)
+        if (remaining < (size_t)(CHAR_BIT*sizeof(size_t))-1l)
         {
             ls::utils::sort_insertion<data_type, Comparator>(items + l, remaining + 1);
 
@@ -710,9 +710,9 @@ inline void utils::sort_quick_iterative(data_type* const items, long count) noex
 template <typename data_type, class LessComparator, class GreaterComparator>
 void utils::sort_sheared(
     data_type* const items,
-    long count,
-    std::size_t numThreads,
-    std::size_t threadId,
+    size_t count,
+    size_t numThreads,
+    size_t threadId,
     std::atomic_size_t* numThreadsFinished,
     std::atomic_size_t* numSortPhases) noexcept
 {
@@ -720,46 +720,46 @@ void utils::sort_sheared(
      * Attempt to sort the numbers as if they were an MxN matrix.
      */
     data_type* nums = items;
-    long i;
-    long phase;
-    long numSortable;
+    size_t i;
+    size_t phase;
+    size_t numSortable;
 
     /*
      * Calculate the total number of times needed to iterate over each row &
      * column
      */
-    long totalPhases = 2l * (long)impl::fast_log((float)count) + 1l;
+    size_t totalPhases = 2l * (size_t)impl::fast_log((float)count) + 1l;
 
     /*
      * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
      * NxN matrix then sort the numFinalCol values later.
      */
-    long numTotalCols = impl::int_sqrt(count);
+    size_t numTotalCols = impl::int_sqrt(count);
 
     /*
      * How many overall rows exist in both the largest and smallest columns.
      */
-    long numTotalRows = (count/numTotalCols) + ((count % numTotalCols) != 0);
+    size_t numTotalRows = (count/numTotalCols) + ((count % numTotalCols) != 0);
 
     /*
      * Retrieve the number of elements in the final row.
      */
-    long numFinalCol = count % numTotalCols;
+    size_t numFinalCol = count % numTotalCols;
 
     /*
      * How many rows exist in only the smallest columns
      */
-    long numFullRows = count / numTotalCols;
+    size_t numFullRows = count / numTotalCols;
 
     /*
      * Count of the elements in a square matrix
      */
-    long numSquared = numFullRows*numTotalCols;
+    size_t numSquared = numFullRows*numTotalCols;
 
     /*
      * Increment of which rows should be modified in the last sorting phase.
      */
-    long offsetIncrement = numTotalCols * numThreads * 2l;
+    size_t offsetIncrement = numTotalCols * numThreads * 2l;
 
     #if 0
     if (!threadId)
@@ -845,10 +845,10 @@ void utils::sort_sheared(
      */
     for (i = (threadId*2l+1l)*numTotalCols; i <= numSquared; i += offsetIncrement)
     {
-        long offset = i;
+        size_t offset = i;
 
         /* ensure the last row gets sorted with a full row */
-        long numsToSort = numTotalCols;
+        size_t numsToSort = numTotalCols;
 
         if (i+numTotalCols >= numSquared)
         {
@@ -874,7 +874,7 @@ void utils::sort_sheared(
     while (numThreadsFinished->load(std::memory_order_acquire) < numThreads*2);
 
     #if 0
-    for (long k = 0, j = 0; k < count; ++k)
+    for (size_t k = 0, j = 0; k < count; ++k)
     {
         if (!(k % impl::int_sqrt(count)))
         {
