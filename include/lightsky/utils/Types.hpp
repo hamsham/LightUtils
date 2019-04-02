@@ -89,6 +89,77 @@ struct EnableIf<true, T>
 
 
 
+/*-----------------------------------------------------------------------------
+ * Implementation of RemoveReference
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Base Case
+-------------------------------------*/
+template<typename T>
+struct RemoveReference
+{
+    typedef T type;
+};
+
+
+
+/*-------------------------------------
+ * Reference Case
+-------------------------------------*/
+template<typename T>
+struct RemoveReference<T&>
+{
+    typedef T type;
+};
+
+
+
+/*-------------------------------------
+ * R-Value Reference
+-------------------------------------*/
+template<typename T>
+struct RemoveReference<T&&>
+{
+    typedef T type;
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Implementation of std::forward
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Reference Forwarding
+-------------------------------------*/
+template<typename T>
+constexpr T&& forward(typename RemoveReference<T>::type& val) noexcept
+{
+    return static_cast<T&&>(val);
+}
+
+
+
+/*-------------------------------------
+ * R-Value Reference Forwarding
+-------------------------------------*/
+template<typename T>
+constexpr T&& forward(typename RemoveReference<T>::type&& val) noexcept
+{
+    return static_cast<T&&>(val);
+}
+
+
+
+/*-------------------------------------
+ * Reference Moving
+-------------------------------------*/
+template<typename T>
+constexpr typename RemoveReference<T>::type&& move(T&& val) noexcept
+{
+    return static_cast<typename RemoveReference<T>::type&&>(val);
+}
+
+
 
 } // end utils namespace
 } // end ls namespace
