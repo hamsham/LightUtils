@@ -35,32 +35,32 @@ static const unsigned int MAX_THREADS = 4;
  * FUNCTION PROTOTYPES
 -----------------------------------------------------------------------------*/
 // Verify that a list has been fully sorted
-size_t is_sorted(int* const nums, size_t count);
+long long is_sorted(int* const nums, long long count);
 
 // Function to run a set of tests
 int bench_sorts(
     int numTests,
-    void (* pTests[])(int* const nums, size_t count),
-    void (* pThreadedTest)(int* const items, size_t count, std::size_t numThreads, std::size_t threadId, std::atomic_size_t* numThreadsFinished, std::atomic_size_t* numSortPhases),
+    void (* pTests[])(int* const nums, long long count, ls::utils::IsLess<int>),
+    void (* pThreadedTest)(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
     const char* const* testNames
 );
 
 // Print a list of numbers to a file
 void print_nums(
     int* nums,
-    size_t count,
+    long long count,
     const char* const testName,
     FILE* pFile
 );
 
 // Quick Sort (iterative)
-void quick_sort_2(int* const nums, size_t count);
+void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>);
 
 // Quick Sort - Reference Implementation
-void quick_sort_ref(int* const nums, size_t count);
+void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>);
 
 // Function to populate a list of random numbers
-void gen_rand_nums(int* const nums, size_t count);
+void gen_rand_nums(int* const nums, long long count);
 
 
 
@@ -69,16 +69,16 @@ void gen_rand_nums(int* const nums, size_t count);
 -----------------------------------------------------------------------------*/
 int main(void)
 {
-    void (* pTests[])(int* const, size_t) = {
-        //&ls::utils::sort_bubble<int>,
-        //&ls::utils::sort_selection<int>,
-        //&ls::utils::sort_insertion<int>,
-        //&ls::utils::sort_shell<int>,
-        &ls::utils::sort_merge<int>,
-        &ls::utils::sort_merge_iterative<int>,
-        &ls::utils::sort_quick<int>,
+    void (* pTests[])(int* const, long long, ls::utils::IsLess<int>) = {
+        //&ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
         &quick_sort_2,
-        &ls::utils::sort_quick_iterative<int>,
+        &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
         &quick_sort_ref,
         nullptr
     };
@@ -118,9 +118,9 @@ int main(void)
 /*-----------------------------------------------------------------------------
  * Function to populate a list of random numbers.
 -----------------------------------------------------------------------------*/
-void gen_rand_nums(int* const nums, size_t count)
+void gen_rand_nums(int* const nums, long long count)
 {
-    size_t i = count;
+    long long i = count;
     while (i--)
     {
         nums[i] = rand();
@@ -134,8 +134,8 @@ void gen_rand_nums(int* const nums, size_t count)
 -----------------------------------------------------------------------------*/
 int bench_sorts(
     int numTests,
-    void (*pTests[])(int* const, size_t),
-    void (* pThreadedTest)(int* const, size_t, std::size_t, std::size_t, std::atomic_size_t*, std::atomic_size_t*),
+    void (*pTests[])(int* const, long long, ls::utils::IsLess<int>),
+    void (* pThreadedTest)(int* const, long long, long long, long long, std::atomic_llong*, std::atomic_llong*, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
     const char* const* testNames
 )
 {
@@ -167,17 +167,17 @@ int bench_sorts(
 
         if (pTests[i])
         {
-            (*pTests[i])(nums, MAX_RAND_NUMS); // pointer to the sort function
+            (*pTests[i])(nums, MAX_RAND_NUMS, ls::utils::IsLess<int>{}); // pointer to the sort function
         }
         else
         {
-            std::atomic_size_t numThreadsFinished{0};
-            std::atomic_size_t numSortPhases{0};
+            std::atomic_llong numThreadsFinished{0};
+            std::atomic_llong numSortPhases{0};
             for (unsigned t = 1; t < MAX_THREADS; ++t)
             {
-                std::thread{pThreadedTest, nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases}.detach();
+                std::thread{pThreadedTest, nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
             }
-            pThreadedTest(nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases);
+            pThreadedTest(nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
         }
 
         ticks.tick(); // stop time
@@ -216,14 +216,14 @@ int bench_sorts(
 -----------------------------------------------------------------------------*/
 void print_nums(
     int* nums,
-    const size_t count,
+    const long long count,
     const char* const testName,
     FILE* pFile
 )
 {
     fprintf(pFile, "%s:\n", testName);
 
-    for (size_t i = 0; i < count; ++i)
+    for (long long i = 0; i < count; ++i)
     {
         fprintf(pFile, "%d\n", nums[i]);
     }
@@ -236,9 +236,9 @@ void print_nums(
 /*-----------------------------------------------------------------------------
  * Verify that a list has been sorted
 -----------------------------------------------------------------------------*/
-size_t is_sorted(int* const nums, size_t count)
+long long is_sorted(int* const nums, long long count)
 {
-    size_t i;
+    long long i;
 
     for (i = 0; (i < count - 1) && (nums[i] <= nums[i + 1]); ++i)
     {
@@ -253,12 +253,12 @@ size_t is_sorted(int* const nums, size_t count)
  * Quick Sort (iterative)
 -----------------------------------------------------------------------------*/
 // Function to partition an array during a quicksort
-size_t partitionqsort2(int* nums, size_t l, size_t r)
+long long partitionqsort2(int* nums, long long l, long long r)
 {
     int temp;
     int pivot;
-    size_t i;
-    size_t mid = (l + r) >> 1;
+    long long i;
+    long long mid = (l + r) >> 1;
 
     temp = nums[mid];
     nums[mid] = nums[l];
@@ -290,13 +290,13 @@ size_t partitionqsort2(int* nums, size_t l, size_t r)
 }
 
 // Iterative Quicksort
-void quick_sort_2(int* const nums, size_t count)
+void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>)
 {
-    size_t stack[64];
-    size_t mid;
-    size_t space = 0;
-    size_t l = 0;
-    size_t r = count - 1;
+    long long stack[64];
+    long long mid;
+    long long space = 0;
+    long long l = 0;
+    long long r = count - 1;
 
     while (true)
     {
@@ -344,7 +344,7 @@ inline int qsortcompare(const void* x, const void* y)
 }
 
 // Quick Sort Implementation
-void quick_sort_ref(int* const nums, size_t count)
+void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
 {
-    qsort(nums, (size_t)count, sizeof(int), &qsortcompare);
+    qsort(nums, (long long)count, sizeof(int), &qsortcompare);
 }
