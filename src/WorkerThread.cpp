@@ -10,32 +10,6 @@ namespace utils
 
 
 /*-----------------------------------------------------------------------------
- * SpinLock
------------------------------------------------------------------------------*/
-/*-------------------------------------
- * Destructor
--------------------------------------*/
-SpinLock::~SpinLock() noexcept
-{
-    mLock.clear(std::memory_order_release);
-}
-
-
-/*-------------------------------------
- * Constructor
--------------------------------------*/
-SpinLock::SpinLock() noexcept :
-    mLock{false}
-{}
-
-
-
-} // end utils namespace
-} // end ls namespace
-
-
-
-/*-----------------------------------------------------------------------------
  * Worker
 -----------------------------------------------------------------------------*/
 LS_DEFINE_CLASS_TYPE(ls::utils::Worker, void (*)());
@@ -46,3 +20,8 @@ LS_DEFINE_CLASS_TYPE(ls::utils::Worker, void (*)());
  * WorkerThread
 -----------------------------------------------------------------------------*/
 LS_DEFINE_CLASS_TYPE(ls::utils::WorkerThread, void (*)());
+
+
+
+} // end utils namespace
+} // end ls namespace
