@@ -22,7 +22,7 @@ namespace utils
 class Futex
 {
   private:
-    std::atomic_int32_t mLock;
+    std::atomic_int_fast32_t mLock;
 
   public:
     ~Futex() noexcept;
