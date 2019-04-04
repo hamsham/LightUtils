@@ -54,7 +54,7 @@ inline bool Futex::try_lock() noexcept
 -------------------------------------*/
 inline void Futex::unlock() noexcept
 {
-    mLock.store(0, std::memory_order_consume);
+    mLock.store(0, std::memory_order_release);
 }
 
 
