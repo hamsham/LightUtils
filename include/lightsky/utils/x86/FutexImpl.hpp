@@ -18,7 +18,7 @@ namespace utils
 -------------------------------------*/
 inline void Futex::lock() noexcept
 {
-    int32_t val = 0;
+    int_fast32_t val = 0;
 
     for (unsigned i = 0; i < INT8_MAX; ++i)
     {
