@@ -2,6 +2,10 @@
 #ifndef LS_UTILS_ALGORITHM_HPP
 #define LS_UTILS_ALGORITHM_HPP
 
+#include "lightsky/setup/Api.h" // LS_IMPERATIVE
+
+
+
 namespace ls
 {
 namespace utils
@@ -18,7 +22,7 @@ namespace utils
 template <typename data_type>
 struct IsGreater
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 
@@ -29,7 +33,7 @@ struct IsGreater
 template <typename data_type>
 struct IsLess
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 
@@ -40,7 +44,7 @@ struct IsLess
 template <typename data_type>
 struct IsGreaterOrEqual
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 
@@ -51,7 +55,7 @@ struct IsGreaterOrEqual
 template <typename data_type>
 struct IsLessOrEqual
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 
@@ -62,7 +66,7 @@ struct IsLessOrEqual
 template <typename data_type>
 struct IsEqual
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 
@@ -73,7 +77,7 @@ struct IsEqual
 template <typename data_type>
 struct IsNotEqual
 {
-    constexpr bool operator() (const data_type& a, const data_type& b) const noexcept;
+    constexpr bool LS_IMPERATIVE operator() (const data_type& a, const data_type& b) const noexcept;
 };
 
 

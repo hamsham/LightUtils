@@ -10,7 +10,7 @@ namespace utils
  * Greater Than
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsGreater<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsGreater<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a > b;
 }
@@ -21,7 +21,7 @@ constexpr bool IsGreater<data_type>::operator() (const data_type& a, const data_
  * Less Than
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsLess<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsLess<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a < b;
 }
@@ -32,7 +32,7 @@ constexpr bool IsLess<data_type>::operator() (const data_type& a, const data_typ
  * Greater Than or Equal
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsGreaterOrEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsGreaterOrEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a >= b;
 }
@@ -43,7 +43,7 @@ constexpr bool IsGreaterOrEqual<data_type>::operator() (const data_type& a, cons
  * Less Than or Equal
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsLessOrEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsLessOrEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a <= b;
 }
@@ -54,7 +54,7 @@ constexpr bool IsLessOrEqual<data_type>::operator() (const data_type& a, const d
  * Greater Than
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a == b;
 }
@@ -65,7 +65,7 @@ constexpr bool IsEqual<data_type>::operator() (const data_type& a, const data_ty
  * Greater Than
 -------------------------------------*/
 template <typename data_type>
-constexpr bool IsNotEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
+constexpr bool LS_IMPERATIVE IsNotEqual<data_type>::operator() (const data_type& a, const data_type& b) const noexcept
 {
     return a != b;
 }
