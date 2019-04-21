@@ -935,7 +935,7 @@ void utils::sort_bitonic(
             }
 
             numSortPhases->fetch_add(1, std::memory_order_acq_rel);
-            while (numSortPhases->load(std::memory_order_release) < phase)
+            while (numSortPhases->load(std::memory_order_consume) < phase)
             {
                 // spin
             }
@@ -944,7 +944,7 @@ void utils::sort_bitonic(
 
     // sync
     numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
-    while (numThreadsFinished->load(std::memory_order_release) != numThreads)
+    while (numThreadsFinished->load(std::memory_order_consume) != numThreads)
     {
         // spin
     }
