@@ -144,7 +144,7 @@ int DynamicLib::load(const char* libPath) noexcept
     }
 
     #ifdef LS_OS_WINDOWS
-        void* pHandle = (void*)LoadLibraryA(libPath);
+        void* pHandle = reinterpret_cast<void*>(LoadLibraryA(libPath));
     #else
         void* pHandle = dlopen(libPath, RTLD_NOW | RTLD_LOCAL);
     #endif
@@ -196,7 +196,7 @@ void* DynamicLib::symbol(const char* pSymName) const noexcept
     LS_DEBUG_ASSERT(mHandle != nullptr);
 
     #ifdef LS_OS_WINDOWS
-        return GetProcAddress((HMODULE)const_cast<void*>(mHandle), pSymName);
+        return reinterpret_cast<void*>(GetProcAddress((HMODULE)const_cast<void*>(mHandle), pSymName));
     #else
         return dlsym(mHandle, pSymName);
     #endif
