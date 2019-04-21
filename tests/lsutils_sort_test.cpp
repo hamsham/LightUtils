@@ -18,7 +18,7 @@
 
 #if 1
 enum {
-    MAX_RAND_NUMS = 1234567
+    MAX_RAND_NUMS = 16777216
 };
 #else
 enum
@@ -41,7 +41,7 @@ long long is_sorted(int* const nums, long long count);
 int bench_sorts(
     int numTests,
     void (* pTests[])(int* const nums, long long count, ls::utils::IsLess<int>),
-    void (* pThreadedTest)(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
+    void (* pThreadedTest[])(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
     const char* const* testNames
 );
 
@@ -74,13 +74,19 @@ int main(void)
         //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
         //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
         //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
         &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
         &quick_sort_ref,
+        //nullptr,
         nullptr
+    };
+
+    void (* pThreadedTests[])(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>) = {
+        //&ls::utils::sort_sheared<int>,
+        &ls::utils::sort_bitonic<int>
     };
 
     const char* testNames[] = {
@@ -88,20 +94,21 @@ int main(void)
         //"Selection Sort",
         //"Insertion Sort",
         //"Shell Sort",
-        "Merge Sort (recursive)",
-        "Merge Sort (iterative)",
+        //"Merge Sort (recursive)",
+        //"Merge Sort (iterative)",
         "Quick Sort (recursive)",
         "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
         "Quick Sort-Reference",
-        "Shear Sort (Parallel)"
+        //"Shear Sort (Parallel)",
+        "Bitonic Sort (Parallel)"
     };
 
     int numTests = sizeof(testNames) / sizeof(char*);
 
     srand(time(nullptr));
 
-    if (!bench_sorts(numTests, pTests, &ls::utils::sort_sheared<int>, testNames))
+    if (!bench_sorts(numTests, pTests, pThreadedTests, testNames))
     {
         fprintf(stderr, "An error occurred while running sorting tests.\n");
         return -1;
@@ -135,13 +142,14 @@ void gen_rand_nums(int* const nums, long long count)
 int bench_sorts(
     int numTests,
     void (*pTests[])(int* const, long long, ls::utils::IsLess<int>),
-    void (* pThreadedTest)(int* const, long long, long long, long long, std::atomic_llong*, std::atomic_llong*, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
+    void (* pThreadedTests[])(int* const, long long, long long, long long, std::atomic_llong*, std::atomic_llong*, ls::utils::IsLess<int>, ls::utils::IsGreater<int>),
     const char* const* testNames
 )
 {
     int* const nums = (int*)malloc(sizeof(int) * MAX_RAND_NUMS);
+    int* const validation = (int*)malloc(sizeof(int) * MAX_RAND_NUMS);
 
-    if (!nums)
+    if (!nums || !validation)
     {
         fprintf(
             stderr,
@@ -153,11 +161,13 @@ int bench_sorts(
 
     ls::utils::Clock<float> ticks;
 
-    for (int i = 0; i < numTests; ++i)
+    for (int i = 0, j = 0; i < numTests; ++i)
     {
 
         printf("Initializing a %s test...", testNames[i]);
         gen_rand_nums(nums, MAX_RAND_NUMS);
+        memcpy(validation, nums, MAX_RAND_NUMS*sizeof(int));
+        quick_sort_ref(validation, MAX_RAND_NUMS, ls::utils::IsLess<int>{});
         printf("Done!\n");
 
         printf("Testing a %s...", testNames[i]);
@@ -175,9 +185,11 @@ int bench_sorts(
             std::atomic_llong numSortPhases{0};
             for (unsigned t = 1; t < MAX_THREADS; ++t)
             {
-                std::thread{pThreadedTest, nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
+                std::thread{pThreadedTests[j], nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
             }
-            pThreadedTest(nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
+            pThreadedTests[j](nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
+
+            j += 1;
         }
 
         ticks.tick(); // stop time
@@ -188,22 +200,24 @@ int bench_sorts(
         printf("The %s test took %f seconds.\n", testNames[i], timeToSort);
 
         printf("Verifying the %s...", testNames[i]);
-        if (is_sorted(nums, MAX_RAND_NUMS))
+        const int matchPos = memcmp(nums, validation, MAX_RAND_NUMS*sizeof(int));
+        if (is_sorted(nums, MAX_RAND_NUMS) && matchPos == 0)
         {
             printf("Passed!\n");
         }
         else
         {
-            printf("Failed!\n");
+            printf("Failed! Mismatch at position %d\n", matchPos);
         }
 
-#ifdef DEBUG
-        print_nums(MAX_RAND_NUMS, nums, testNames[i], stdout);
+#if defined(DEBUG)
+        print_nums(nums, MAX_RAND_NUMS, testNames[i], stdout);
 #endif
 
         printf("\n\n");
     }
 
+    free(validation);
     free(nums);
 
     return 1;

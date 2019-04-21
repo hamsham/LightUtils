@@ -878,4 +878,78 @@ void utils::sort_sheared(
 
 
 
+
+/*-------------------------------------
+    Bitonic Sort for arrays of size 2^n
+-------------------------------------*/
+template <typename data_type, class LessComparator, class GreaterComparator>
+void utils::sort_bitonic(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numThreadsFinished,
+    std::atomic_llong* numSortPhases,
+    LessComparator cmpL,
+    GreaterComparator cmpG) noexcept
+{
+    long long phase = numThreads;
+
+    for (long long i = 1; i < count; i <<= 1)
+    {
+        for (long long j = i; j > 0; j >>= 1, phase += numThreads)
+        {
+            for (long long k = 0; k < count; k += (j << 1))
+            {
+                const long long kj = k+j;
+                const long long cmpLess = k & (i << 1);
+
+                if (cmpLess)
+                {
+                    for (long long l = k + threadId; l < kj; l += numThreads)
+                    {
+                        const long long lj = l + j;
+
+                        if (cmpL(items[l], items[lj]))
+                        {
+                            const data_type temp = items[l];
+                            items[l] = items[lj];
+                            items[lj] = temp;
+                        }
+                    }
+                }
+                else
+                {
+                    for (long long l = k + threadId; l < kj; l += numThreads)
+                    {
+                        const long long lj = l + j;
+
+                        if (cmpG(items[l], items[lj]))
+                        {
+                            const data_type temp = items[l];
+                            items[l] = items[lj];
+                            items[lj] = temp;
+                        }
+                    }
+                }
+            }
+
+            numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+            while (numSortPhases->load(std::memory_order_release) < phase)
+            {
+                // spin
+            }
+        }
+    }
+
+    // sync
+    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
+    while (numThreadsFinished->load(std::memory_order_release) != numThreads)
+    {
+        // spin
+    }
+}
+
+
+
 } // end ls namespace

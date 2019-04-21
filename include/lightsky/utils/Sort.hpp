@@ -85,10 +85,26 @@ inline void sort_quick_iterative(data_type* const items, long long count, Compar
 
 
 /*-------------------------------------
- * Quick Sort (iterative)
+ * Shear Sort (parallel, SLOW)
 -------------------------------------*/
 template <typename data_type, class LessComparator = ls::utils::IsLess<data_type>, class GreaterComparator = ls::utils::IsGreater<data_type>>
 void sort_sheared(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numThreadsFinished,
+    std::atomic_llong* numSortPhases,
+    LessComparator cmpL = LessComparator{},
+    GreaterComparator cmpG = GreaterComparator{}) noexcept;
+
+
+
+/*-------------------------------------
+    Bitonic Sort (parallel, only for arrays that are powers of 2 in size).
+-------------------------------------*/
+template <typename data_type, class LessComparator, class GreaterComparator>
+void sort_bitonic(
     data_type* const items,
     long long count,
     long long numThreads,
