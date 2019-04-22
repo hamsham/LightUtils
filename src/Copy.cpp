@@ -32,7 +32,7 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         // reading "simdSrc."
         while (simdCount --> 0)
         {
-            _mm256_store_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
+            _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
         }
 
         const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
