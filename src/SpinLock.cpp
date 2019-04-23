@@ -22,14 +22,6 @@ SpinLock::~SpinLock() noexcept
 }
 
 
-/*-------------------------------------
- * Constructor
--------------------------------------*/
-SpinLock::SpinLock() noexcept :
-    mLock{false}
-{}
-
-
 
 } // end utils namespace
 } // end ls namespace

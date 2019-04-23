@@ -20,12 +20,12 @@ namespace utils
 class SpinLock
 {
   private:
-    std::atomic_flag mLock;
+    std::atomic_flag mLock = ATOMIC_FLAG_INIT;
 
   public:
     ~SpinLock() noexcept;
 
-    SpinLock() noexcept;
+    SpinLock() noexcept = default;
 
     SpinLock(const SpinLock&) = delete;
 
