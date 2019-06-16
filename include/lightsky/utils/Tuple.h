@@ -246,6 +246,7 @@ class LS_API Tuple
      */
     char mBuffer[NumBytes<data_t...>::value()];
 
+  public:
     /**
      *  @brief Private Constructor
      *
@@ -253,7 +254,6 @@ class LS_API Tuple
      */
     constexpr Tuple(bool) noexcept;
 
-  public:
     /**
      *  @brief Constructor
      *
