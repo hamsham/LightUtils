@@ -11,6 +11,7 @@
 #include <ctime>
 #include <thread>
 
+#include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Sort.hpp"
 
@@ -59,6 +60,9 @@ void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>);
 // Quick Sort - Reference Implementation
 void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>);
 
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+void sort_radix(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
+
 // Function to populate a list of random numbers
 void gen_rand_nums(int* const nums, long long count);
 
@@ -80,6 +84,7 @@ int main(void)
         &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
         &quick_sort_ref,
+        &sort_radix<int, ls::utils::IsLess<int>>,
         //nullptr,
         nullptr
     };
@@ -100,6 +105,7 @@ int main(void)
         "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
         "Quick Sort-Reference",
+        "Radix Sort",
         //"Shear Sort (Parallel)",
         "Bitonic Sort (Parallel)"
     };
@@ -361,4 +367,77 @@ inline int qsortcompare(const void* x, const void* y)
 void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
 {
     qsort(nums, (long long)count, sizeof(int), &qsortcompare);
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Quick Sort Reference Implementation
+-----------------------------------------------------------------------------*/
+// The main function to that sorts arr[] of size n using
+// Radix Sort
+template <typename data_type, class Comparator>
+void sort_radix(data_type* const items, long long count, Comparator cmp) noexcept
+{
+    if (!count)
+    {
+        return;
+    }
+
+    // Find the maximum value to know number of digits
+    long long m = (long long)items[0];
+
+    for (long long i = 1; i < count; ++i)
+    {
+        if (!cmp((long long)items[i], m))
+        {
+            m = (long long)items[i];
+        }
+    }
+
+    ls::utils::Pointer<long long[]> indices{new long long[count]}; // output array
+
+    const auto radix_count_sort = [&items, &count, &indices](long long x)->void
+    {
+        long long radices[10] = {0ll};
+
+        // Store count of occurrences in radices[]
+        for (long long i = 0; i < count; ++i)
+        {
+            long long val = (long long)items[i];
+            radices[(val / x) % 10ll]++;
+        }
+
+        // Change radices[i] so that radices[i] now contains actual
+        //  position of this digit in output[]
+        for (long long i = 1; i < 10ll; i++)
+        {
+            radices[i] += radices[i - 1ll];
+        }
+
+        // Build the output array
+        for (long long i = count - 1; i >= 0; i--)
+        {
+            long long radix = ((long long)items[i] / x) % 10ll;
+            long long index = radices[radix] - 1ll;
+
+            indices[index] = items[i];
+            radices[((long long)items[i] / x) % 10ll]--;
+        }
+
+        // Copy the output array to arr[], so that arr[] now
+        // contains sorted numbers according to current digit
+        for (long long i = 0ll; i < count; i++)
+        {
+            items[i] = indices[i];
+        }
+    };
+
+    // Do counting sort for every digit. Note that instead
+    // of passing digit number, exp is passed. exp is 10^i
+    // where i is current digit number
+    for (long long exponent = 1ll; m/exponent > 0ll; exponent *= 10ll)
+    {
+        radix_count_sort(exponent);
+    }
 }

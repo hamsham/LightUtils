@@ -12,9 +12,10 @@
 #include "lightsky/utils/Tuple.h"
 
 
-template <typename... data_t> using Tuple = ls::utils::Tuple<data_t...>;
+template <typename... data_t>
+using Tuple = ls::utils::Tuple<data_t...>;
 
-typedef Tuple<int, float, std::string, std::string> test_t;
+typedef Tuple<int, std::string, float, std::string> test_t;
 
 
 
@@ -23,8 +24,8 @@ void print_tuple(const std::string& name, const test_t& t)
     std::cout
         << "Tuple " << name << ":"
         << "\n\t" << t.first_of<int>()
+        << "\n\t" << t.const_element<1>()
         << "\n\t" << t.first_of<float>()
-        << "\n\t" << t.const_element<2>()
         << "\n\t" << t.const_element<3>()
         << '\n' << std::endl;
 }
@@ -49,7 +50,7 @@ int main() {
     c = std::move(b);
     print_tuple("C", c);
 
-    *reinterpret_cast<std::string*>(c.get(2)) = "Foo";
+    *reinterpret_cast<std::string*>(c.get(1)) = "Foo";
     print_tuple("C", c);
 
     c.element<3>() = "Goodbye Cruel World!";
