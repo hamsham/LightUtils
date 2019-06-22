@@ -643,7 +643,7 @@ inline void utils::sort_quick(data_type* const items, long long count, Comparato
 template <typename data_type, class Comparator>
 inline void utils::sort_quick_iterative(data_type* const items, long long count, Comparator cmp) noexcept
 {
-    long long stack[CHAR_BIT*sizeof(long long)];
+    long long stack[CHAR_BIT*sizeof(int)];
     long long mid;
     long long space = 0;
     long long l = 0;
@@ -653,7 +653,7 @@ inline void utils::sort_quick_iterative(data_type* const items, long long count,
     {
         const long long remaining = r - l;
 
-        if (remaining < (long long)(CHAR_BIT*sizeof(long long))-1l)
+        if (remaining < (long long)(CHAR_BIT*sizeof(int))-1l)
         {
             ls::utils::sort_insertion<data_type, Comparator>(items + l, remaining + 1, cmp);
 
