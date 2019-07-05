@@ -84,19 +84,19 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t coun
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
-        while (simdCount --> 0)
+        while (simdCount--)
         {
             _mm256_stream_si256(simdTo++, simdFillByte);
         }
     #elif defined(LS_ARCH_ARM)
-        std::size_t                                stragglers       = count % sizeof(uint32x4_t);
-        std::size_t                                simdCount        = (count-stragglers)/sizeof(uint32x4_t);
-        alignas(sizeof(uint32x4_t)) const uint32_t fillByteU32x4[4] = {fillBytes, fillBytes, fillBytes, fillBytes};
-        uint32x4_t*                                simdTo           = reinterpret_cast<uint32x4_t*>(dst);
+        std::size_t      stragglers   = count % sizeof(uint32x4_t);
+        std::size_t      simdCount    = (count-stragglers)/sizeof(uint32x4_t);
+        const uint32x4_t fillByteSimd = vdupq_n_u32(fillBytes);
+        uint32x4_t*      simdTo       = reinterpret_cast<uint32x4_t*>(dst);
 
-        while (simdCount --> 0)
+        while (simdCount--)
         {
-            vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), vld1q_u32(fillByteU32x4));
+            vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), fillByteSimd);
         }
     #else
         uint32_t*   simdTo     = reinterpret_cast<uint32_t*>(dst);
@@ -105,7 +105,7 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t coun
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
-        while (simdCount --> 0)
+        while (simdCount--)
         {
             *simdTo++ = fillBytes;
         }
@@ -114,7 +114,7 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t coun
     uint8_t*      to = reinterpret_cast<uint8_t*>(dst) + count - stragglers;
     const uint8_t fillByte = (uint8_t)fillBytes;
 
-    while (stragglers --> 0)
+    while (stragglers--)
     {
         *to++ = fillByte;
     }
