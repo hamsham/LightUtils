@@ -30,16 +30,9 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
 
         // Using stream intrinsics here is NOT OK because we need the cache for
         // reading "simdSrc."
-        while (simdCount --> 0)
+        while (simdCount--)
         {
             _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
-        }
-
-        const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
-        char*       d = reinterpret_cast<char*>(simdDst) - stragglers;
-        while (stragglers --> 0)
-        {
-            *d++ = *s++;
         }
     #elif defined(LS_ARCH_ARM)
         std::size_t       stragglers = count % sizeof(uint32x4_t);
@@ -47,26 +40,31 @@ void* utils::fast_memcpy(void* const dst, const void* const src, const std::size
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
 
-        while (simdCount --> 0)
+        while (simdCount--)
         {
             vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), vld1q_u32(reinterpret_cast<const uint32_t*>(simdSrc++)));
         }
-
-        const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
-        char*       d = reinterpret_cast<char*>(simdDst) - stragglers;
-        while (stragglers --> 0)
-        {
-            *d++ = *s++;
-        }
     #else
-        char* to = reinterpret_cast<char*>(dst);
-        const char* from = reinterpret_cast<const char*>(src);
+        std::size_t     stragglers = count % sizeof(uint64_t);
+        std::size_t     simdCount  = (count-stragglers)/sizeof(uint64_t);
+        const uint64_t* simdSrc    = reinterpret_cast<const uint64_t*>(src);
+        uint64_t*       simdDst    = reinterpret_cast<uint64_t*>(dst);
 
-        if (count)
+        // Using stream intrinsics here is NOT OK because we need the cache for
+        // reading "simdSrc."
+        while (simdCount--)
         {
-            LS_UTILS_LOOP_UNROLL_32(count, (*to++ = *from++))
+            *simdDst++ = *simdSrc++;
         }
+
     #endif
+
+    const char* s = reinterpret_cast<const char*>(simdSrc) - stragglers;
+    char*       d = reinterpret_cast<char*>(simdDst) - stragglers;
+    while (stragglers--)
+    {
+        *d++ = *s++;
+    }
 
     return dst;
 }
