@@ -84,9 +84,19 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t coun
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
-        while (simdCount--)
+        if ((uintptr_t)simdTo % sizeof(__m256i))
         {
-            _mm256_stream_si256(simdTo++, simdFillByte);
+            while (simdCount--)
+            {
+                _mm256_storeu_si256(simdTo++, simdFillByte);
+            }
+        }
+        else
+        {
+            while (simdCount--)
+            {
+                _mm256_stream_si256(simdTo++, simdFillByte);
+            }
         }
     #elif defined(LS_ARCH_ARM)
         std::size_t      stragglers   = count % sizeof(uint32x4_t);
