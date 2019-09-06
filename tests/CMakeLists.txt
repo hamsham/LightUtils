@@ -19,7 +19,7 @@ include_directories(".")
 set(
     LS_UTILS_TEST_DEPS
     lsutils
-    lsmath
+    lssetup
 )
 
 
@@ -30,13 +30,15 @@ set(
 function(LS_UTILS_ADD_TARGET target sources)
     add_executable(${target} ${sources} ${ARGN})
 	if (NOT MSVC)
-		target_link_libraries(${target} lsutils pthread)
+		target_link_libraries(${target} lsutils lssetup pthread)
 	else()
-		target_link_libraries(${target} lsutils)
+		target_link_libraries(${target} lsutils lssetup)
 	endif()
 endfunction(LS_UTILS_ADD_TARGET)
 
+LS_UTILS_ADD_TARGET(lsutils_dylib_test  lsutils_dylib_test.cpp)
+LS_UTILS_ADD_TARGET(lsutils_memcpy_test lsutils_memcpy_test.cpp)
+LS_UTILS_ADD_TARGET(lsutils_memset_test lsutils_memset_test.cpp)
+LS_UTILS_ADD_TARGET(lsutils_sort_test   lsutils_sort_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_tuple_test  lsutils_tuple_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_worker_test lsutils_worker_test.cpp)
-LS_UTILS_ADD_TARGET(lsutils_sort_test   lsutils_sort_test.cpp)
-LS_UTILS_ADD_TARGET(lsutils_dylib_test  lsutils_dylib_test.cpp)
