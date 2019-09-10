@@ -3,8 +3,6 @@
 #ifndef LS_UTILS_LOOPS_H
 #define LS_UTILS_LOOPS_H
 
-#include <cstdlib> // std::size_t
-
 
 
 /**
@@ -12,8 +10,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_8
     #define LS_UTILS_LOOP_UNROLL_8(count, op) { \
-        const std::size_t numUnrolls = (count) % 8; \
-        std::size_t n = ((count) + 7) / 8; \
+        const std::size_t numUnrolls = ((unsigned long long)count) % 8u; \
+        std::size_t n = (((unsigned long long)count) + 7u) / 8u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 7:         op; \
@@ -23,7 +21,7 @@
             case 3:         op; \
             case 2:         op; \
             case 1:         op; \
-                    } while (--n > 0); \
+                    } while (--n); \
         } \
     }
 # endif /* LS_UTILS_LOOP_UNROLL_8 */
@@ -35,8 +33,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_16
     #define LS_UTILS_LOOP_UNROLL_16(count, op) { \
-        const std::size_t numUnrolls = (count) % 16; \
-        std::size_t n = ((count) + 15) / 16; \
+        const std::size_t numUnrolls = ((unsigned long long)count) % 16u; \
+        std::size_t n = (((unsigned long long)count) + 15u) / 16u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 15:        op; \
@@ -54,7 +52,7 @@
             case 3:         op; \
             case 2:         op; \
             case 1:         op; \
-                    } while (--n > 0); \
+                    } while (--n); \
         } \
     }
 # endif /* LS_UTILS_LOOP_UNROLL_16 */
@@ -66,8 +64,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_32
     #define LS_UTILS_LOOP_UNROLL_32(count, op) { \
-        const std::size_t numUnrolls = (count) % 32; \
-        std::size_t n = ((count) + 31) / 32; \
+        const std::size_t numUnrolls = ((unsigned long long)count) % 32u; \
+        std::size_t n = (((unsigned long long)count) + 31u) / 32u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 31:        op; \
@@ -101,7 +99,7 @@
             case 3:         op; \
             case 2:         op; \
             case 1:         op; \
-                    } while (--n > 0); \
+                    } while (--n); \
         } \
     }
 # endif /* LS_UTILS_LOOP_UNROLL_32 */

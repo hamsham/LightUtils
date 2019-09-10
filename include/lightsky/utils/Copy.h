@@ -55,12 +55,19 @@ void* LS_API fast_memcpy(void* const dest, const void* const src, const std::siz
  * Specifies the number of items which will be copied.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t count)
+inline void LS_API fast_copy(dest_t* dest, const src_t* src, std::size_t count)
 {
-    if (count)
-    {
-        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = *src++))
-    }
+    #if 0
+        if (count)
+        {
+            LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = *src++))
+        }
+    #else
+        while (count--)
+        {
+            *dest++ = *src++;
+        }
+    #endif
 }
 
 
@@ -82,12 +89,19 @@ inline void LS_API fast_copy(dest_t* dest, const src_t* src, const std::size_t c
  * Specifies the number of items which will be moved.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_move(dest_t* dest, src_t* src, const std::size_t count)
+inline void LS_API fast_move(dest_t* dest, src_t* src, std::size_t count)
 {
-    if (count)
-    {
-        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = std::move(*src++)))
-    }
+    #if 0
+        if (count)
+        {
+            LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = std::move(*src++)))
+        }
+    #else
+        while (count--)
+        {
+            *dest++ = std::move(*src++);
+        }
+    #endif
 }
 
 
