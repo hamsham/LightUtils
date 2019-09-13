@@ -62,10 +62,10 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Copy Time:"
-        << "\n\tMemcpy:   " << memsetTime//   / 1000ull
-        << "\n\tStd Copy: " << stdCopyTime//  / 1000ull
-        << "\n\tLS Copy:  " << lsMemcpyTime// / 1000ull
-        << "\n\tLS Copy:  " << lsCopyTime//   / 1000ull
+        << "\n\tMemcpy:    " << memsetTime//   / 1000ull
+        << "\n\tStd Copy:  " << stdCopyTime//  / 1000ull
+        << "\n\tLS Memcpy: " << lsMemcpyTime// / 1000ull
+        << "\n\tLS Copy:   " << lsCopyTime//   / 1000ull
         << std::endl;
 
     std::cout << "Estimated bandwidth (read+write): " << 2.0l/((long double)lsMemcpyTime/1000.0l) << " Gb/s" << std::endl;

@@ -3,6 +3,7 @@
 #ifndef LS_UTILS_LOOPS_H
 #define LS_UTILS_LOOPS_H
 
+#include <cstdint> // uint_fast64_t
 
 
 /**
@@ -10,8 +11,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_8
     #define LS_UTILS_LOOP_UNROLL_8(count, op) { \
-        const std::size_t numUnrolls = ((unsigned long long)count) % 8u; \
-        std::size_t n = (((unsigned long long)count) + 7u) / 8u; \
+        const uint_fast64_t numUnrolls = ((uint_fast64_t)count) % 8u; \
+        uint_fast64_t n = (((uint_fast64_t)count) + 7u) / 8u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 7:         op; \
@@ -33,8 +34,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_16
     #define LS_UTILS_LOOP_UNROLL_16(count, op) { \
-        const std::size_t numUnrolls = ((unsigned long long)count) % 16u; \
-        std::size_t n = (((unsigned long long)count) + 15u) / 16u; \
+        const uint_fast64_t numUnrolls = ((uint_fast64_t)count) % 16u; \
+        uint_fast64_t n = (((uint_fast64_t)count) + 15u) / 16u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 15:        op; \
@@ -64,8 +65,8 @@
  */
 #ifndef LS_UTILS_LOOP_UNROLL_32
     #define LS_UTILS_LOOP_UNROLL_32(count, op) { \
-        const std::size_t numUnrolls = ((unsigned long long)count) % 32u; \
-        std::size_t n = (((unsigned long long)count) + 31u) / 32u; \
+        const uint_fast64_t numUnrolls = ((uint_fast64_t)count) % 32u; \
+        uint_fast64_t n = (((uint_fast64_t)count) + 31u) / 32u; \
         switch (numUnrolls) { \
             case 0: do {    op; \
             case 31:        op; \

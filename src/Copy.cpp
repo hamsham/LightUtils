@@ -21,7 +21,7 @@ namespace ls {
 /*-------------------------------------
  * fast_memcpy
 -------------------------------------*/
-void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const std::size_t count)
+void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const uint_fast64_t count)
 {
     #if defined(LS_ARCH_X86)
         uint_fast64_t  stragglers = count % sizeof(__m256i);
@@ -68,8 +68,9 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 
     #endif
 
-    const uint_fast8_t* s = reinterpret_cast<const uint_fast8_t*>(src) + count;
-    uint_fast8_t*       d = reinterpret_cast<uint_fast8_t*>(dst) + count;
+    const uint_fast8_t* s = reinterpret_cast<const uint_fast8_t*>(simdSrc);
+    uint_fast8_t*       d = reinterpret_cast<uint_fast8_t*>(simdDst);
+
     while (stragglers--)
     {
         *d++ = *s++;
@@ -83,7 +84,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 /*-------------------------------------
  * fast_memset of 4-bytes at a time
 -------------------------------------*/
-void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t count)
+void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, uint_fast64_t count)
 {
     #if defined(LS_ARCH_X86)
         const __m256i simdFillByte = _mm256_set1_epi32((int32_t)fillBytes);
@@ -130,7 +131,7 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, std::size_t coun
         }
     #endif
 
-    uint8_t*      to = reinterpret_cast<uint8_t*>(dst) + count;
+    uint8_t*      to = reinterpret_cast<uint8_t*>(simdTo);
     const uint8_t fillByte = (uint8_t)fillBytes;
 
     while (stragglers--)

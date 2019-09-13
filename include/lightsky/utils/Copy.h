@@ -3,7 +3,6 @@
 #define LS_UTILS_COPY_H
 
 #include <cstdint> // fixed-width data types
-#include <cstdlib> // std::size_t
 #include <utility> // std::move
 
 #include "lightsky/setup/Api.h"
@@ -34,7 +33,7 @@ namespace utils {
  * 
  * @return The 'dest' parameter.
  */
-void* LS_API fast_memcpy(void* const dest, const void* const src, const std::size_t count);
+void* LS_API fast_memcpy(void* const dest, const void* const src, const uint_fast64_t count);
 
 
 
@@ -55,9 +54,9 @@ void* LS_API fast_memcpy(void* const dest, const void* const src, const std::siz
  * Specifies the number of items which will be copied.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_copy(dest_t* dest, const src_t* src, std::size_t count)
+inline void LS_API fast_copy(dest_t* dest, const src_t* src, uint_fast64_t count)
 {
-    #if 0
+    #if 1
         if (count)
         {
             LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = *src++))
@@ -89,7 +88,7 @@ inline void LS_API fast_copy(dest_t* dest, const src_t* src, std::size_t count)
  * Specifies the number of items which will be moved.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_move(dest_t* dest, src_t* src, std::size_t count)
+inline void LS_API fast_move(dest_t* dest, src_t* src, uint_fast64_t count)
 {
     #if 0
         if (count)
@@ -123,7 +122,7 @@ inline void LS_API fast_move(dest_t* dest, src_t* src, std::size_t count)
  *
  * @return The 'dest' parameter.
  */
-void* LS_API fast_memset_4(void* const dest, const uint32_t fillBytes, const std::size_t count);
+void* LS_API fast_memset_4(void* const dest, const uint32_t fillBytes, const uint_fast64_t count);
 
 
 
@@ -142,7 +141,7 @@ void* LS_API fast_memset_4(void* const dest, const uint32_t fillBytes, const std
  *
  * @return The 'dest' parameter.
  */
-inline LS_INLINE void* LS_API fast_memset(void* const dest, const uint8_t fillByte, const std::size_t count)
+inline LS_INLINE void* LS_API fast_memset(void* const dest, const uint8_t fillByte, const uint_fast64_t count)
 {
     const uint32_t fillBytes = 0u
         | (uint32_t)fillByte
@@ -170,7 +169,7 @@ inline LS_INLINE void* LS_API fast_memset(void* const dest, const uint8_t fillBy
  * Specifies the number of items which will be filled.
  */
 template <typename dest_t, typename fill_t>
-inline LS_INLINE void LS_API fast_fill(dest_t* dest, const fill_t& fillType, std::size_t count)
+inline LS_INLINE void LS_API fast_fill(dest_t* dest, const fill_t& fillType, uint_fast64_t count)
 {
     #if 0
     if (count)
