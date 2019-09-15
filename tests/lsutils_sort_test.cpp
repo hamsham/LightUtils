@@ -441,3 +441,71 @@ void sort_radix(data_type* const items, long long count, Comparator cmp) noexcep
         radix_count_sort(exponent);
     }
 }
+
+
+
+/*
+https://pdfs.semanticscholar.org/3536/3f8ccda03736320f3ebff92e744dbd245257.pdf
+
+template <typename data_type, class LessComparator, class GreaterComparator>
+void sort_quick_parallel(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numThreadsFinished,
+    std::atomic_llong* numSortPhases,
+    LessComparator cmpL,
+    GreaterComparator cmpG) noexcept
+{
+
+Algorithm ParallelQuicksort(data_set, n, p)
+{
+    threshold : = (p > 1)? (1 + n / (p << 3)): n
+    submitToThreadPool (PQuicksort (data_set, 0, n - 1))
+    // wait for all threads to complete execution
+}
+
+Algorithm PQuicksort (data_set, low, high)
+{
+    if ((high - low) < threshold)
+    {
+        sortDirectly (data_set, low, high)
+    }
+    else
+    {
+        i := low
+        j := high
+        pivot:= data_set[(low + (high-low)/2)
+
+        while i <= j
+        {
+            while data_set[i] < pivot
+            {
+                increment i
+            }
+
+            while data_set[j] > pivot
+            {
+                decrement j
+            }
+
+            if i <= j
+            {
+                swap data_set[i] with data_set[j]
+                increment i
+                decrement j
+            }
+        }
+        if low < j
+        {
+             submitToThreadPool(PQuicksort(data_set, low, j))
+         }
+        if i < high
+        {
+             submitToThreadPool (PQuicksort(data_set, i, high)
+         }
+    }
+}
+}
+*/

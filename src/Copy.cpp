@@ -68,8 +68,8 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 
     #endif
 
-    const uint_fast8_t* s = reinterpret_cast<const uint_fast8_t*>(simdSrc);
-    uint_fast8_t*       d = reinterpret_cast<uint_fast8_t*>(simdDst);
+    const uint8_t* s = reinterpret_cast<const uint8_t*>(simdSrc);
+    uint8_t*       d = reinterpret_cast<uint8_t*>(simdDst);
 
     while (stragglers--)
     {

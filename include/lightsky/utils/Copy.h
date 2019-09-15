@@ -56,7 +56,7 @@ void* LS_API fast_memcpy(void* const dest, const void* const src, const uint_fas
 template <typename dest_t, typename src_t>
 inline void LS_API fast_copy(dest_t* dest, const src_t* src, uint_fast64_t count)
 {
-    #if 1
+    #if 0
         if (count)
         {
             LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = *src++))
