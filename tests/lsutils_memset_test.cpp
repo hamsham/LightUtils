@@ -9,10 +9,6 @@
 
 
 
-
-
-
-
 int main()
 {
     constexpr unsigned int numBytes = 1024*1024*1024*sizeof(char)-1; // 1 gigabyte
@@ -68,7 +64,7 @@ int main()
         << "\n\tLS Fill:   " << lsFillTime//   / 1000ull
         << std::endl;
 
-    std::cout << "Estimated bandwidth (write-only): " << 2.0l/((long double)lsMemsetTime/1000.0l) << " Gb/s" << std::endl;
+    std::cout << "Estimated bandwidth (write-only): " << 1.0l/((long double)lsMemsetTime/1000.0l) << " Gb/s" << std::endl;
 
     return 0;
 }

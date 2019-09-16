@@ -119,15 +119,16 @@ void* utils::fast_memset_4(void* dst, const uint32_t fillBytes, uint_fast64_t co
             vst1q_u32(reinterpret_cast<uint32_t*>(simdTo++), fillByteSimd);
         }
     #else
-        uint_fast64_t* simdTo     = reinterpret_cast<uint_fast64_t*>(dst);
-        uint_fast64_t  stragglers = count % sizeof(uint_fast64_t);
-        uint_fast64_t  simdCount  = count / sizeof(uint_fast64_t);
+        const uint_fast64_t fillByteSimd = (uint_fast64_t)fillBytes | ((uint_fast64_t)fillBytes << 32);
+        uint_fast64_t*      simdTo       = reinterpret_cast<uint_fast64_t*>(dst);
+        uint_fast64_t       stragglers   = count % sizeof(uint_fast64_t);
+        uint_fast64_t       simdCount    = count / sizeof(uint_fast64_t);
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
         while (simdCount--)
         {
-            *simdTo++ = fillBytes;
+            *simdTo++ = fillByteSimd;
         }
     #endif
 

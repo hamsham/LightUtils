@@ -12,7 +12,7 @@
 
 int main()
 {
-    constexpr unsigned int numBytes = 1024*1024*1024*sizeof(char)-1; // 1 gigabyte
+    constexpr unsigned int numBytes = 512*1024*1024*sizeof(char)-1; // 500 Megabytes
     ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
     ls::utils::RandomNum randGen;
     ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pSrc{(char*)ls::utils::aligned_malloc(numBytes)};
@@ -68,7 +68,7 @@ int main()
         << "\n\tLS Copy:   " << lsCopyTime//   / 1000ull
         << std::endl;
 
-    std::cout << "Estimated bandwidth (read+write): " << 2.0l/((long double)lsMemcpyTime/1000.0l) << " Gb/s" << std::endl;
+    std::cout << "Estimated bandwidth (read+write): " << 1.0l/((long double)lsMemcpyTime/1000.0l) << " Gb/s" << std::endl;
 
     return 0;
 }
