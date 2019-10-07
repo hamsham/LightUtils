@@ -30,7 +30,7 @@ namespace utils {
  * class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class LS_API Resource {
+class Resource {
   protected:
     /**
      * pData is a pointer to an array of bytes that hold a complete resource

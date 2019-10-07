@@ -31,7 +31,7 @@ namespace utils {
  * this class is derived from, there is little need to overload the wide-string
  * methods.
  */
-class LS_API DataResource final : public Resource {
+class DataResource final : public Resource {
   private:
     /**
      * @brief fileData contains an entire file loaded into memory. The

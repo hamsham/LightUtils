@@ -155,7 +155,7 @@ struct TupleIndexer
  *  construct a tuple using the "new" operator if there are many objects.
  * --------------------------------------------------------------------------*/
 template<typename... data_t>
-class LS_API Tuple
+class Tuple
 {
     /**
      *  @brief Construct an object at a preallocated space within a buffer

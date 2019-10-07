@@ -33,7 +33,7 @@ namespace utils {
  * 
  * @return The 'dest' parameter.
  */
-void* LS_API fast_memcpy(void* const dest, const void* const src, const uint_fast64_t count);
+void* fast_memcpy(void* const dest, const void* const src, const uint_fast64_t count);
 
 
 
@@ -54,7 +54,7 @@ void* LS_API fast_memcpy(void* const dest, const void* const src, const uint_fas
  * Specifies the number of items which will be copied.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_copy(dest_t* dest, const src_t* src, uint_fast64_t count)
+inline void fast_copy(dest_t* dest, const src_t* src, uint_fast64_t count)
 {
     #if 0
         if (count)
@@ -88,7 +88,7 @@ inline void LS_API fast_copy(dest_t* dest, const src_t* src, uint_fast64_t count
  * Specifies the number of items which will be moved.
  */
 template <typename dest_t, typename src_t>
-inline void LS_API fast_move(dest_t* dest, src_t* src, uint_fast64_t count)
+inline void fast_move(dest_t* dest, src_t* src, uint_fast64_t count)
 {
     #if 0
         if (count)
@@ -122,7 +122,7 @@ inline void LS_API fast_move(dest_t* dest, src_t* src, uint_fast64_t count)
  *
  * @return The 'dest' parameter.
  */
-void* LS_API fast_memset_8(void* const dest, const uint64_t fillBytes, const uint_fast64_t count);
+void* fast_memset_8(void* const dest, const uint64_t fillBytes, const uint_fast64_t count);
 
 
 
@@ -229,7 +229,7 @@ inline LS_INLINE void* fast_memset(void* const dest, const uint8_t fillByte, con
  * Specifies the number of items which will be filled.
  */
 template <typename dest_t, typename fill_t>
-inline LS_INLINE void LS_API fast_fill(dest_t* dest, const fill_t& fillType, uint_fast64_t count)
+inline LS_INLINE void fast_fill(dest_t* dest, const fill_t& fillType, uint_fast64_t count)
 {
     #if 0
     if (count)

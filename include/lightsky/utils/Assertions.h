@@ -57,7 +57,7 @@ enum error_t : int {
  *  The message that will be printed to an standard output stream if the
  *  condition tests FALSE.
  */
-void LS_API runtime_assert(bool condition, error_t type, const char* const msg);
+void runtime_assert(bool condition, error_t type, const char* const msg);
 
 } // end Utils namespace
 } // end ls namespace

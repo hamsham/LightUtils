@@ -17,7 +17,7 @@ namespace utils {
  *  (see: Random Number Generation)
  *  http://www.lomont.org/Math/Papers/2008/Lomont_PRNG_2008.pdf
  */
-class LS_API RandomNum {
+class RandomNum {
   private:
     /**
      *  @brief state

@@ -104,7 +104,7 @@ struct AlignedDeleter
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
 template<typename data_t, class Deleter = PointerDeleter<data_t>>
-class LS_API Pointer
+class Pointer
 {
 
     // public typedefs
@@ -580,7 +580,7 @@ class LS_API Pointer
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
 template<typename data_t, class Deleter>
-class LS_API Pointer<data_t[], Deleter>
+class Pointer<data_t[], Deleter>
 {
 
     // public typedefs
