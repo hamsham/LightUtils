@@ -98,7 +98,7 @@ endif()
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
 # Dependencies
-target_link_libraries(${OUTPUT_NAME} ${LS_UTILS_DL_LIB} lssetup)
+target_link_libraries(${OUTPUT_NAME} ${LS_UTILS_DL_LIB} LightSky::Setup)
 
 
 
@@ -106,11 +106,21 @@ target_link_libraries(${OUTPUT_NAME} ${LS_UTILS_DL_LIB} lssetup)
 # Library Installation Setup
 # -------------------------------------
 install(TARGETS ${OUTPUT_NAME}
+    EXPORT LightUtils
     RUNTIME DESTINATION bin
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
 install(DIRECTORY include/lightsky/utils DESTINATION include/lightsky)
+
+install(EXPORT LightUtils
+    FILE LightUtils.cmake
+    NAMESPACE LightSky::
+    DESTINATION lib/cmake/LightSky
+)
+
+export(EXPORT LightUtils NAMESPACE LightSky::)
+add_library(LightSky::Utils ALIAS lsutils)
 
 
 

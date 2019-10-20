@@ -14,25 +14,14 @@ include_directories(".")
 
 
 # -------------------------------------
-# Dependency Setup
-# -------------------------------------
-set(
-    LS_UTILS_TEST_DEPS
-    lsutils
-    lssetup
-)
-
-
-
-# -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
 function(LS_UTILS_ADD_TARGET target sources)
     add_executable(${target} ${sources} ${ARGN})
 	if (NOT MSVC)
-		target_link_libraries(${target} lsutils lssetup pthread)
+		target_link_libraries(${target} LightSky::Utils LightSky::Setup pthread)
 	else()
-		target_link_libraries(${target} lsutils lssetup)
+		target_link_libraries(${target} LightSky::Utils LightSky::Setup)
 	endif()
 endfunction(LS_UTILS_ADD_TARGET)
 
