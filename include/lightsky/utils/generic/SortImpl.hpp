@@ -2,7 +2,6 @@
 #include <climits> // CHAR_BIT
 
 #include "lightsky/utils/Pointer.h" // Pointer<>
-#include "lightsky/utils/Types.hpp" // std::forward
 
 
 namespace ls
@@ -17,6 +16,42 @@ namespace utils
 -----------------------------------------------------------------------------*/
 namespace impl
 {
+
+template <typename IntegralType, class Comparator>
+inline LS_INLINE void sort_swap_minmax(IntegralType& a0, IntegralType& b0, Comparator cmp)  noexcept
+{
+    const IntegralType mask = -((IntegralType)cmp(a0, b0));
+    const long long a  = (long long)a0;
+    const long long b  = (long long)b0;
+
+    const long long al = ~mask & a;
+    const long long bg = ~mask & b;
+    const long long bl = mask & b;
+    const long long ag = mask & a;
+
+    a0 = (IntegralType)(al | bl);
+    b0 = (IntegralType)(ag | bg);
+}
+
+
+
+template <typename IntegralType, class LessComparator, class GreaterComparator>
+inline LS_INLINE void bitonic_swap_minmax(IntegralType& a0, IntegralType& b0, long long cmpLess, LessComparator cmpL, GreaterComparator cmpG)  noexcept
+{
+    const IntegralType mask = -((IntegralType)(cmpLess ? cmpL(a0, b0) : cmpG(a0, b0)));
+    const long long a  = (long long)a0;
+    const long long b  = (long long)b0;
+
+    const long long al = ~mask & a;
+    const long long bg = ~mask & b;
+    const long long ag = mask & a;
+    const long long bl = mask & b;
+
+    a0 = (IntegralType)(al | bl);
+    b0 = (IntegralType)(ag | bg);
+}
+
+
 
 /*-------------------------------------
  * Insertion sort that's meant to be used specifically with a shell sort
@@ -37,6 +72,31 @@ void sort_shell_insert(data_type* const items, const long long count, const long
 
             j -= increment;
             k = j-increment;
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Insertion sort that's meant to be used specifically with a shell sort
+-------------------------------------*/
+template <typename data_type, class Comparator>
+void sort_shell_insert(data_type* const items, const long long count, Comparator cmp) noexcept
+{
+    for (long long i = 1; i < count; i += 1)
+    {
+        long long j = i;
+        long long k = j-1;
+
+        while ((j >= 1) && cmp(items[j], items[k]))
+        {
+            const data_type temp = items[j];
+            items[j] = items[k];
+            items[k] = temp;
+
+            j -= 1;
+            k = j-1;
         }
     }
 }
@@ -143,7 +203,6 @@ template <typename data_type, class Comparator>
 inline long long sort_quick_partition(data_type* const items, const long long l, const long long r, Comparator cmp) noexcept
 {
     data_type temp;
-    data_type pivot;
     long long i;
     long long mid = (l + r) >> 1;
 
@@ -151,7 +210,7 @@ inline long long sort_quick_partition(data_type* const items, const long long l,
     items[mid] = items[l];
     items[l] = temp;
 
-    pivot = items[l];
+    const data_type& pivot = items[l];
     mid = l;
     i = l + 1;
 
@@ -526,7 +585,7 @@ inline void utils::sort_insertion(data_type* const items, long long count, Compa
 template <typename data_type, class Comparator>
 inline void utils::sort_shell(data_type* const items, long long count, Comparator cmp) noexcept
 {
-    for (long long i = count >> 2; i > 4; i >>= 2)
+    for (long long i = count / 4; i > 4; i /= 4)
     {
         for (long long j = 0; j < i; ++j)
         {
@@ -781,6 +840,7 @@ void utils::sort_sheared(
             {
                 numSortable = (i < numFinalCol) ? numTotalRows : numFullRows;
                 impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i, numTotalCols, cmpL);
+                //impl::sort_shell_insert<data_type, LessComparator>(nums+i*numTotalCols, numSortable*numTotalCols, numTotalCols, cmpL);
             }
         }
         else
@@ -811,21 +871,13 @@ void utils::sort_sheared(
          * Sync all threads before moving onto a new phase (i.e., switch from
          * sorting rows to sorting columns).
          */
-        numSortPhases->fetch_add(1, std::memory_order_relaxed);
+        numSortPhases->fetch_add(1, std::memory_order_acq_rel);
         if ((phase+1) == totalPhases)
         {
             break;
         }
 
-        while (numSortPhases->load(std::memory_order_relaxed) < (unsigned)(phase+1)*numThreads);
-    }
-
-    /*
-     * Ensure all threads have finished their initial sorting.
-     */
-    numThreadsFinished->fetch_add(1, std::memory_order_relaxed);
-    while (numThreadsFinished->load(std::memory_order_relaxed) < numThreads)
-    {
+        while (numSortPhases->load(std::memory_order_consume) < (unsigned)(phase+1)*numThreads);
     }
 
     /*
@@ -851,27 +903,31 @@ void utils::sort_sheared(
         }
 
         impl::shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1, cmpL);
+        //impl::sort_shell_insert<data_type, LessComparator>(nums+offset, numsToSort, cmpL);
     }
-
-    /*
-     * Indicate that the sort has completed.
-     */
-    numThreadsFinished->fetch_add(1, std::memory_order_relaxed);
 
     /*
      * Sync
      */
-    while (numThreadsFinished->load(std::memory_order_acquire) < numThreads*2);
+    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
+    while (numThreadsFinished->load(std::memory_order_consume) < numThreads)
+    {
+    }
 
     #if 0
-    for (long long k = 0, j = 0; k < count; ++k)
+    if (!threadId)
     {
-        if (!(k % impl::int_sqrt(count)))
+        for (long long k = 0, j = 0; k < count; ++k)
         {
-            printf("\n%ld: ", j++);
+            if (!(k % impl::int_sqrt(count)))
+            {
+                printf("\n%-4lld: ", j++);
+            }
+
+            printf("%-4d ", nums[k]);
         }
 
-        printf("%d ", nums[k]);
+        printf("\n");
     }
     #endif
 }
@@ -884,7 +940,7 @@ void utils::sort_sheared(
 -------------------------------------*/
 template <typename data_type, class LessComparator, class GreaterComparator>
 void utils::sort_bitonic(
-    data_type* const items,
+    typename std::enable_if<!std::is_integral<data_type>::value, data_type>::type* const items,
     long long count,
     long long numThreads,
     long long threadId,
@@ -931,6 +987,53 @@ void utils::sort_bitonic(
                             items[lj] = temp;
                         }
                     }
+                }
+            }
+
+            numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+            while (numSortPhases->load(std::memory_order_consume) < phase)
+            {
+                // spin
+            }
+        }
+    }
+
+    // sync
+    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
+    while (numThreadsFinished->load(std::memory_order_consume) != numThreads)
+    {
+        // spin
+    }
+}
+
+
+
+template <typename data_type, class LessComparator, class GreaterComparator>
+void utils::sort_bitonic(
+    typename std::enable_if<std::is_integral<data_type>::value, data_type>::type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numThreadsFinished,
+    std::atomic_llong* numSortPhases,
+    LessComparator cmpL,
+    GreaterComparator cmpG) noexcept
+{
+    long long phase = numThreads;
+
+    for (long long i = 1; i < count; i *= 2)
+    {
+        for (long long j = i; j > 0; j /= 2, phase += numThreads)
+        {
+            for (long long k = 0; k < count; k += (j * 2))
+            {
+                const long long kj = k+j;
+                const long long cmpLess = k & (i * 2);
+
+                for (long long l = k + threadId; l < kj; l += numThreads)
+                {
+                    const long long lj = l + j;
+                    impl::bitonic_swap_minmax<data_type>(items[l], items[lj], cmpLess, cmpL, cmpG);
                 }
             }
 

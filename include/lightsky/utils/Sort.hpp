@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstdio> // long long
+#include <type_traits> // std::is_integral, std::enable_if
 
 #include "lightsky/utils/Algorithm.hpp" // utils::IsLess
 
@@ -105,7 +106,18 @@ void sort_sheared(
 -------------------------------------*/
 template <typename data_type, class LessComparator, class GreaterComparator>
 void sort_bitonic(
-    data_type* const items,
+    typename std::enable_if<!std::is_integral<data_type>::value, data_type>::type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numThreadsFinished,
+    std::atomic_llong* numSortPhases,
+    LessComparator cmpL = LessComparator{},
+    GreaterComparator cmpG = GreaterComparator{}) noexcept;
+
+template <typename data_type, class LessComparator, class GreaterComparator>
+void sort_bitonic(
+    typename std::enable_if<std::is_integral<data_type>::value, data_type>::type* const items,
     long long count,
     long long numThreads,
     long long threadId,
