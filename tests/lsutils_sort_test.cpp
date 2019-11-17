@@ -3,6 +3,7 @@
  * @file Testing implementations of different sorting methods.
  */
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <cstdio>
@@ -28,7 +29,7 @@ enum
 };
 #endif /* DEBUG */
 
-static const unsigned int MAX_THREADS = 4;
+static const unsigned int MAX_THREADS = (unsigned int)std::thread::hardware_concurrency();
 
 
 
@@ -49,6 +50,7 @@ int bench_sorts(
 // Print a list of numbers to a file
 void print_nums(
     int* nums,
+    int mismatchPos,
     long long count,
     const char* const testName,
     FILE* pFile
@@ -80,11 +82,11 @@ int main(void)
         //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
         //&ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
         //&ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
-        &quick_sort_2,
+        //&ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
+        //&quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
-        &quick_sort_ref,
-        &sort_radix<int, ls::utils::IsLess<int>>,
+        //&quick_sort_ref,
+        //&sort_radix<int, ls::utils::IsLess<int>>,
         //nullptr,
         nullptr
     };
@@ -101,11 +103,11 @@ int main(void)
         //"Shell Sort",
         //"Merge Sort (recursive)",
         //"Merge Sort (iterative)",
-        "Quick Sort (recursive)",
-        "Quick Sort (iterative)",
+        //"Quick Sort (recursive)",
+        //"Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
-        "Quick Sort-Reference",
-        "Radix Sort",
+        //"Quick Sort-Reference",
+        //"Radix Sort",
         //"Shear Sort (Parallel)",
         "Bitonic Sort (Parallel)"
     };
@@ -165,7 +167,7 @@ int bench_sorts(
         return 0;
     }
 
-    ls::utils::Clock<float> ticks;
+    ls::utils::Clock<double> ticks;
 
     for (int i = 0, j = 0; i < numTests; ++i)
     {
@@ -178,12 +180,12 @@ int bench_sorts(
 
         printf("Testing a %s...", testNames[i]);
 
-        // Time the current sort method
-        ticks.start(); // start time
-
         if (pTests[i])
         {
+            // Time the current sort method
+            ticks.start(); // start time
             (*pTests[i])(nums, MAX_RAND_NUMS, ls::utils::IsLess<int>{}); // pointer to the sort function
+            ticks.tick(); // stop time
         }
         else
         {
@@ -191,34 +193,39 @@ int bench_sorts(
             std::atomic_llong numSortPhases{0};
             for (unsigned t = 1; t < MAX_THREADS; ++t)
             {
-                std::thread{pThreadedTests[j], nums, MAX_RAND_NUMS, MAX_THREADS, t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
+                std::thread{pThreadedTests[j], nums, MAX_RAND_NUMS, MAX_THREADS, MAX_THREADS-1-t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
             }
-            pThreadedTests[j](nums, MAX_RAND_NUMS, MAX_THREADS, 0, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
+
+            // Time the current sort method
+            ticks.start(); // start time
+
+            pThreadedTests[j](nums, MAX_RAND_NUMS, MAX_THREADS, MAX_THREADS-1, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
+
+            ticks.tick(); // stop time
 
             j += 1;
         }
 
-        ticks.tick(); // stop time
-
-        const float timeToSort = ticks.tick_time().count();
+        const double timeToSort = ticks.tick_time().count();
 
         printf("Done!\n");
         printf("The %s test took %f seconds.\n", testNames[i], timeToSort);
 
         printf("Verifying the %s...", testNames[i]);
-        const int matchPos = memcmp(nums, validation, MAX_RAND_NUMS*sizeof(int));
-        if (is_sorted(nums, MAX_RAND_NUMS) && matchPos == 0)
+        const long long matchPos = (long long)(std::is_sorted_until(nums, nums+MAX_RAND_NUMS)-nums);
+
+        if (matchPos != MAX_RAND_NUMS)
         {
-            printf("Passed!\n");
+            #if defined(DEBUG)
+                print_nums(nums, matchPos, MAX_RAND_NUMS, testNames[i], stdout);
+            #endif
+
+            printf("Failed! Mismatch at position %lld\n", matchPos);
         }
         else
         {
-            printf("Failed! Mismatch at position %d\n", matchPos);
+            printf("Passed!\n");
         }
-
-#if defined(DEBUG)
-        print_nums(nums, MAX_RAND_NUMS, testNames[i], stdout);
-#endif
 
         printf("\n\n");
     }
@@ -236,16 +243,25 @@ int bench_sorts(
 -----------------------------------------------------------------------------*/
 void print_nums(
     int* nums,
+    int mismatchPos,
     const long long count,
     const char* const testName,
     FILE* pFile
 )
 {
+    mismatchPos = std::abs(mismatchPos);
     fprintf(pFile, "%s:\n", testName);
 
     for (long long i = 0; i < count; ++i)
     {
-        fprintf(pFile, "%d\n", nums[i]);
+        if (mismatchPos && i == mismatchPos)
+        {
+            fprintf(pFile, "%10lld: %d    <--- mismatch\n", i, nums[i]);
+        }
+        else
+        {
+            fprintf(pFile, "%10lld: %d\n", i, nums[i]);
+        }
     }
 
     fprintf(pFile, "\n\n");
@@ -260,11 +276,15 @@ long long is_sorted(int* const nums, long long count)
 {
     long long i;
 
-    for (i = 0; (i < count - 1) && (nums[i] <= nums[i + 1]); ++i)
+    for (i = 0; (i < count - 1); ++i)
     {
+        if (nums[i] > nums[i + 1])
+        {
+            return i+1;
+        }
     }
 
-    return i + 1 == count;
+    return 0;
 }
 
 

@@ -1,4 +1,6 @@
 
+#include <time.h> // nanosleep, time_spec
+
 #include <climits> // CHAR_BIT
 
 #include "lightsky/utils/Pointer.h" // Pointer<>
@@ -16,6 +18,22 @@ namespace utils
 -----------------------------------------------------------------------------*/
 namespace impl
 {
+
+long long log2 (long long val)
+{
+    if (val <= 1) return 0;
+
+    unsigned ret = 0;
+    while (val > 1)
+    {
+        val >>= 1;
+        ret++;
+    }
+
+    return (long long)ret;
+}
+
+
 
 template <typename IntegralType, class Comparator>
 inline LS_INLINE void sort_swap_minmax(IntegralType& a0, IntegralType& b0, Comparator cmp)  noexcept
@@ -934,83 +952,12 @@ void utils::sort_sheared(
 
 
 
-
 /*-------------------------------------
     Bitonic Sort for arrays of size 2^n
 -------------------------------------*/
 template <typename data_type, class LessComparator, class GreaterComparator>
 void utils::sort_bitonic(
-    typename std::enable_if<!std::is_integral<data_type>::value, data_type>::type* const items,
-    long long count,
-    long long numThreads,
-    long long threadId,
-    std::atomic_llong* numThreadsFinished,
-    std::atomic_llong* numSortPhases,
-    LessComparator cmpL,
-    GreaterComparator cmpG) noexcept
-{
-    long long phase = numThreads;
-
-    for (long long i = 1; i < count; i <<= 1)
-    {
-        for (long long j = i; j > 0; j >>= 1, phase += numThreads)
-        {
-            for (long long k = 0; k < count; k += (j << 1))
-            {
-                const long long kj = k+j;
-                const long long cmpLess = k & (i << 1);
-
-                if (cmpLess)
-                {
-                    for (long long l = k + threadId; l < kj; l += numThreads)
-                    {
-                        const long long lj = l + j;
-
-                        if (cmpL(items[l], items[lj]))
-                        {
-                            const data_type temp = items[l];
-                            items[l] = items[lj];
-                            items[lj] = temp;
-                        }
-                    }
-                }
-                else
-                {
-                    for (long long l = k + threadId; l < kj; l += numThreads)
-                    {
-                        const long long lj = l + j;
-
-                        if (cmpG(items[l], items[lj]))
-                        {
-                            const data_type temp = items[l];
-                            items[l] = items[lj];
-                            items[lj] = temp;
-                        }
-                    }
-                }
-            }
-
-            numSortPhases->fetch_add(1, std::memory_order_acq_rel);
-            while (numSortPhases->load(std::memory_order_consume) < phase)
-            {
-                // spin
-            }
-        }
-    }
-
-    // sync
-    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
-    while (numThreadsFinished->load(std::memory_order_consume) != numThreads)
-    {
-        // spin
-    }
-}
-
-
-
-template <typename data_type, class LessComparator, class GreaterComparator>
-void utils::sort_bitonic(
-    typename std::enable_if<std::is_integral<data_type>::value, data_type>::type* const items,
+    data_type* const items,
     long long count,
     long long numThreads,
     long long threadId,
@@ -1025,15 +972,24 @@ void utils::sort_bitonic(
     {
         for (long long j = i; j > 0; j /= 2, phase += numThreads)
         {
-            for (long long k = 0; k < count; k += (j * 2))
+            const long long jt0 = 2 * j * threadId;
+            const long long jt1 = 2 * j * numThreads;
+
+            for (long long k = jt0; k < count; k += jt1)
             {
                 const long long kj = k+j;
                 const long long cmpLess = k & (i * 2);
 
-                for (long long l = k + threadId; l < kj; l += numThreads)
+                for (long long l = k; l < kj; ++l)
                 {
                     const long long lj = l + j;
-                    impl::bitonic_swap_minmax<data_type>(items[l], items[lj], cmpLess, cmpL, cmpG);
+
+                    if (cmpLess ? cmpL(items[l], items[lj]) : cmpG(items[l], items[lj]))
+                    {
+                        const data_type temp = items[l];
+                        items[l] = items[lj];
+                        items[lj] = temp;
+                    }
                 }
             }
 
