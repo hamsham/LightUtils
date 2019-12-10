@@ -19,7 +19,7 @@ namespace utils
 namespace impl
 {
 
-long long log2 (long long val)
+inline long long log2 (long long val)
 {
     if (val <= 1) return 0;
 
