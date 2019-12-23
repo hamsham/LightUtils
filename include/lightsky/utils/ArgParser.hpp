@@ -22,7 +22,7 @@ class ArgParser
   private:
     std::unordered_map<size_t, size_t> mLongOptToIndices;
 
-    std::unordered_map<char, size_t> mShortOptToIndices;
+    std::unordered_map<size_t, size_t> mShortOptToIndices;
 
     std::vector<Argument> mArgs;
 
