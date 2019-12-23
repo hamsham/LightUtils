@@ -13,6 +13,8 @@ set(OUTPUT_NAME lsutils)
 include_directories(include)
 
 set(LS_UTILS_SOURCES
+    src/Argument.cpp
+    src/ArgParser.cpp
     src/Assertions.cpp
     src/Copy.cpp
     src/DataResource.cpp
@@ -28,6 +30,8 @@ set(LS_UTILS_SOURCES
 
 set(LS_UTILS_HEADERS
     include/lightsky/utils/Algorithm.hpp
+    include/lightsky/utils/Argument.hpp
+    include/lightsky/utils/ArgParser.hpp
     include/lightsky/utils/Assertions.h
     include/lightsky/utils/Bits.h
     include/lightsky/utils/BTree.h
