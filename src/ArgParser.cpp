@@ -4,6 +4,7 @@
 #include <cstdlib> // std::exit()
 #include <cstring> // std::strlen
 #include <iostream>
+#include <limits>
 #include <utility> // std::move()
 
 #include "lightsky/utils/ArgParser.hpp"
@@ -84,10 +85,10 @@ ArgUsage parse_arg_type(const char* pOpt, int* numFlags = nullptr) noexcept
     }
     else if (len >= 2 && pOpt[0] == '-')
     {
-        const int numSubOpts = std::strlen(pOpt+1);
+        const size_t numSubOpts = std::strlen(pOpt+1);
         if (numFlags)
         {
-            *numFlags = numSubOpts;
+            *numFlags = (int)(numSubOpts < (size_t)std::numeric_limits<int>::max() ? numSubOpts : (size_t)std::numeric_limits<int>::max());
         }
         return (numSubOpts > 1) ? ArgUsage::SHORT_FLAGS : ArgUsage::SHORT_ARG;
     }
