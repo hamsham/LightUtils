@@ -8,12 +8,19 @@
 #include <climits> // CHAR_BIT
 //#include <clocale> // std::setlocale()
 #include <cmath> // std::abs(), std::pow(), std::trunc
-#include <locale> // std::wstring_convert<>
 #include <codecvt> // std::c16rtomb(), std::c32rtomb(), std::mbstate_t
 #include <cwchar> // std::wcstombs
 #include <utility> // std::move
 
-#include <lightsky/setup/Types.h>
+#include "lightsky/setup/OS.h"
+
+#if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+#include <locale> // std::wstring_convert<>
+#else
+#include <cuchar> // std::c16rtombs(), std::c32rtombs()
+#endif
+
+#include "lightsky/setup/Types.h"
 
 #include "lightsky/utils/StringUtils.h"
 
@@ -397,35 +404,35 @@ std::string utils::to_str(const std::wstring& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u16string& wstr)
 {
-    /*
-    std::mbstate_t mb{};
-    std::string ret;
-    char temp[MB_LEN_MAX];
+    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+        std::string u8 = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(wstr);
+        return u8;
+    #else
+        std::mbstate_t mb{};
+        std::string ret;
+        char temp[MB_LEN_MAX];
 
-    //std::setlocale(LC_CTYPE, "");
+        //std::setlocale(LC_CTYPE, "");
 
-    ret.reserve(wstr.size()*sizeof(std::u16string::value_type));
+        ret.reserve(wstr.size()*sizeof(std::u16string::value_type));
 
-    for (const typename std::u16string::value_type c16 : wstr)
-    {
-        std::size_t numBytes = 0;
-
-        numBytes = std::c16rtomb(temp, c16, &mb);
-
-        if (numBytes == static_cast<std::size_t>(-1))
+        for (const typename std::u16string::value_type c16 : wstr)
         {
-            ret.clear();
-            break;
+            std::size_t numBytes = 0;
+
+            numBytes = std::c16rtomb(temp, c16, &mb);
+
+            if (numBytes == static_cast<std::size_t>(-1))
+            {
+                ret.clear();
+                break;
+            }
+
+            ret.append(temp, numBytes);
         }
 
-        ret.append(temp, numBytes);
-    }
-
-    return ret;
-    */
-
-    std::string u8 = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(wstr);
-    return u8;
+        return ret;
+    #endif
 }
 
 
@@ -435,35 +442,36 @@ std::string utils::to_str(const std::u16string& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u32string& wstr)
 {
-    /*
-    std::mbstate_t mb{};
-    std::string ret;
-    char temp[MB_LEN_MAX];
+    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+        std::string u8 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.to_bytes(wstr);
+        return u8;
+    #else
+        std::mbstate_t mb{};
+        std::string ret;
+        char temp[MB_LEN_MAX];
 
-    //std::setlocale(LC_CTYPE, "");
+        //std::setlocale(LC_CTYPE, "");
 
-    ret.reserve(wstr.size()*sizeof(std::u32string::value_type));
+        ret.reserve(wstr.size()*sizeof(std::u32string::value_type));
 
-    for (const typename std::u32string::value_type c32 : wstr)
-    {
-        std::size_t numBytes = 0;
-
-        numBytes = std::c32rtomb(temp, c32, &mb);
-
-        if (numBytes == static_cast<std::size_t>(-1))
+        for (const typename std::u32string::value_type c32 : wstr)
         {
-            ret.clear();
-            break;
+            std::size_t numBytes = 0;
+
+            numBytes = std::c32rtomb(temp, c32, &mb);
+
+            if (numBytes == static_cast<std::size_t>(-1))
+            {
+                ret.clear();
+                break;
+            }
+
+            ret.append(temp, numBytes);
         }
 
-        ret.append(temp, numBytes);
-    }
-
-    return ret;
-    */
-    std::string u8 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.to_bytes(wstr);
-    return u8;
-};
+        return ret;
+    #endif
+}
 
 
 
