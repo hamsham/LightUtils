@@ -8,7 +8,8 @@
 #include <climits> // CHAR_BIT
 //#include <clocale> // std::setlocale()
 #include <cmath> // std::abs(), std::pow(), std::trunc
-#include <cuchar> // std::c16rtomb(), std::c32rtomb(), std::mbstate_t
+#include <locale> // std::wstring_convert<>
+#include <codecvt> // std::c16rtomb(), std::c32rtomb(), std::mbstate_t
 #include <cwchar> // std::wcstombs
 #include <utility> // std::move
 
@@ -396,6 +397,7 @@ std::string utils::to_str(const std::wstring& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u16string& wstr)
 {
+    /*
     std::mbstate_t mb{};
     std::string ret;
     char temp[MB_LEN_MAX];
@@ -420,6 +422,10 @@ std::string utils::to_str(const std::u16string& wstr)
     }
 
     return ret;
+    */
+
+    std::string u8 = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(wstr);
+    return u8;
 }
 
 
@@ -429,6 +435,7 @@ std::string utils::to_str(const std::u16string& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u32string& wstr)
 {
+    /*
     std::mbstate_t mb{};
     std::string ret;
     char temp[MB_LEN_MAX];
@@ -453,7 +460,10 @@ std::string utils::to_str(const std::u32string& wstr)
     }
 
     return ret;
-}
+    */
+    std::string u8 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.to_bytes(wstr);
+    return u8;
+};
 
 
 
