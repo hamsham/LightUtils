@@ -9,12 +9,13 @@
 #define LS_UTILS_STRING_UTILS_H
 
 #include <string>
-#include <sstream>
 
-#include "lightsky/setup/Api.h"
+namespace ls
+{
+namespace utils
+{
 
-namespace ls {
-namespace utils {
+
 
 /**
  *  @brief Convert a basic data type to an std::string.
@@ -29,18 +30,31 @@ namespace utils {
  *  @return std::string
  *  A string-representation of the input parameter
  */
-template <typename T>
-std::string to_string(const T& data) {
-    std::ostringstream oss;
-    oss << data;
-    return oss.str();
-}
+std::string to_str(char);
+std::string to_str(unsigned char);
+std::string to_str(short);
+std::string to_str(unsigned short);
+std::string to_str(int);
+std::string to_str(unsigned int);
+std::string to_str(long);
+std::string to_str(unsigned long);
+std::string to_str(long long);
+std::string to_str(unsigned long long);
+std::string to_str(float);
+std::string to_str(double);
+std::string to_str(long double);
+
+
 
 /**
  *  @brief Convert a Wide String to a Multi-Byte Character String
  *
- *  This function assists in making an application cope with UTF-8 and UTF-16
+ *  This function assists in making an application cope with UTF-8
  *  compatibility issues.
+ *
+ *  @note To correctly convert between different character sets, you must set
+ *  the current program's locale using std::setlocale(). For example, call
+ *  std::setlocale(LC_CTYPE, ""); before calling this function.
  *
  *  @param wstr
  *  A wide-character string object which needs to be converted into a
@@ -50,7 +64,11 @@ std::string to_string(const T& data) {
  *  A std::string object that uses 'char' types instead of the input
  *  parameter's 'wchar_t' type.
  */
-std::string wide_to_mb_string(const std::wstring& wstr);
+std::string to_str(const std::wstring& wstr);
+std::string to_str(const std::u16string& wstr);
+std::string to_str(const std::u32string& wstr);
+
+
 
 } // end utils namespace
 } // end ls namespace

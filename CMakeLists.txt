@@ -53,7 +53,6 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/StringUtils.h
     include/lightsky/utils/Time.hpp
     include/lightsky/utils/Tuple.h
-    include/lightsky/utils/Types.hpp
     include/lightsky/utils/Utils.h
     include/lightsky/utils/WorkerThread.hpp
 

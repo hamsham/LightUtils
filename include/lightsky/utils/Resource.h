@@ -206,7 +206,7 @@ inline void* Resource::get_data() const {
  * ----------------------------------*/
 inline bool Resource::load_file(const std::wstring& filename) {
     // attempt to load the file
-    return load_file(wide_to_mb_string(filename));
+    return load_file(to_str(filename));
 }
 
 /*-------------------------------------
@@ -214,7 +214,7 @@ inline bool Resource::load_file(const std::wstring& filename) {
  * ----------------------------------*/
 inline bool Resource::save_file(const std::wstring& filename) const {
     // attempt to save the file using a multi-byte string.
-    return save_file(wide_to_mb_string(filename));
+    return save_file(to_str(filename));
 }
 
 } // end utils namespace
