@@ -8,6 +8,14 @@ set(OUTPUT_NAME lsutils)
 
 
 # -------------------------------------
+# 3rd-party libraries
+# -------------------------------------
+include(external_deps.cmake)
+include(enetConfig.cmake)
+
+
+
+# -------------------------------------
 # Source Paths
 # -------------------------------------
 include_directories(include)
@@ -21,6 +29,10 @@ set(LS_UTILS_SOURCES
     src/DynamicLib.cpp
     src/Futex.cpp
     src/RandomNum.cpp
+    src/NetClient.cpp
+    src/NetConnection.cpp
+    src/NetNode.cpp
+    src/NetServer.cpp
     src/Resource.cpp
     src/SpinLock.cpp
     src/StringUtils.cpp
@@ -44,6 +56,11 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Hash.h
     include/lightsky/utils/Log.h
     include/lightsky/utils/Loops.h
+    include/lightsky/utils/NetClient.hpp
+    include/lightsky/utils/NetConnection.hpp
+    include/lightsky/utils/NetEvent.hpp
+    include/lightsky/utils/NetNode.hpp
+    include/lightsky/utils/NetServer.hpp
     include/lightsky/utils/Pointer.h
     include/lightsky/utils/RandomNum.h
     include/lightsky/utils/Resource.h
@@ -101,7 +118,12 @@ endif()
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
 # Dependencies
-target_link_libraries(${OUTPUT_NAME} ${LS_UTILS_DL_LIB} LightSky::Setup)
+target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
+target_link_libraries(${OUTPUT_NAME}
+    PUBLIC LightSky::Setup
+    INTERFACE ${LS_UTILS_DL_LIB}
+    INTERFACE ${ENET_LIBRARIES}
+)
 
 
 
