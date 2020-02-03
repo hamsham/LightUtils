@@ -16,11 +16,8 @@ find_library(ENET_SYS_LIB
 option(BUILD_ENET "Force ENet to build from source." OFF)
 
 if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NOTFOUND AND NOT ENET_SYS_LIB STREQUAL ENET_SYS_LIB-NOTFOUND)
-    message("-- Found ENet include path: ${ENET_SYS_INCLUDE_DIR}")
-    message("-- Found ENet library: ${ENET_SYS_LIB}")
-
-    set(ENET_INCLUDE_DIR ${ENET_SYS_INCLUDE_DIR})
-    set(ENET_LIBRARIES ${ENET_SYS_LIB})
+    set(ENET_INCLUDE_DIR "${ENET_SYS_INCLUDE_DIR}")
+    set(ENET_LIBRARIES "${ENET_SYS_LIB}")
 
 else()
     message("-- Building ENet from source")
@@ -74,9 +71,13 @@ else()
 
     # Add the imported library target
     add_library(enet STATIC IMPORTED)
+    set_target_properties(enet PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${EXTERNAL_PROJECT_PREFIX}/include)
     set_target_properties(enet PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX})
     add_dependencies(enet ENet)
 
     set(ENET_INCLUDE_DIR "${EXTERNAL_PROJECT_PREFIX}/include")
     set(ENET_LIBRARIES enet)
 endif()
+
+message("-- Found ENet include path: ${ENET_INCLUDE_DIR}")
+message("-- Found ENet library: ${ENET_LIBRARIES}")

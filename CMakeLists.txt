@@ -122,7 +122,7 @@ target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
 target_link_libraries(${OUTPUT_NAME}
     PUBLIC LightSky::Setup
     INTERFACE ${LS_UTILS_DL_LIB}
-    INTERFACE ${ENET_LIBRARIES}
+    PUBLIC ${ENET_LIBRARIES}
 )
 
 
