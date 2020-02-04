@@ -22,6 +22,15 @@ if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NO
 else()
     message("-- Building ENet from source")
 
+    # MSBuild
+    if (NOT CMAKE_BUILD_TYPE AND CMAKE_VS_MSBUILD_COMMAND)
+        if (NOT CMAKE_BUILD_TYPE)
+            set(ENET_WINDOWS_BUILD_CONFIG "/Debug")
+        else()
+            set(ENET_WINDOWS_BUILD_CONFIG "/${CMAKE_BUILD_TYPE}")
+        endif()
+    endif()
+
     # Version Control Tools
     find_package(Git REQUIRED)
 
@@ -65,7 +74,7 @@ else()
         BUILD_COMMAND
             ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build ${CMAKE_COMMAND} --build . --config ${CMAKE_CFG_INTDIR}
         INSTALL_COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
+            ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build${ENET_WINDOWS_BUILD_CONFIG}/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
             ${CMAKE_COMMAND} -E copy_directory ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet ${EXTERNAL_PROJECT_PREFIX}/include/enet
     )
 
