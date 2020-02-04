@@ -25,7 +25,7 @@ else()
     # MSBuild
     if (NOT CMAKE_BUILD_TYPE AND CMAKE_VS_MSBUILD_COMMAND)
         if (NOT CMAKE_BUILD_TYPE)
-            set(ENET_WINDOWS_BUILD_CONFIG "/Debug")
+            set(ENET_WINDOWS_BUILD_CONFIG "/Release")
         else()
             set(ENET_WINDOWS_BUILD_CONFIG "/${CMAKE_BUILD_TYPE}")
         endif()
