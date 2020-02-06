@@ -25,7 +25,7 @@ else()
     # MSBuild
     if (NOT CMAKE_BUILD_TYPE AND CMAKE_VS_MSBUILD_COMMAND)
         if (NOT CMAKE_BUILD_TYPE)
-            set(ENET_WINDOWS_BUILD_CONFIG "/Release")
+            set(ENET_WINDOWS_BUILD_CONFIG "/$<CONFIG>")
         else()
             set(ENET_WINDOWS_BUILD_CONFIG "/${CMAKE_BUILD_TYPE}")
         endif()
@@ -85,7 +85,12 @@ else()
     add_dependencies(enet ENet)
 
     set(ENET_INCLUDE_DIR "${EXTERNAL_PROJECT_PREFIX}/include")
-    set(ENET_LIBRARIES enet)
+
+    if (WIN32)
+        set(ENET_LIBRARIES enet winmm ws2_32)
+    else()
+        set(ENET_LIBRARIES enet)
+    endif()
 endif()
 
 message("-- Found ENet include path: ${ENET_INCLUDE_DIR}")
