@@ -72,7 +72,7 @@ constexpr FloatingType _impl_abs(typename ls::setup::EnableIf<ls::setup::IsFloat
 /*-------------------------------------
  * Count the number of decimals in a floating-point number
  * ----------------------------------*/
-template <typename FloatingType, long base = 10>
+template <typename FloatingType, long long base = 10>
 size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t numDecimals = 0;
@@ -140,7 +140,7 @@ size_t _float_info_to_int(
 
 
 
-template <typename FloatingType, long base = 10>
+template <typename FloatingType, long long base = 10>
 size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
@@ -148,10 +148,10 @@ size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<F
     haveSign = _float_info_to_int<FloatingType, base>(x, &integral, &decimal, &numDecimals, &leadingZeroes);
 
     size_t ret = haveSign;
-    ret += integral ? _count_printable_digits<long, base>(integral) : 1;
+    ret += integral ? _count_printable_digits<long long, base>(integral) : 1;
     ret += 1; // decimal point
     ret += (size_t)leadingZeroes;
-    ret += _count_printable_digits<long, base>(decimal);
+    ret += _count_printable_digits<long long, base>(decimal);
 
     return ret;
 }
@@ -200,7 +200,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
     }
     else
     {
-        iter += _integral_to_char_buffer<long, base>(integral, &ret[iter]);
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
     }
 
     ret[iter++] = '.';
@@ -211,7 +211,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
         ret[iter++] = c;
     }
 
-    _integral_to_char_buffer<long, base>(decimal, &ret[iter]);
+    _integral_to_char_buffer<long long, base>(decimal, &ret[iter]);
 
     return ret;
 }
@@ -240,7 +240,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<I
     }
     else
     {
-        iter += _integral_to_char_buffer<long, base>(integral, &ret[iter]);
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
     }
 
     return ret;
