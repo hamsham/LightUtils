@@ -8,6 +8,7 @@
 #include "lightsky/utils/WorkerThread.hpp"
 
 using ls::utils::WorkerThread;
+using ls::utils::WorkerThreadGroup;
 
 
 
@@ -17,24 +18,16 @@ struct SampleTask
 
     void operator()() noexcept
     {
-        std::cout << " -- This task is running on another thread for " << x << " seconds." << std::endl;
+        std::cout << " -- This task is running on external thread " << std::this_thread::get_id() << " for " << x << " seconds." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(x));
     }
 };
 
 
 
-int main()
+void test_single_worker()
 {
-    srand(time(nullptr));
-
-    std::cout
-        << "Data Alignment:"
-        << "\n\tMutex:       " << sizeof(std::mutex)
-        << "\n\tSpinLock:    " << sizeof(ls::utils::SpinLock)
-        << "\n\tWorker (ST): " << sizeof(ls::utils::DefaultWorker)
-        << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerThread)
-        << std::endl;
+    std::cout << "Testing a single worker" << std::endl;
 
     WorkerThread<SampleTask> thread{};
 
@@ -58,7 +51,7 @@ int main()
     std::cout << "Thread ready state: " << thread.ready() << std::endl;
     while (!thread.ready())
     {
-        std::cout << "Waiting for tasks to finish..." << std::endl;
+        std::cout << "\tWaiting for tasks to finish..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds{1});
     }
 
@@ -66,7 +59,68 @@ int main()
     thread2 = std::move(thread);
 
     thread2.flush();
-    std::cout << "Thread ready state: " << thread2.ready() << std::endl;
+    std::cout << "Done. Thread ready state: " << thread2.ready() << std::endl;
+}
+
+
+
+void test_grouped_workers()
+{
+    constexpr unsigned numWorkers = 11;
+    std::cout << "Testing " << numWorkers << " grouped workers." << std::endl;
+
+    WorkerThreadGroup<SampleTask> thread{};
+    thread.concurrency(numWorkers);
+
+    thread.push(SampleTask());
+    //thread.push(SampleTask());
+    //thread.push(SampleTask());
+    //thread.push(SampleTask());
+    thread.flush();
+
+    do
+    {
+        std::cout << "Waiting for the worker thread to finish..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds{500});
+
+        // push tasks while waiting for the test to complete
+        thread.push(SampleTask());
+    }
+    while (!thread.ready());
+
+    thread.flush();
+
+    std::cout << "Thread ready state: " << thread.ready() << std::endl;
+    while (!thread.ready())
+    {
+        std::cout << "\tWaiting for tasks to finish..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+    }
+
+    {
+        WorkerThreadGroup<SampleTask> thread2;
+        thread2 = std::move(thread);
+        thread2.flush();
+
+        std::cout << "Done. Thread ready state: " << thread2.ready() << std::endl;
+    }
+}
+
+
+
+int main()
+{
+    srand(time(nullptr));
+    std::cout
+        << "Data Alignment:"
+        << "\n\tMutex:       " << sizeof(std::mutex)
+        << "\n\tSpinLock:    " << sizeof(ls::utils::SpinLock)
+        << "\n\tWorker (ST): " << sizeof(ls::utils::DefaultWorker)
+        << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerThread)
+        << std::endl;
+
+    //test_single_worker();
+    test_grouped_workers();
 
     return 0;
 }

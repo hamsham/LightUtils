@@ -18,6 +18,7 @@
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
 
 #include "lightsky/utils/SpinLock.hpp"
+#include "lightsky/utils/Pointer.h"
 
 
 
@@ -49,11 +50,11 @@ class Worker
 
     std::vector<WorkerTaskType> mTasks[2];
 
-    mutable std::mutex mMutex;
+    mutable std::mutex mWaitMtx;
 
     mutable std::condition_variable mWaitCond;
 
-    void execute_tasks() noexcept;
+    virtual void execute_tasks() noexcept;
 
   public:
     virtual ~Worker() noexcept;
@@ -72,7 +73,7 @@ class Worker
 
     void emplace(WorkerTaskType&& task) noexcept;
 
-    bool ready() const noexcept;
+    virtual bool ready() const noexcept;
 
     const std::vector<WorkerTaskType>& tasks() const noexcept;
 
@@ -91,6 +92,10 @@ class Worker
     bool busy_waiting() const noexcept;
 
     void busy_waiting(bool useBusyWait) noexcept;
+
+    virtual size_t concurrency(size_t inNumThreads) noexcept;
+
+    virtual size_t concurrency() const noexcept;
 };
 
 
@@ -136,6 +141,57 @@ class WorkerThread : public Worker<WorkerTaskType>
  * Convenience Types
 -------------------------------------*/
 LS_DECLARE_CLASS_TYPE(DefaultWorkerThread, WorkerThread, void (*)());
+
+
+
+/**----------------------------------------------------------------------------
+ * @brief WorkerThreadGroup peforms like the WorkerThread class, but will run
+ * each task on several threads in parallel.
+-----------------------------------------------------------------------------*/
+template <class WorkerTaskType>
+class WorkerThreadGroup : public Worker<WorkerTaskType>
+{
+  private:
+    long long mNumThreads;
+
+    std::atomic_llong mThreadsRunning;
+
+    std::condition_variable mExecCond;
+
+    ls::utils::Pointer<std::thread[]> mThreads;
+
+    virtual void execute_tasks() noexcept override;
+
+    void thread_loop() noexcept;
+
+    void stop_thread_loop() noexcept;
+
+  public:
+    virtual ~WorkerThreadGroup() noexcept override;
+
+    WorkerThreadGroup() noexcept;
+
+    WorkerThreadGroup(const WorkerThreadGroup&) noexcept;
+
+    WorkerThreadGroup(WorkerThreadGroup&&) noexcept;
+
+    WorkerThreadGroup& operator=(const WorkerThreadGroup&) noexcept;
+
+    WorkerThreadGroup& operator=(WorkerThreadGroup&&) noexcept;
+
+    virtual void flush() noexcept override;
+
+    virtual size_t concurrency(size_t inNumThreads) noexcept override;
+
+    virtual size_t concurrency() const noexcept override;
+};
+
+
+
+/*-------------------------------------
+ * Convenience Types
+-------------------------------------*/
+LS_DECLARE_CLASS_TYPE(DefaultWorkerThreadGroup, WorkerThreadGroup, void (*)());
 
 
 

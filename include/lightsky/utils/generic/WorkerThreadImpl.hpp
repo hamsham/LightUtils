@@ -29,7 +29,7 @@ Worker<WorkerTaskType>::Worker() noexcept :
     mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
     mPushLock{},
     mTasks{},
-    mMutex{},
+    mWaitMtx{},
     mWaitCond{}
 {}
 
@@ -118,10 +118,10 @@ Worker<WorkerTaskType>& Worker<WorkerTaskType>::operator=(Worker&& w) noexcept
 
 
 /*-------------------------------------
- * Push a task to the pending task queue (copy).
+ * Execute the tasks in the queue.
 -------------------------------------*/
 template <class WorkerTaskType>
-inline void Worker<WorkerTaskType>::execute_tasks() noexcept
+void Worker<WorkerTaskType>::execute_tasks() noexcept
 {
     // The current I/O buffers were swapped when "flush()" was
     // called. Swap again to read and write to the buffers used on
@@ -132,28 +132,25 @@ inline void Worker<WorkerTaskType>::execute_tasks() noexcept
     mPushLock.unlock();
 
     // Exit the thread if mCurrentBuffer is less than 0.
-    if (currentBufferId < 0)
+    mWaitMtx.lock();
+
+    if (currentBufferId >= 0)
     {
-        return;
+        currentBufferId = (currentBufferId + 1) % 2;
+        std::vector<WorkerTaskType>& inputQueue = mTasks[currentBufferId];
+
+        for (WorkerTaskType& pTask : inputQueue)
+        {
+            pTask();
+        }
+
+        this->mTasks[currentBufferId].clear();
     }
-
-    currentBufferId = (currentBufferId + 1) % 2;
-    std::vector<WorkerTaskType>& inputQueue = mTasks[currentBufferId];
-
-    mMutex.lock();
-
-    for (WorkerTaskType& pTask : inputQueue)
-    {
-        pTask();
-    }
-
-    inputQueue.clear();
 
     // Pause the current thread again.
     mIsPaused.store(true, std::memory_order_release);
-    mMutex.unlock();
-
     mWaitCond.notify_all();
+    mWaitMtx.unlock();
 }
 
 
@@ -293,11 +290,14 @@ inline void Worker<WorkerTaskType>::wait() const noexcept
     {
         while (!mIsPaused.load(std::memory_order_consume))
         {
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #endif
         }
     }
     else
     {
-        std::unique_lock<std::mutex> cvLock{this->mMutex};
+        std::unique_lock<std::mutex> cvLock{this->mWaitMtx};
         this->mWaitCond.wait(cvLock, [this]()->bool
         {
             return this->mIsPaused.load(std::memory_order_acquire);
@@ -312,8 +312,8 @@ inline void Worker<WorkerTaskType>::wait() const noexcept
         }
         else
         {
-            mMutex.lock();
-            mMutex.unlock();
+            mWaitMtx.lock();
+            mWaitMtx.unlock();
         }
     }
     */
@@ -343,6 +343,29 @@ inline void Worker<WorkerTaskType>::busy_waiting(bool useBusyWait) noexcept
 
 
 
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+inline size_t Worker<WorkerTaskType>::concurrency(size_t inNumThreads) noexcept
+{
+    (void)inNumThreads;
+    return 1;
+}
+
+
+
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+inline size_t Worker<WorkerTaskType>::concurrency() const noexcept
+{
+    return 1;
+}
+
+
+
 /*-----------------------------------------------------------------------------
  * Threaded Worker Object
 -----------------------------------------------------------------------------*/
@@ -357,10 +380,10 @@ WorkerThread<WorkerTaskType>::~WorkerThread() noexcept
     }
 
     this->mPushLock.lock();
-    this->mMutex.lock();
+    this->mWaitMtx.lock();
     this->mCurrentBuffer = -1;
     this->mIsPaused.store(false, std::memory_order_release);
-    this->mMutex.unlock();
+    this->mWaitMtx.unlock();
     this->mPushLock.unlock();
     this->mExecCond.notify_all();
     this->mThread.join();
@@ -453,7 +476,7 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
             }
             else
             {
-                std::unique_lock<std::mutex> cvLock{this->mMutex};
+                std::unique_lock<std::mutex> cvLock{this->mWaitMtx};
                 this->mExecCond.wait(cvLock, [this]()->bool
                 {
                     return !this->mIsPaused.load(std::memory_order_acquire);
@@ -483,11 +506,335 @@ void WorkerThread<WorkerTaskType>::flush() noexcept
     // Don't bother waking up the thread if there's nothing to do.
     if (swapped)
     {
-        this->mMutex.lock();
+        this->mWaitMtx.lock();
+        this->mTasks[this->mCurrentBuffer].clear();
         this->mIsPaused.store(false, std::memory_order_release);
-        this->mExecCond.notify_one();
-        this->mMutex.unlock();
+        this->mExecCond.notify_all();
+        this->mWaitMtx.unlock();
     }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Threaded Worker Object
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>::~WorkerThreadGroup() noexcept
+{
+    stop_thread_loop();
+}
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>::WorkerThreadGroup() noexcept :
+    Worker<WorkerTaskType>{},
+    mNumThreads{1},
+    mThreadsRunning{0},
+    mExecCond{},
+    mThreads{new(std::nothrow) std::thread[1]{std::move(std::thread{&WorkerThreadGroup::thread_loop, this})}}
+{
+    // let the thread's loop run until it hits the condition variable
+    std::this_thread::yield();
+}
+
+
+
+/*-------------------------------------
+ * Copy Constructor
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>::WorkerThreadGroup(const WorkerThreadGroup& w) noexcept :
+    WorkerThreadGroup{} // delegate constructor
+{
+    *this = w;
+}
+
+
+
+/*-------------------------------------
+ * Move Constructor
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>::WorkerThreadGroup(WorkerThreadGroup&& w) noexcept :
+    WorkerThreadGroup{} // delegate constructor
+{
+    *this = std::move(w);
+}
+
+
+
+/*-------------------------------------
+ * Copy Operator
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>& WorkerThreadGroup<WorkerTaskType>::operator=(const WorkerThreadGroup& w) noexcept
+{
+    if (this == &w)
+    {
+        return *this;
+    }
+
+    Worker<WorkerTaskType>::operator=(w);
+
+    if (this->concurrency() != w.concurrency())
+    {
+        this->concurrency(w.concurrency());
+    }
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+ * Move Operator
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerThreadGroup<WorkerTaskType>& WorkerThreadGroup<WorkerTaskType>::operator=(WorkerThreadGroup&& w) noexcept
+{
+    if (this == &w)
+    {
+        return *this;
+    }
+
+    Worker<WorkerTaskType>::operator=(std::move(w));
+
+    if (this->concurrency() != w.concurrency())
+    {
+        const size_t inNumThreads = w.concurrency();
+        w.stop_thread_loop();
+
+        this->concurrency(inNumThreads);
+    }
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+ * Execute tasks in the thread loop
+-------------------------------------*/
+template <class WorkerTaskType>
+void WorkerThreadGroup<WorkerTaskType>::execute_tasks() noexcept
+{
+    // The current I/O buffers were swapped when "flush()" was
+    // called. Swap again to read and write to the buffers used on
+    // this thread.
+    int currentBufferId;
+    this->mPushLock.lock();
+    currentBufferId = this->mCurrentBuffer;
+    this->mPushLock.unlock();
+
+    // Exit the thread if mCurrentBuffer is less than 0.
+    long long threadId = this->mThreadsRunning.fetch_add(1);
+    if (threadId == this->mNumThreads-1)
+    {
+        this->mWaitMtx.lock();
+        this->mThreadsRunning.store(-this->mNumThreads - 1);
+    }
+    else
+    {
+        while (this->mThreadsRunning.load() > 0)
+        {
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #endif
+        }
+    }
+
+    if (currentBufferId >= 0)
+    {
+        currentBufferId = (currentBufferId + 1) % 2;
+        const std::vector<WorkerTaskType>& inputQueue = this->mTasks[currentBufferId];
+
+        for (WorkerTaskType pTask : inputQueue)
+        {
+            pTask();
+        }
+    }
+
+    if (this->mThreadsRunning.fetch_add(1) == -2)
+    {
+        // Pause the current thread again.
+        this->mIsPaused.store(true);
+        this->mThreadsRunning.store(0);
+
+        if (currentBufferId >= 0)
+        {
+            this->mTasks[currentBufferId].clear();
+        }
+
+        this->mWaitCond.notify_all();
+        this->mWaitMtx.unlock();
+    }
+    else
+    {
+        while (this->mThreadsRunning.load() < 0)
+        {
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #endif
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Push a task to the pending task queue (copy).
+-------------------------------------*/
+template <class WorkerTaskType>
+void WorkerThreadGroup<WorkerTaskType>::thread_loop() noexcept
+{
+    while (this->mCurrentBuffer >= 0)
+    {
+        // Busy waiting can be disabled at any time, but waiting on the
+        // condition variable will remain in-place until the next flush.
+        if (this->mIsPaused.load())
+        {
+            if (this->mBusyWait.load(std::memory_order_acquire))
+            {
+                continue;
+            }
+            else
+            {
+                std::unique_lock<std::mutex> cvLock{this->mWaitMtx};
+                this->mExecCond.wait(cvLock, [this]()->bool
+                {
+                    return !this->mIsPaused.load();
+                });
+            }
+        }
+
+        this->execute_tasks();
+    }
+}
+
+
+
+/*-------------------------------------
+ * Stop the thread loop in case we're changing the number of threads
+-------------------------------------*/
+template <class WorkerTaskType>
+void WorkerThreadGroup<WorkerTaskType>::stop_thread_loop() noexcept
+{
+    while (!this->ready())
+    {
+    }
+
+    this->mPushLock.lock();
+    this->mWaitMtx.lock();
+
+    this->mCurrentBuffer = -1;
+    this->mIsPaused.store(false, std::memory_order_release);
+    this->mExecCond.notify_all();
+
+    this->mWaitMtx.unlock();
+    this->mPushLock.unlock();
+
+    for (long long i = 0; i < this->mNumThreads; ++i)
+    {
+        this->mThreads[i].join();
+    }
+
+    this->mNumThreads = 0;
+    this->mThreads.reset();
+
+    this->mTasks[0].clear();
+    this->mTasks[1].clear();
+}
+
+
+
+/*-------------------------------------
+ * Flush the current thread and swap I/O buffers (must only be called after
+ * this->ready() returns true).
+-------------------------------------*/
+template <class WorkerTaskType>
+void WorkerThreadGroup<WorkerTaskType>::flush() noexcept
+{
+    this->mPushLock.lock();
+    const int currentBuffer = this->mCurrentBuffer;
+    const int swapped = !this->mTasks[currentBuffer].empty();
+    this->mCurrentBuffer = (currentBuffer + swapped) % 2;
+    this->mPushLock.unlock();
+
+    // Don't bother waking up the thread if there's nothing to do.
+    if (swapped)
+    {
+        this->mWaitMtx.lock();
+        this->mIsPaused.store(false, std::memory_order_release);
+        this->mExecCond.notify_all();
+        this->mWaitMtx.unlock();
+    }
+}
+
+
+
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+size_t WorkerThreadGroup<WorkerTaskType>::concurrency(size_t inNumThreads) noexcept
+{
+    // Don't do anything if we couldn't change the number of threads.
+    ls::utils::Pointer<std::thread[]> threads;
+
+    if ((long long)inNumThreads == this->mNumThreads)
+    {
+        return inNumThreads;
+    }
+
+    int oldBuffer = this->mCurrentBuffer >= 0 ? this->mCurrentBuffer : 0;
+    stop_thread_loop();
+    this->mThreads.reset(nullptr);
+
+    if (inNumThreads > 0)
+    {
+        threads.reset(new(std::nothrow) std::thread[inNumThreads]);
+        if (!threads)
+        {
+            inNumThreads = 0;
+        }
+        else
+        {
+            this->mNumThreads = (long long)inNumThreads;
+            this->mThreads = std::move(threads);
+            this->mCurrentBuffer = oldBuffer;
+        }
+    }
+
+    // Make sure the old threads have stopped
+    this->mIsPaused.store(true, std::memory_order_release);
+
+    for (size_t i = 0; i < inNumThreads; ++i)
+    {
+        this->mThreads[i] = std::move(std::thread{&WorkerThreadGroup::thread_loop, this});
+    }
+
+    std::this_thread::yield();
+
+    return inNumThreads;
+}
+
+
+
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+inline size_t WorkerThreadGroup<WorkerTaskType>::concurrency() const noexcept
+{
+    return (size_t)mNumThreads;
 }
 
 
