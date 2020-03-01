@@ -1,4 +1,10 @@
 
+#if defined(LS_ARCH_X86)
+    #include <immintrin.h>
+#endif
+
+
+
 namespace ls
 {
 namespace utils
@@ -11,8 +17,11 @@ namespace utils
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    while (mLock.test_and_set(std::memory_order_consume))
+    while (mLock.test_and_set(std::memory_order_acquire))
     {
+        #if defined(LS_ARCH_X86)
+            _mm_pause();
+        #endif
     }
 }
 
@@ -23,7 +32,7 @@ inline void SpinLock::lock() noexcept
 -------------------------------------*/
 inline bool SpinLock::try_lock() noexcept
 {
-    return !mLock.test_and_set(std::memory_order_consume);
+    return !mLock.test_and_set(std::memory_order_acquire);
 }
 
 
