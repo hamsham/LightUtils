@@ -26,8 +26,16 @@ else()
     if (CMAKE_GENERATOR MATCHES "Xcode" OR CMAKE_VS_MSBUILD_COMMAND)
         if (NOT CMAKE_BUILD_TYPE)
             set(ENET_IDE_BUILD_CONFIG "/$<CONFIG>")
+            set(ENET_BUILD_CONFIG "$<CONFIG>")
         else()
             set(ENET_IDE_BUILD_CONFIG "/${CMAKE_BUILD_TYPE}")
+            set(ENET_BUILD_CONFIG "${CMAKE_BUILD_TYPE}")
+        endif()
+	else()
+        if (NOT CMAKE_BUILD_TYPE)
+            set(ENET_BUILD_CONFIG "RelWithDebInfo")
+        else()
+            set(ENET_BUILD_CONFIG "${CMAKE_BUILD_TYPE}")
         endif()
     endif()
 
@@ -47,7 +55,6 @@ else()
 
     set(ENET_BRANCH "master" CACHE STRING "Git branch or tag for checking out Enet.")
     mark_as_advanced(ENET_BRANCH)
-
 
 
     # External build for ENet
@@ -72,7 +79,7 @@ else()
         CMAKE_CACHE_ARGS
             ${ENET_BUILD_FLAGS}
         BUILD_COMMAND
-            ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build ${CMAKE_COMMAND} --build . --config ${CMAKE_CFG_INTDIR}
+            ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build ${CMAKE_COMMAND} --build . --config ${ENET_BUILD_CONFIG}
         INSTALL_COMMAND
             ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build${ENET_IDE_BUILD_CONFIG}/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
             ${CMAKE_COMMAND} -E copy_directory ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet ${EXTERNAL_PROJECT_PREFIX}/include/enet
