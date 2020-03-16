@@ -54,8 +54,10 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Futex.hpp
     include/lightsky/utils/Endian.h
     include/lightsky/utils/Hash.h
+    include/lightsky/utils/IndexedCache.hpp
     include/lightsky/utils/Log.h
     include/lightsky/utils/Loops.h
+    include/lightsky/utils/LRUCache.hpp
     include/lightsky/utils/NetClient.hpp
     include/lightsky/utils/NetConnection.hpp
     include/lightsky/utils/NetEvent.hpp
@@ -75,7 +77,9 @@ set(LS_UTILS_HEADERS
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
+    include/lightsky/utils/generic/IndexedCacheImpl.hpp
     include/lightsky/utils/generic/LogImpl.h
+    include/lightsky/utils/generic/LRUCacheImpl.hpp
     include/lightsky/utils/generic/HashImpl.h
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
