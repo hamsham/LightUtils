@@ -18,6 +18,7 @@ int main()
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
     void* last = nullptr;
+    (void)last;
 
     for (unsigned i = 0; i < max_allocations; ++i)
     {
