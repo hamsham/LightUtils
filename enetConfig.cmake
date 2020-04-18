@@ -94,7 +94,7 @@ else()
     set(ENET_INCLUDE_DIR "${EXTERNAL_PROJECT_PREFIX}/include")
 
     if (WIN32)
-        set(ENET_LIBRARIES enet winmm ws2_32)
+        set(ENET_LIBRARIES enet winmm ws2_32 msvcrt msvcmrt)
     else()
         set(ENET_LIBRARIES enet)
     endif()

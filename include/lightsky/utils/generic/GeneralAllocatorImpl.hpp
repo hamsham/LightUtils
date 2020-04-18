@@ -162,7 +162,7 @@ void GeneralAllocator<block_size, total_size>::free(void* p) noexcept
         // ensure the header from p points to the current "next" pointer
         if (next < mHead)
         {
-            *reinterpret_cast<uintptr_t*>(next) = reinterpret_cast<uintptr_t>(mHead);
+            *reinterpret_cast<uintptr_t*>(next) = mHead;
             mHead = next;
         }
         else
@@ -220,7 +220,7 @@ void GeneralAllocator<block_size, total_size>::free(void* p, size_t n) noexcept
     if (mHead == UINTPTR_MAX)
     {
         // reset the head pointer
-        mHead = reinterpret_cast<uintptr_t>(first);
+        mHead = first;
         *reinterpret_cast<uintptr_t*>(last) = UINTPTR_MAX;
     }
     else
@@ -228,7 +228,7 @@ void GeneralAllocator<block_size, total_size>::free(void* p, size_t n) noexcept
         // ensure the header from p points to the current "next" pointer
         if (last < mHead)
         {
-            *reinterpret_cast<uintptr_t*>(last) = reinterpret_cast<uintptr_t>(mHead);
+            *reinterpret_cast<uintptr_t*>(last) = mHead;
             mHead = first;
         }
         else

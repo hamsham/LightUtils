@@ -129,7 +129,7 @@ add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS
 target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
 target_link_libraries(${OUTPUT_NAME}
     PUBLIC LightSky::Setup
-    INTERFACE ${LS_UTILS_DL_LIB}
+    INTERFACE ${LS_UTILS_DL_LIB} ${ENET_LIBRARIES}
     PUBLIC ${ENET_LIBRARIES}
 )
 

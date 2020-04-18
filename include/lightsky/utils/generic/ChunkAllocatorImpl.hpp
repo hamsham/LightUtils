@@ -100,7 +100,7 @@ inline void ChunkAllocator<block_size, total_size>::free(void* p) noexcept
     uintptr_t prev = reinterpret_cast<uintptr_t>(p);
 
     // ensure the header from p points to the current "next" pointer
-    *reinterpret_cast<uintptr_t*>(prev) = reinterpret_cast<uintptr_t>(mHead);
+    *reinterpret_cast<uintptr_t*>(prev) = mHead;
     mHead = prev;
 }
 
