@@ -25,6 +25,7 @@ int main()
     for (unsigned i = numBytes; i--;)
     {
         pSrc[i] = randGen();
+        pDst[i] = '\0';
     }
 
     std::cout << "\tDone." << std::endl;
@@ -62,13 +63,11 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Copy Time:"
-        << "\n\tMemcpy:    " << memsetTime//   / 1000ull
-        << "\n\tStd Copy:  " << stdCopyTime//  / 1000ull
-        << "\n\tLS Memcpy: " << lsMemcpyTime// / 1000ull
-        << "\n\tLS Copy:   " << lsCopyTime//   / 1000ull
+        << "\n\tMemcpy:    " << 1000.0l/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
+        << "\n\tStd Copy:  " << 1000.0l/(long double)stdCopyTime  << " Gb/s @ " << stdCopyTime  << "ms"
+        << "\n\tLS Copy:   " << 1000.0l/(long double)lsMemcpyTime << " Gb/s @ " << lsMemcpyTime << "ms"
+        << "\n\tLS Memcpy: " << 1000.0l/(long double)lsCopyTime   << " Gb/s @ " << lsCopyTime   << "ms"
         << std::endl;
-
-    std::cout << "Estimated bandwidth (read+write): " << 1.0l/((long double)lsMemcpyTime/1000.0l) << " Gb/s" << std::endl;
 
     return 0;
 }

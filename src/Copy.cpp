@@ -24,10 +24,10 @@ namespace ls {
 void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const uint_fast64_t count)
 {
     #if defined(LS_ARCH_X86)
-        uint_fast64_t  stragglers = count % sizeof(__m256i);
-        uint_fast64_t  simdCount  = count / sizeof(__m256i);
         const __m256i* simdSrc    = reinterpret_cast<const __m256i*>(src);
         __m256i*       simdDst    = reinterpret_cast<__m256i*>(dst);
+        uint_fast64_t  simdCount  = count >> 5;
+        uint_fast64_t  stragglers = count - (count & ~31);
 
         if ((uintptr_t)simdDst % sizeof(__m256i))
         {
@@ -44,20 +44,20 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
             }
         }
     #elif defined(LS_ARCH_ARM)
-        uint_fast64_t     stragglers = count % sizeof(uint32x4_t);
-        uint_fast64_t     simdCount  = count / sizeof(uint32x4_t);
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
+        uint_fast64_t     simdCount  = count - (count >> 4);
+        uint_fast64_t     stragglers = count & ~15;
 
         while (simdCount--)
         {
             vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), vld1q_u32(reinterpret_cast<const uint32_t*>(simdSrc++)));
         }
     #else
-        uint_fast64_t       stragglers = count % sizeof(uint_fast64_t);
-        uint_fast64_t       simdCount  = count / sizeof(uint_fast64_t);
         const uint_fast64_t* simdSrc    = reinterpret_cast<const uint_fast64_t*>(src);
         uint_fast64_t*       simdDst    = reinterpret_cast<uint_fast64_t*>(dst);
+        uint_fast64_t        simdCount  = count >> 3;
+        uint_fast64_t        stragglers = count - (count & ~7);
 
         // Using stream intrinsics here is NOT OK because we need the cache for
         // reading "simdSrc."
@@ -89,8 +89,8 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
     #if defined(LS_ARCH_X86)
         const __m256i simdFillByte = _mm256_set1_epi64x(fillBytes);
         __m256i*      simdTo       = reinterpret_cast<__m256i*>(dst);
-        uint_fast64_t stragglers   = count % sizeof(__m256i);
-        uint_fast64_t simdCount    = count / sizeof(__m256i);
+        uint_fast64_t simdCount    = count >> 5;
+        uint_fast64_t stragglers   = count - (count & ~31);
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory
@@ -109,10 +109,10 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
             }
         }
     #elif defined(LS_ARCH_ARM)
-        uint_fast64_t    stragglers   = count % sizeof(uint64x2_t);
-        uint_fast64_t    simdCount    = count / sizeof(uint64x2_t);
         const uint64x2_t fillByteSimd = vdupq_n_u64(fillBytes);
         uint64x2_t*      simdTo       = reinterpret_cast<uint64x2_t*>(dst);
+        uint_fast64_t    simdCount    = count - (count >> 4);
+        uint_fast64_t    stragglers   = count & ~15;
 
         while (simdCount--)
         {
@@ -121,8 +121,8 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
     #else
         const uint_fast64_t fillByteSimd = (uint_fast64_t)fillBytes;
         uint_fast64_t*      simdTo       = reinterpret_cast<uint_fast64_t*>(dst);
-        uint_fast64_t       stragglers   = count % sizeof(uint_fast64_t);
-        uint_fast64_t       simdCount    = count / sizeof(uint_fast64_t);
+        uint_fast64_t       simdCount    = count >> 3;
+        uint_fast64_t       stragglers   = count - (count & ~7);
 
         // Using stream intrinsics here is OK because we're not reading data
         // from memory

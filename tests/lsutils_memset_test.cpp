@@ -21,6 +21,7 @@ int main()
     for (unsigned i = numBytes; i--;)
     {
         pTest[i] = (char)0xFF;
+        pDst[i] = '\0';
     }
 
     std::cout << "\tDone." << std::endl;
@@ -58,13 +59,11 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Copy Time:"
-        << "\n\tMemset:    " << memsetTime//   / 1000ull
-        << "\n\tStd Fill:  " << stdFillTime//  / 1000ull
-        << "\n\tLS Memset: " << lsMemsetTime// / 1000ull
-        << "\n\tLS Fill:   " << lsFillTime//   / 1000ull
+        << "\n\tMemset:    " << 1000.0l/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
+        << "\n\tStd Fill:  " << 1000.0l/(long double)stdFillTime  << " Gb/s @ " << stdFillTime  << "ms"
+        << "\n\tLS Memset: " << 1000.0l/(long double)lsMemsetTime << " Gb/s @ " << lsMemsetTime << "ms"
+        << "\n\tLS Fill:   " << 1000.0l/(long double)lsFillTime   << " Gb/s @ " << lsFillTime   << "ms"
         << std::endl;
-
-    std::cout << "Estimated bandwidth (write-only): " << 1.0l/((long double)lsMemsetTime/1000.0l) << " Gb/s" << std::endl;
 
     return 0;
 }
