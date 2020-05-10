@@ -65,8 +65,8 @@ int main()
     std::cout << "Copy Time:"
         << "\n\tMemcpy:    " << 1000.0l/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
         << "\n\tStd Copy:  " << 1000.0l/(long double)stdCopyTime  << " Gb/s @ " << stdCopyTime  << "ms"
-        << "\n\tLS Copy:   " << 1000.0l/(long double)lsMemcpyTime << " Gb/s @ " << lsMemcpyTime << "ms"
-        << "\n\tLS Memcpy: " << 1000.0l/(long double)lsCopyTime   << " Gb/s @ " << lsCopyTime   << "ms"
+        << "\n\tLS Memcpy: " << 1000.0l/(long double)lsMemcpyTime << " Gb/s @ " << lsMemcpyTime << "ms"
+        << "\n\tLS Copy:   " << 1000.0l/(long double)lsCopyTime   << " Gb/s @ " << lsCopyTime   << "ms"
         << std::endl;
 
     return 0;
