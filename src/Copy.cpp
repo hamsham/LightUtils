@@ -46,8 +46,8 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
     #elif defined(LS_ARCH_ARM)
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
-        uint_fast64_t     simdCount  = count - (count >> 4);
-        uint_fast64_t     stragglers = count & ~15;
+        uint_fast64_t     simdCount  = count >> 4;
+        uint_fast64_t     stragglers = count - (count & ~15);
 
         while (simdCount--)
         {
@@ -111,8 +111,8 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
     #elif defined(LS_ARCH_ARM)
         const uint64x2_t fillByteSimd = vdupq_n_u64(fillBytes);
         uint64x2_t*      simdTo       = reinterpret_cast<uint64x2_t*>(dst);
-        uint_fast64_t    simdCount    = count - (count >> 4);
-        uint_fast64_t    stragglers   = count & ~15;
+        uint_fast64_t     simdCount  = count >> 4;
+        uint_fast64_t     stragglers = count - (count & ~15);
 
         while (simdCount--)
         {
