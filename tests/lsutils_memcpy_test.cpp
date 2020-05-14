@@ -12,7 +12,8 @@
 
 int main()
 {
-    constexpr unsigned int numBytes = 512*1024*1024*sizeof(char)-1; // 500 Megabytes
+    constexpr unsigned int numBytes = 256*1024*1024*sizeof(char)-1; // 500 Megabytes
+    constexpr long double numGigs = (long double)numBytes * 0.000001l;
     ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
     ls::utils::RandomNum randGen;
     ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pSrc{(char*)ls::utils::aligned_malloc(numBytes)};
@@ -63,10 +64,10 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Copy Time:"
-        << "\n\tMemcpy:    " << 1000.0l/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
-        << "\n\tStd Copy:  " << 1000.0l/(long double)stdCopyTime  << " Gb/s @ " << stdCopyTime  << "ms"
-        << "\n\tLS Memcpy: " << 1000.0l/(long double)lsMemcpyTime << " Gb/s @ " << lsMemcpyTime << "ms"
-        << "\n\tLS Copy:   " << 1000.0l/(long double)lsCopyTime   << " Gb/s @ " << lsCopyTime   << "ms"
+        << "\n\tMemcpy:    " << numGigs/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
+        << "\n\tStd Copy:  " << numGigs/(long double)stdCopyTime  << " Gb/s @ " << stdCopyTime  << "ms"
+        << "\n\tLS Memcpy: " << numGigs/(long double)lsMemcpyTime << " Gb/s @ " << lsMemcpyTime << "ms"
+        << "\n\tLS Copy:   " << numGigs/(long double)lsCopyTime   << " Gb/s @ " << lsCopyTime   << "ms"
         << std::endl;
 
     return 0;

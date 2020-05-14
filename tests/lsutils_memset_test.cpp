@@ -11,7 +11,8 @@
 
 int main()
 {
-    constexpr unsigned int numBytes = 1024*1024*1024*sizeof(char)-1; // 1 gigabyte
+    constexpr unsigned int numBytes = 512*1024*1024*sizeof(char)-1; // 1 gigabyte
+    constexpr long double numGigs = (long double)numBytes * 0.000001l;
     ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
     ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pTest{(char*)ls::utils::aligned_malloc(numBytes)};
     ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pDst{(char*)ls::utils::aligned_malloc(numBytes)};
@@ -28,7 +29,7 @@ int main()
 
     std::cout << "Running memset() benchmark..." << std::endl;
     ticks.start();
-    memset(pDst.get(), 0xFF, numBytes);
+    memset(pDst.get(), '\xFF', numBytes);
     ticks.tick();
     const unsigned long long memsetTime = ticks.tick_time().count();
     LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
@@ -59,10 +60,10 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Copy Time:"
-        << "\n\tMemset:    " << 1000.0l/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
-        << "\n\tStd Fill:  " << 1000.0l/(long double)stdFillTime  << " Gb/s @ " << stdFillTime  << "ms"
-        << "\n\tLS Memset: " << 1000.0l/(long double)lsMemsetTime << " Gb/s @ " << lsMemsetTime << "ms"
-        << "\n\tLS Fill:   " << 1000.0l/(long double)lsFillTime   << " Gb/s @ " << lsFillTime   << "ms"
+        << "\n\tMemset:    " << numGigs/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"
+        << "\n\tStd Fill:  " << numGigs/(long double)stdFillTime  << " Gb/s @ " << stdFillTime  << "ms"
+        << "\n\tLS Memset: " << numGigs/(long double)lsMemsetTime << " Gb/s @ " << lsMemsetTime << "ms"
+        << "\n\tLS Fill:   " << numGigs/(long double)lsFillTime   << " Gb/s @ " << lsFillTime   << "ms"
         << std::endl;
 
     return 0;
