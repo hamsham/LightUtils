@@ -51,6 +51,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 
         while (simdCount--)
         {
+            LS_PREFETCH(simdSrc+16, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
             vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), vld1q_u32(reinterpret_cast<const uint32_t*>(simdSrc++)));
         }
     #else
