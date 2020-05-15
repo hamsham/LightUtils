@@ -57,6 +57,19 @@ else()
     mark_as_advanced(ENET_BRANCH)
 
 
+    set(ENET_HEADERS
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/callbacks.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/enet.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/list.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/protocol.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/time.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/types.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/unix.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/utility.h
+        ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet/win32.h
+    )
+
+
     # External build for ENet
     ExternalProject_Add(
         ENet
@@ -81,8 +94,9 @@ else()
         BUILD_COMMAND
             ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build ${CMAKE_COMMAND} --build . --config ${ENET_BUILD_CONFIG}
         INSTALL_COMMAND
+            ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_PROJECT_PREFIX}/include/enet &&
             ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build${ENET_IDE_BUILD_CONFIG}/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
-            ${CMAKE_COMMAND} -E copy_directory ${EXTERNAL_PROJECT_PREFIX}/src/ENet/include/enet ${EXTERNAL_PROJECT_PREFIX}/include/enet
+            ${CMAKE_COMMAND} -E copy_if_different ${ENET_HEADERS} ${EXTERNAL_PROJECT_PREFIX}/include/enet
     )
 
     # Add the imported library target
