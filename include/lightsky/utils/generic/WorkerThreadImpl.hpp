@@ -398,13 +398,8 @@ template <class WorkerTaskType>
 WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
     Worker<WorkerTaskType>{},
     mExecCond{},
-    mThread{}
-{
-    mThread = std::thread{&WorkerThread::thread_loop, this};
-
-    // let the thread's loop run until it hits the condition variable
-    std::this_thread::yield();
-}
+    mThread{&WorkerThread::thread_loop, this}
+{}
 
 
 
@@ -540,10 +535,7 @@ WorkerThreadGroup<WorkerTaskType>::WorkerThreadGroup() noexcept :
     mThreadsRunning{0},
     mExecCond{},
     mThreads{new(std::nothrow) std::thread[1]{std::move(std::thread{&WorkerThreadGroup::thread_loop, this})}}
-{
-    // let the thread's loop run until it hits the condition variable
-    std::this_thread::yield();
-}
+{}
 
 
 
@@ -820,8 +812,6 @@ size_t WorkerThreadGroup<WorkerTaskType>::concurrency(size_t inNumThreads) noexc
     {
         this->mThreads[i] = std::move(std::thread{&WorkerThreadGroup::thread_loop, this});
     }
-
-    std::this_thread::yield();
 
     return inNumThreads;
 }
