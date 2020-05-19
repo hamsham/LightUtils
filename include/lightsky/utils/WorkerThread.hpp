@@ -145,45 +145,35 @@ LS_DECLARE_CLASS_TYPE(DefaultWorkerThread, WorkerThread, void (*)());
 
 
 /**----------------------------------------------------------------------------
- * @brief WorkerThreadGroup peforms like the WorkerThread class, but will run
- * each task on several threads in parallel.
+ * @brief WorkerThreadShared performs exactly like the WorkerThread class, but
+ * uses a shared condition variable to wake before running each task.
 -----------------------------------------------------------------------------*/
 template <class WorkerTaskType>
-class WorkerThreadGroup : public Worker<WorkerTaskType>
+class WorkerThreadShared : public Worker<WorkerTaskType>
 {
   private:
-    long long mNumThreads;
+    std::condition_variable* mExecCond;
 
-    std::atomic_llong mThreadsRunning;
-
-    std::condition_variable mExecCond;
-
-    ls::utils::Pointer<std::thread[]> mThreads;
-
-    virtual void execute_tasks() noexcept override;
+    std::thread mThread;
 
     void thread_loop() noexcept;
 
-    void stop_thread_loop() noexcept;
-
   public:
-    virtual ~WorkerThreadGroup() noexcept override;
+    virtual ~WorkerThreadShared() noexcept override;
 
-    WorkerThreadGroup() noexcept;
+    WorkerThreadShared() = delete;
 
-    WorkerThreadGroup(const WorkerThreadGroup&) noexcept;
+    WorkerThreadShared(std::condition_variable& execCond) noexcept;
 
-    WorkerThreadGroup(WorkerThreadGroup&&) noexcept;
+    WorkerThreadShared(const WorkerThreadShared&) noexcept;
 
-    WorkerThreadGroup& operator=(const WorkerThreadGroup&) noexcept;
+    WorkerThreadShared(WorkerThreadShared&&) noexcept;
 
-    WorkerThreadGroup& operator=(WorkerThreadGroup&&) noexcept;
+    WorkerThreadShared& operator=(const WorkerThreadShared&) noexcept;
+
+    WorkerThreadShared& operator=(WorkerThreadShared&&) noexcept;
 
     virtual void flush() noexcept override;
-
-    virtual size_t concurrency(size_t inNumThreads) noexcept override;
-
-    virtual size_t concurrency() const noexcept override;
 };
 
 
@@ -191,7 +181,7 @@ class WorkerThreadGroup : public Worker<WorkerTaskType>
 /*-------------------------------------
  * Convenience Types
 -------------------------------------*/
-LS_DECLARE_CLASS_TYPE(DefaultWorkerThreadGroup, WorkerThreadGroup, void (*)());
+LS_DECLARE_CLASS_TYPE(DefaultWorkerThreadShared, WorkerThreadShared, void (*)());
 
 
 

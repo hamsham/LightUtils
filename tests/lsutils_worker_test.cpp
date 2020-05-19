@@ -8,7 +8,7 @@
 #include "lightsky/utils/WorkerThread.hpp"
 
 using ls::utils::WorkerThread;
-using ls::utils::WorkerThreadGroup;
+using ls::utils::WorkerThreadShared;
 
 
 
@@ -69,7 +69,8 @@ void test_grouped_workers()
     constexpr unsigned numWorkers = 11;
     std::cout << "Testing " << numWorkers << " grouped workers." << std::endl;
 
-    WorkerThreadGroup<SampleTask> thread{};
+    std::condition_variable cond;
+    WorkerThreadShared<SampleTask> thread{cond};
     thread.concurrency(numWorkers);
 
     thread.push(SampleTask());
@@ -98,8 +99,8 @@ void test_grouped_workers()
     }
 
     {
-        WorkerThreadGroup<SampleTask> thread2;
-        thread2 = std::move(thread);
+        WorkerThreadShared<SampleTask> thread2 = std::move(thread);
+        thread2.push(SampleTask());
         thread2.flush();
 
         std::cout << "Done. Thread ready state: " << thread2.ready() << std::endl;
