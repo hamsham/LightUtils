@@ -73,7 +73,7 @@ constexpr FloatingType _impl_abs(typename ls::setup::EnableIf<ls::setup::IsFloat
  * Count the number of decimals in a floating-point number
  * ----------------------------------*/
 template <typename FloatingType, long long base = 10>
-size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
+inline size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t numDecimals = 0;
 
@@ -89,7 +89,7 @@ size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat
 
 
 template <size_t base = 10>
-size_t _count_leading_decimal_zeroes(size_t decimal, size_t numDecimals)
+inline size_t _count_leading_decimal_zeroes(size_t decimal, size_t numDecimals)
 {
     size_t diff = 0;
     while (decimal)
@@ -104,7 +104,7 @@ size_t _count_leading_decimal_zeroes(size_t decimal, size_t numDecimals)
 
 
 template <typename IntegralType, IntegralType base = 10l>
-size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x)
+inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x)
 {
     size_t signByte = ls::setup::IsSigned<IntegralType>::value && ((int)x < 0);
     size_t numDigits = 0 || !x;
@@ -121,7 +121,7 @@ size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegra
 
 
 template <typename FloatingType, size_t base = 10>
-size_t _float_info_to_int(
+inline size_t _float_info_to_int(
     typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x,
     size_t* pIntegral,
     size_t* pDecimal,
@@ -141,7 +141,7 @@ size_t _float_info_to_int(
 
 
 template <typename FloatingType, long long base = 10>
-size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
+inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
 
@@ -159,7 +159,7 @@ size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<F
 
 
 template <typename IntegralType, IntegralType base = 10l>
-size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf)
+inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf)
 {
     static_assert(base == 10, "Suport not added for bases other than 10.");
     constexpr char asciiTable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '\0'};
