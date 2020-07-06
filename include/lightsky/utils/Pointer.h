@@ -22,6 +22,8 @@
     #include <cstdlib> // malloc(), free()
 #endif
 
+#include <memory> // std::nothrow
+
 
 
 namespace ls
@@ -1081,6 +1083,64 @@ class Pointer<data_t[], Deleter>
         return pRet;
     }
 };
+
+
+
+/*-----------------------------------------------------------------------------
+ * Useful Typedefs to Pointer Types
+ * --------------------------------------------------------------------------*/
+template <typename data_t>
+using UniquePointer = Pointer<data_t, PointerDeleter<data_t>>;
+
+template <typename data_t>
+using UniqueArray = Pointer<data_t[], PointerDeleter<data_t[]>>;
+
+template <typename data_t>
+using UniqueAlignedPointer = Pointer<data_t, AlignedDeleter>;
+
+template <typename data_t>
+using UniqueAlignedArray = Pointer<data_t[], AlignedDeleter>;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Helper functions for Pointer Types
+ * --------------------------------------------------------------------------*/
+template <typename data_t>
+inline Pointer<data_t, PointerDeleter<data_t>> make_unique_pointer()
+{
+    return Pointer<data_t, PointerDeleter<data_t>>(new(std::nothrow) data_t{});
+}
+
+template <typename data_t, typename... Args>
+inline Pointer<data_t, PointerDeleter<data_t>> make_unique_pointer(Args&&... args)
+{
+    return Pointer<data_t, PointerDeleter<data_t>>(new(std::nothrow) data_t{std::forward<Args...>(args...)});
+}
+
+template <typename data_t>
+inline Pointer<data_t[], PointerDeleter<data_t[]>> make_unique_array(size_t size)
+{
+    return Pointer<data_t[], PointerDeleter<data_t[]>>(new(std::nothrow) data_t[size]{});
+}
+
+template <typename data_t, typename... Args>
+inline Pointer<data_t[], PointerDeleter<data_t[]>> make_unique_array(size_t size, Args&&... args)
+{
+    return Pointer<data_t[], PointerDeleter<data_t[]>>(new(std::nothrow) data_t[size]{std::forward<Args...>(args...)});
+}
+
+template <typename data_t>
+inline Pointer<data_t, AlignedDeleter> make_unique_aligned_pointer()
+{
+    return Pointer<data_t, AlignedDeleter>((data_t*)aligned_malloc(sizeof(data_t)));
+}
+
+template <typename data_t>
+inline Pointer<data_t[], AlignedDeleter> make_unique_aligned_array(size_t size)
+{
+    return Pointer<data_t[], AlignedDeleter>((data_t*)aligned_malloc(sizeof(data_t)*size));
+}
 
 
 

@@ -155,7 +155,7 @@ int DynamicLib::load(const char* libPath) noexcept
     }
 
     size_t pathLen = strlen(libPath);
-    mLibName.reset(new char[pathLen+1]);
+    mLibName.reset(make_unique_aligned_array<char>(pathLen+1));
     memcpy(mLibName.get(), libPath, pathLen);
     mLibName[pathLen] = '\0';
 

@@ -16,8 +16,8 @@ int main()
     constexpr long double numGigs = (long double)numBytes * 0.000001l;
     ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
     ls::utils::RandomNum randGen;
-    ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pSrc{(char*)ls::utils::aligned_malloc(numBytes)};
-    ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pDst{(char*)ls::utils::aligned_malloc(numBytes)};
+    ls::utils::UniqueAlignedArray<char> pSrc = ls::utils::make_unique_aligned_array<char>(numBytes);
+    ls::utils::UniqueAlignedArray<char> pDst = ls::utils::make_unique_aligned_array<char>(numBytes);
 
     std::cout << "Initializing Copy Benchmark..." << std::endl;
 

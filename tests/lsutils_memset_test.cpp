@@ -14,8 +14,8 @@ int main()
     constexpr unsigned int numBytes = 512*1024*1024*sizeof(char)-1; // 1 gigabyte
     constexpr long double numGigs = (long double)numBytes * 0.000001l;
     ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
-    ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pTest{(char*)ls::utils::aligned_malloc(numBytes)};
-    ls::utils::Pointer<char[], ls::utils::AlignedDeleter> pDst{(char*)ls::utils::aligned_malloc(numBytes)};
+    ls::utils::UniqueAlignedArray<char> pTest = ls::utils::make_unique_aligned_array<char>(numBytes);
+    ls::utils::UniqueAlignedArray<char> pDst  = ls::utils::make_unique_aligned_array<char>(numBytes);
 
     std::cout << "Initializing Memset Benchmark..." << std::endl;
 

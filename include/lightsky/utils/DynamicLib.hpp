@@ -20,7 +20,7 @@ namespace utils
 class DynamicLib
 {
   private:
-    ls::utils::Pointer<char[]> mLibName;
+    ls::utils::UniqueAlignedArray<char> mLibName;
 
     void* mHandle;
 
