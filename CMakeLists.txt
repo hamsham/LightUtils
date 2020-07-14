@@ -120,7 +120,7 @@ if (BUILD_SHARED_LIBS)
     add_definitions(-DLS_BUILD_SHARED -DLS_SHARED)
     set(LS_LIB_TYPE SHARED)
 else()
-    set(LS_LIB_TYPE STATIC)
+    set(LS_LIB_TYPE STATIC include/lightsky/utils/WorkerPool.hpp src/WorkerPool.cpp include/lightsky/utils/generic/WorkerPoolImpl.hpp)
 endif()
 
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})

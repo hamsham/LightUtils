@@ -5,10 +5,11 @@
 #include <iostream>
 #include <memory>
 
+#include "lightsky/utils/WorkerPool.hpp"
 #include "lightsky/utils/WorkerThread.hpp"
 
+using ls::utils::WorkerPool;
 using ls::utils::WorkerThread;
-using ls::utils::WorkerThreadShared;
 
 
 
@@ -64,30 +65,32 @@ void test_single_worker()
 
 
 
-void test_grouped_workers()
+void test_pooled_worker()
 {
-    constexpr unsigned numWorkers = 11;
-    std::cout << "Testing " << numWorkers << " grouped workers." << std::endl;
+    std::cout << "Testing a single worker" << std::endl;
 
-    std::condition_variable cond;
-    WorkerThreadShared<SampleTask> thread{cond};
-    thread.concurrency(numWorkers);
+    {
+        WorkerPool<SampleTask> thread0{1};
+        thread0.concurrency(0);
+    }
 
-    thread.push(SampleTask());
-    //thread.push(SampleTask());
-    //thread.push(SampleTask());
-    //thread.push(SampleTask());
+    WorkerPool<SampleTask> thread{3};
+    thread.emplace(SampleTask(), 0);
+    thread.emplace(SampleTask(), 1);
+    thread.emplace(SampleTask(), 2);
     thread.flush();
 
-    do
+    while (!thread.ready())
     {
         std::cout << "Waiting for the worker thread to finish..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds{500});
+        std::this_thread::sleep_for(std::chrono::milliseconds{1000});
 
         // push tasks while waiting for the test to complete
-        thread.push(SampleTask());
+        for (unsigned i = thread.concurrency(); i--;)
+        {
+            thread.push(SampleTask(), i);
+        }
     }
-    while (!thread.ready());
 
     thread.flush();
 
@@ -98,13 +101,13 @@ void test_grouped_workers()
         std::this_thread::sleep_for(std::chrono::seconds{1});
     }
 
-    {
-        WorkerThreadShared<SampleTask> thread2 = std::move(thread);
-        thread2.push(SampleTask());
-        thread2.flush();
+    WorkerPool<SampleTask> thread2;
+    thread2 = std::move(thread);
+    thread2.flush();
+    thread2.concurrency(4);
 
-        std::cout << "Done. Thread ready state: " << thread2.ready() << std::endl;
-    }
+
+    std::cout << "Done. Thread ready state: " << thread2.ready() << std::endl;
 }
 
 
@@ -116,12 +119,12 @@ int main()
         << "Data Alignment:"
         << "\n\tMutex:       " << sizeof(std::mutex)
         << "\n\tSpinLock:    " << sizeof(ls::utils::SpinLock)
-        << "\n\tWorker (ST): " << sizeof(ls::utils::DefaultWorker)
-        << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerThread)
+        << "\n\tWorker (ST): " << sizeof(ls::utils::DefaultWorkerThread)
+        << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerPool)
         << std::endl;
 
-    //test_single_worker();
-    test_grouped_workers();
+    test_single_worker();
+    test_pooled_worker();
 
     return 0;
 }

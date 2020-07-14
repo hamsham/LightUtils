@@ -1,5 +1,5 @@
 
-#include "lightsky/utils/WorkerThread.hpp"
+#include "lightsky/utils/WorkerPool.hpp"
 
 
 namespace ls
@@ -12,7 +12,7 @@ namespace utils
 /*-----------------------------------------------------------------------------
  * WorkerThread
 -----------------------------------------------------------------------------*/
-LS_DEFINE_CLASS_TYPE(ls::utils::WorkerThread, void (*)());
+LS_DEFINE_CLASS_TYPE(ls::utils::WorkerPool, void (*)());
 
 
 

@@ -1,12 +1,12 @@
 /*
- * File:   WorkerThread
+ * File:   WorkerPool
  * Author: Miles Lacey
  *
- * Created on March 30, 2018, 4:42 pM
+ * Created on July 13, 2020, 9:42 pM
  */
 
-#ifndef LS_UTILS_WORKER_THREAD_HPP
-#define LS_UTILS_WORKER_THREAD_HPP
+#ifndef LS_UTILS_WORKER_POOL_HPP
+#define LS_UTILS_WORKER_POOL_HPP
 
 #include <condition_variable>
 #include <mutex> // std::mutex, std::lock_guard
@@ -30,11 +30,11 @@ namespace utils
 
 
 /**----------------------------------------------------------------------------
- * @brief WorkerThread is an asynchronous thread which can have tasks pushed
+ * @brief WorkerPool is an asynchronous thread which can have tasks pushed
  * to it for execution.
 -----------------------------------------------------------------------------*/
 template <class WorkerTaskType>
-class WorkerThread
+class WorkerPool
 {
   public:
     typedef WorkerTaskType value_type;
@@ -44,11 +44,13 @@ class WorkerThread
 
     std::atomic_bool mIsPaused;
 
+    std::atomic_size_t mActiveThreads;
+
     int mCurrentBuffer;
 
     mutable ls::utils::SpinLock mPushLock;
 
-    std::vector<WorkerTaskType> mTasks[2];
+    std::vector<std::vector<WorkerTaskType>> mTasks[2];
 
     mutable std::mutex mWaitMtx;
 
@@ -56,38 +58,38 @@ class WorkerThread
 
     std::condition_variable mExecCond;
 
-    std::thread mThread;
+    std::vector<std::thread> mThreads;
 
-    void execute_tasks() noexcept;
+    void execute_tasks(size_t id, int bufferId) noexcept;
 
     void thread_loop() noexcept;
 
   public:
-    ~WorkerThread() noexcept;
+    ~WorkerPool() noexcept;
 
-    WorkerThread() noexcept;
+    WorkerPool(size_t numThreads = 1) noexcept;
 
-    WorkerThread(const WorkerThread&) noexcept;
+    WorkerPool(const WorkerPool&) noexcept;
 
-    WorkerThread(WorkerThread&&) noexcept;
+    WorkerPool(WorkerPool&&) noexcept;
 
-    WorkerThread& operator=(const WorkerThread&) noexcept;
+    WorkerPool& operator=(const WorkerPool&) noexcept;
 
-    WorkerThread& operator=(WorkerThread&&) noexcept;
+    WorkerPool& operator=(WorkerPool&&) noexcept;
 
-    const std::vector<WorkerTaskType>& tasks() const noexcept;
+    const std::vector<WorkerTaskType>& tasks(size_t threadId) const noexcept;
 
-    std::vector<WorkerTaskType>& tasks() noexcept;
+    std::vector<WorkerTaskType>& tasks(size_t threadId) noexcept;
 
-    std::size_t num_pending() const noexcept;
+    std::size_t num_pending(size_t threadId) const noexcept;
 
-    bool have_pending() const noexcept;
+    bool have_pending(size_t threadId) const noexcept;
 
-    void clear_pending() noexcept;
+    void clear_pending(size_t threadId) noexcept;
 
-    void push(const WorkerTaskType& task) noexcept;
+    void push(const WorkerTaskType& task, size_t threadIndex) noexcept;
 
-    void emplace(WorkerTaskType&& task) noexcept;
+    void emplace(WorkerTaskType&& task, size_t threadIndex) noexcept;
 
     bool ready() const noexcept;
 
@@ -108,7 +110,7 @@ class WorkerThread
 /*-------------------------------------
  * Convenience Types
 -------------------------------------*/
-LS_DECLARE_CLASS_TYPE(DefaultWorkerThread, WorkerThread, void (*)());
+LS_DECLARE_CLASS_TYPE(DefaultWorkerPool, WorkerPool, void (*)());
 
 
 
@@ -117,6 +119,6 @@ LS_DECLARE_CLASS_TYPE(DefaultWorkerThread, WorkerThread, void (*)());
 
 
 
-#include "lightsky/utils/generic/WorkerThreadImpl.hpp"
+#include "lightsky/utils/generic/WorkerPoolImpl.hpp"
 
-#endif /* LS_UTILS_WORKER_THREAD_HPP */
+#endif /* LS_UTILS_WORKER_POOL_HPP */
