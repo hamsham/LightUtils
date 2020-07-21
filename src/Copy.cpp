@@ -43,6 +43,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
                 _mm256_stream_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
             }
         }
+
     #elif defined(LS_ARCH_ARM)
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
@@ -54,6 +55,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
             LS_PREFETCH(simdSrc+16, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
             vst1q_u32(reinterpret_cast<uint32_t*>(simdDst++), vld1q_u32(reinterpret_cast<const uint32_t*>(simdSrc++)));
         }
+
     #else
         const uint_fast64_t* simdSrc    = reinterpret_cast<const uint_fast64_t*>(src);
         uint_fast64_t*       simdDst    = reinterpret_cast<uint_fast64_t*>(dst);
@@ -109,16 +111,20 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
                 _mm256_stream_si256(simdTo++, simdFillByte);
             }
         }
+
     #elif defined(LS_ARCH_ARM)
         const uint64x2_t fillByteSimd = vdupq_n_u64(fillBytes);
         uint64x2_t*      simdTo       = reinterpret_cast<uint64x2_t*>(dst);
-        uint_fast64_t     simdCount  = count >> 4;
-        uint_fast64_t     stragglers = count - (count & ~15);
+        uint_fast64_t    simdCount    = count >> 5;
+        uint_fast64_t    stragglers   = count - (count & ~15);
 
         while (simdCount--)
         {
-            vst1q_u64(reinterpret_cast<uint64_t*>(simdTo++), fillByteSimd);
+            vst1q_u64(reinterpret_cast<uint64_t*>(simdTo+0), fillByteSimd);
+            vst1q_u64(reinterpret_cast<uint64_t*>(simdTo+1), fillByteSimd);
+            simdTo += 2;
         }
+
     #else
         const uint_fast64_t fillByteSimd = (uint_fast64_t)fillBytes;
         uint_fast64_t*      simdTo       = reinterpret_cast<uint_fast64_t*>(dst);
@@ -131,6 +137,7 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
         {
             *simdTo++ = fillByteSimd;
         }
+
     #endif
 
     uint8_t*      to = reinterpret_cast<uint8_t*>(simdTo);
