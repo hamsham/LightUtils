@@ -104,9 +104,9 @@ inline size_t _count_leading_decimal_zeroes(size_t decimal, size_t numDecimals)
 
 
 template <typename IntegralType, IntegralType base = 10l>
-inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x)
+inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsSigned<IntegralType>::value, IntegralType>::type x)
 {
-    size_t signByte = ls::setup::IsSigned<IntegralType>::value && ((int)x < 0);
+    size_t signByte = (int)x < 0;
     size_t numDigits = 0 || !x;
 
     while (x)
@@ -116,6 +116,22 @@ inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::Is
     }
 
     return numDigits + signByte;
+}
+
+
+
+template <typename IntegralType, IntegralType base = 10l>
+inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsUnsigned<IntegralType>::value, IntegralType>::type x)
+{
+    size_t numDigits = 0 || !x;
+
+    while (x)
+    {
+        x /= base;
+        ++numDigits;
+    }
+
+    return numDigits;
 }
 
 
@@ -219,12 +235,12 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
 
 
 template <typename IntegralType, size_t base = 10>
-std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x)
+std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsSigned<IntegralType>::value, IntegralType>::type x)
 {
     size_t integral, haveSign;
 
     integral = (size_t)_impl_abs<IntegralType>(x);
-    haveSign = ls::setup::IsSigned<IntegralType>::value && ((int)x < 0);
+    haveSign = (int)x < 0;
 
     std::string ret(_count_printable_digits<IntegralType, base>(x), 'x');
     typename std::string::size_type iter = 0;
@@ -233,6 +249,28 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<I
     {
         ret[iter++] = '-';
     }
+
+    if (!integral)
+    {
+        ret[iter++] = '0';
+    }
+    else
+    {
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
+    }
+
+    return ret;
+}
+
+
+
+template <typename IntegralType, size_t base = 10>
+std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsUnsigned<IntegralType>::value, IntegralType>::type x)
+{
+    const size_t integral = (size_t)_impl_abs<IntegralType>(x);
+
+    std::string ret(_count_printable_digits<IntegralType, base>(x), 'x');
+    typename std::string::size_type iter = 0;
 
     if (!integral)
     {
