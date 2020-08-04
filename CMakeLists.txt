@@ -37,6 +37,7 @@ set(LS_UTILS_SOURCES
     src/SpinLock.cpp
     src/StringUtils.cpp
     src/Time.cpp
+    src/WorkerPool.cpp
     src/WorkerThread.cpp
 )
 
@@ -75,9 +76,11 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Time.hpp
     include/lightsky/utils/Tuple.h
     include/lightsky/utils/Utils.h
+    include/lightsky/utils/WorkerPool.hpp
     include/lightsky/utils/WorkerThread.hpp
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
+    include/lightsky/utils/generic/AlignedAllocatorImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
     include/lightsky/utils/generic/GeneralAllocatorImpl.hpp
@@ -87,11 +90,13 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/generic/HashImpl.h
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
+    include/lightsky/utils/generic/WorkerPoolImpl.hpp
     include/lightsky/utils/generic/WorkerThreadImpl.hpp
 
     include/lightsky/utils/android/LogImpl.h
 
-    include/lightsky/utils/x86/FutexImpl.hpp)
+    include/lightsky/utils/x86/FutexImpl.hpp
+)
 
 
 
@@ -120,7 +125,7 @@ if (BUILD_SHARED_LIBS)
     add_definitions(-DLS_BUILD_SHARED -DLS_SHARED)
     set(LS_LIB_TYPE SHARED)
 else()
-    set(LS_LIB_TYPE STATIC include/lightsky/utils/WorkerPool.hpp src/WorkerPool.cpp include/lightsky/utils/generic/WorkerPoolImpl.hpp)
+    set(LS_LIB_TYPE STATIC)
 endif()
 
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
