@@ -20,7 +20,7 @@
 
 #if 1
 enum {
-    MAX_RAND_NUMS = 16777216
+    MAX_RAND_NUMS = 131072
 };
 #else
 enum
@@ -76,39 +76,39 @@ void gen_rand_nums(int* const nums, long long count);
 int main(void)
 {
     void (* pTests[])(int* const, long long, ls::utils::IsLess<int>) = {
-        //&ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
-        //&quick_sort_2,
+        &ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
+        &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
-        //&quick_sort_ref,
-        //&sort_radix<int, ls::utils::IsLess<int>>,
-        //nullptr,
+        &quick_sort_ref,
+        &sort_radix<int, ls::utils::IsLess<int>>,
+        nullptr,
         nullptr
     };
 
     void (* pThreadedTests[])(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>) = {
-        //&ls::utils::sort_sheared<int>,
+        &ls::utils::sort_sheared<int>,
         &ls::utils::sort_bitonic<int>
     };
 
     const char* testNames[] = {
-        //"Bubble Sort",
-        //"Selection Sort",
-        //"Insertion Sort",
-        //"Shell Sort",
-        //"Merge Sort (recursive)",
-        //"Merge Sort (iterative)",
-        //"Quick Sort (recursive)",
-        //"Quick Sort (iterative)",
+        "Bubble Sort",
+        "Selection Sort",
+        "Insertion Sort",
+        "Shell Sort",
+        "Merge Sort (recursive)",
+        "Merge Sort (iterative)",
+        "Quick Sort (recursive)",
+        "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
-        //"Quick Sort-Reference",
-        //"Radix Sort",
-        //"Shear Sort (Parallel)",
+        "Quick Sort-Reference",
+        "Radix Sort",
+        "Shear Sort (Parallel)",
         "Bitonic Sort (Parallel)"
     };
 
