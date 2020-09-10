@@ -75,7 +75,7 @@ inline LS_INLINE void bitonic_swap_minmax(IntegralType& a0, IntegralType& b0, lo
  * Insertion sort that's meant to be used specifically with a shell sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_shell_insert(data_type* const items, const long long count, const long long increment, Comparator cmp) noexcept
+inline void sort_shell_insert(data_type* const items, const long long count, const long long increment, Comparator cmp) noexcept
 {
     for (long long i = increment; i < count; i += increment)
     {
@@ -100,7 +100,7 @@ void sort_shell_insert(data_type* const items, const long long count, const long
  * Insertion sort that's meant to be used specifically with a shell sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_shell_insert(data_type* const items, const long long count, Comparator cmp) noexcept
+inline void sort_shell_insert(data_type* const items, const long long count, Comparator cmp) noexcept
 {
     for (long long i = 1; i < count; i += 1)
     {
@@ -125,7 +125,7 @@ void sort_shell_insert(data_type* const items, const long long count, Comparator
  * Recursive Merge Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void sort_merge_impl(data_type* const items, data_type* const temp, long long left, long long right, Comparator cmp) noexcept
+inline void sort_merge_impl(data_type* const items, data_type* const temp, long long left, long long right, Comparator cmp) noexcept
 {
     if (right-left < 1)
     {
@@ -322,7 +322,7 @@ inline float fast_log(float n) noexcept
  * shear-sort partitioning for less-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-long long shear_partition_lt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
+inline long long shear_partition_lt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
 {
     data_type temp;
     data_type pivot;
@@ -373,7 +373,7 @@ long long shear_partition_lt(data_type* items, long long l, long long r, long lo
  * shear-sort with less-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void shear_sort_lt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
+inline void shear_sort_lt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
 {
     long long stack[64];
     long long mid;
@@ -421,7 +421,7 @@ void shear_sort_lt(data_type* const items, long long count, long long offset, lo
  * shear-sort partitioning for greater-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator>
-long long shear_partition_gt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
+inline long long shear_partition_gt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
 {
     data_type temp;
     data_type pivot;
@@ -472,7 +472,7 @@ long long shear_partition_gt(data_type* items, long long l, long long r, long lo
  * shear-sort with greater-than comparison
 -------------------------------------*/
 template <typename data_type, class Comparator>
-void shear_sort_gt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
+inline void shear_sort_gt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
 {
     long long stack[64];
     long long mid;
