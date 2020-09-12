@@ -10,7 +10,12 @@
 #include <cstring>
 #include <thread>
 
+#include "lightsky/setup/Arch.h"
 #include "lightsky/setup/Types.h"
+
+#ifdef LS_ARCH_X86
+    #include <immintrin.h>
+#endif
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
