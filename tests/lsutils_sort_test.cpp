@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "lightsky/setup/Arch.h"
+#include "lightsky/setup/Compiler.h"
 #include "lightsky/setup/Types.h"
 
 #ifdef LS_ARCH_X86
