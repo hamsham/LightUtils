@@ -442,17 +442,17 @@ void sort_radix(data_type* const items, long long count, Comparator) noexcept
 
     const auto&& ctz = [](long long e)->long long
     {
-        #ifdef LS_ARCH_X86
-            return (long long)_tzcnt_u64((unsigned long long)e);
-        #elif defined(LS_COMPILER_GNU)
-            return __builtin_ctzll(e);
-        #elif defined(LS_COMPILER_MSC) && defined(LS_ARCH_X86) && LS_ARCH_X86 == 64
+        #if defined(LS_COMPILER_MSC) && defined(LS_ARCH_X86) && LS_ARCH_X86 == 64
             unsigned long ret;
             if (_BitScanForward64(&ret, (unsigned long long)e))
             {
                 return (long long)ret;
             }
             return 64ll;
+        #elif defined(LS_ARCH_X86)
+            return (long long)_tzcnt_u64((unsigned long long)e);
+        #elif defined(LS_COMPILER_GNU)
+            return __builtin_ctzll(e);
         #else
             long long ret = 0ll;
             while (!(n & 0x01ll))
