@@ -6,8 +6,7 @@
  */
 
 #include <climits> // CHAR_BIT
-//#include <clocale> // std::setlocale()
-#include <cmath> // std::abs(), std::pow(), std::trunc
+#include <cmath> // std::abs(), std::pow(), std::trunc()
 #include <codecvt> // std::c16rtomb(), std::c32rtomb(), std::mbstate_t
 #include <cwchar> // std::wcstombs
 #include <utility> // std::move
@@ -174,6 +173,28 @@ inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::Is
 
 
 
+template <typename FloatingType, long long base = 10>
+inline size_t _count_printable_digits(
+    typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x,
+    size_t* haveSign,
+    size_t* pIntegral,
+    size_t* pDecimal,
+    size_t* pNumDecimals,
+    size_t* pLeadingZeroes)
+{
+    *haveSign = _float_info_to_int<FloatingType, base>(x, pIntegral, pDecimal, pNumDecimals, pLeadingZeroes);
+
+    size_t ret = *haveSign;
+    ret += *pIntegral ? _count_printable_digits<long long, base>(*pIntegral) : 1;
+    ret += 1; // decimal point
+    ret += *pLeadingZeroes;
+    ret += _count_printable_digits<long long, base>(*pDecimal);
+
+    return ret;
+}
+
+
+
 template <typename IntegralType, IntegralType base = 10l>
 inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf)
 {
@@ -197,12 +218,28 @@ inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::I
 template <typename FloatingType, size_t base = 10>
 std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
+    constexpr size_t nanVal = (size_t)(~0ull >> 1ull)+1ull;
     size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
+    const size_t numPrintable = _count_printable_digits<FloatingType, base>(x, &haveSign, &integral, &decimal, &numDecimals, &leadingZeroes);
 
-    haveSign = _float_info_to_int<FloatingType, base>(x, &integral, &decimal, &numDecimals, &leadingZeroes);
+    if (decimal == nanVal)
+    {
 
+        if (integral == nanVal)
+        {
+            return std::string{"NaN"};
+        }
+        else if (x > (FloatingType)0)
+        {
+            return std::string{"Inf"};
+        }
+        else
+        {
+            return std::string{"-Inf"};
+        }
+    }
 
-    std::string ret(_count_printable_digits<FloatingType, base>(x), 'x');
+    std::string ret(numPrintable, 'x');
     typename std::string::size_type iter = 0;
 
     if (haveSign)

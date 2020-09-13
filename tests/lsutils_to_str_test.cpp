@@ -1,5 +1,6 @@
 
 #include <clocale> // std::setlocale()
+#include <cmath>
 #include <cstdlib> // rand(), srand()
 #include <ctime>
 #include <iostream>
@@ -26,6 +27,15 @@ int main()
     int testi;
 
     testf = -0.f;
+    std::cout << testf << ": " << utils::to_str(testf) << std::endl;
+
+    testf = 1.f/0.f; // INF
+    std::cout << testf << ": " << utils::to_str(testf) << std::endl;
+
+    testf = 1.f/-0.f; // -INF
+    std::cout << testf << ": " << utils::to_str(testf) << std::endl;
+
+    testf = 0.f/0.f; // NAN
     std::cout << testf << ": " << utils::to_str(testf) << std::endl;
 
     testf = 1.f / 3.f;
