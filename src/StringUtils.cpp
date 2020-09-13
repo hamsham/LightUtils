@@ -218,7 +218,7 @@ inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::I
 template <typename FloatingType, size_t base = 10>
 std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
-    constexpr size_t nanVal = (size_t)(~0ull >> 1ull)+1ull;
+    constexpr size_t nanVal = (size_t)((~0ull >> 1ull)+1ull);
     size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
     const size_t numPrintable = _count_printable_digits<FloatingType, base>(x, &haveSign, &integral, &decimal, &numDecimals, &leadingZeroes);
 
