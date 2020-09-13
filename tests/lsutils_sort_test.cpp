@@ -17,6 +17,12 @@
     #include <immintrin.h>
 #endif
 
+#ifdef LS_COMPILER_GNU
+    #include <x86intrin.h>
+#elif defined(LS_COMPILER_MSC)
+    #include <intrin.h>
+#endif
+
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Sort.hpp"
