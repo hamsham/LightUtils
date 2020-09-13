@@ -16,12 +16,12 @@
 
 #ifdef LS_ARCH_X86
     #include <immintrin.h>
-#endif
 
-#ifdef LS_COMPILER_GNU
-    #include <x86intrin.h>
-#elif defined(LS_COMPILER_MSC)
-    #include <intrin.h>
+    #ifdef LS_COMPILER_GNU
+        #include <x86intrin.h>
+    #elif defined(LS_COMPILER_MSC)
+        #include <intrin.h>
+    #endif
 #endif
 
 #include "lightsky/utils/Pointer.h"
