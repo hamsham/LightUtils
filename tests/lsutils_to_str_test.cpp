@@ -29,13 +29,13 @@ int main()
     testf = -0.f;
     std::cout << testf << ": " << utils::to_str(testf) << std::endl;
 
-    testf = 1.f/0.f; // INF
+    testf = INFINITY;
     std::cout << testf << ": " << utils::to_str(testf) << std::endl;
 
-    testf = 1.f/-0.f; // -INF
+    testf = -INFINITY;
     std::cout << testf << ": " << utils::to_str(testf) << std::endl;
 
-    testf = 0.f/0.f; // NAN
+    testf = NAN;
     std::cout << testf << ": " << utils::to_str(testf) << std::endl;
 
     testf = 1.f / 3.f;

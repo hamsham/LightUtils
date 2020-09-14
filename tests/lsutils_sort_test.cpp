@@ -447,9 +447,9 @@ void sort_radix(data_type* const items, long long count, Comparator) noexcept
             return __builtin_ctzll(e);
         #else
             long long ret = 0ll;
-            while (!(n & 0x01ll))
+            while (!(e & 1ll))
             {
-                n >>= 1ll;
+                e >>= 1ll;
                 ++ret;
             }
             return ret;
