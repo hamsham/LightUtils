@@ -19,8 +19,6 @@
 
     #ifdef LS_COMPILER_GNU
         #include <x86intrin.h>
-    #elif defined(LS_COMPILER_MSC)
-        #include <intrin.h>
     #endif
 #endif
 
@@ -443,16 +441,9 @@ void sort_radix(data_type* const items, long long count, Comparator) noexcept
 
     const auto&& ctz = [](long long e)->long long
     {
-        #if defined(LS_COMPILER_MSC) && defined(LS_ARCH_X86) && LS_ARCH_X86 == 64
-            unsigned long ret;
-            if (_BitScanForward64(&ret, (unsigned long long)e))
-            {
-                return (long long)ret;
-            }
-            return 64ll;
-        #elif defined(LS_ARCH_X86)
+        #if defined(LS_ARCH_X86) && !defined(LS_COMPILER_MSC)
             return (long long)_tzcnt_u64((unsigned long long)e);
-        #elif defined(LS_COMPILER_GNU)
+        #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
             return __builtin_ctzll(e);
         #else
             long long ret = 0ll;
