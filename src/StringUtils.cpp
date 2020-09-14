@@ -222,7 +222,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
     size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
     const size_t numPrintable = _count_printable_digits<FloatingType, base>(x, &haveSign, &integral, &decimal, &numDecimals, &leadingZeroes);
 
-    if (decimal == nanVal)
+    if (decimal == nanVal || integral == ~(size_t)0)
     {
 
         if (integral == nanVal)
