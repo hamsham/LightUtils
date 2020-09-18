@@ -75,10 +75,11 @@ template <typename FloatingType, long long base = 10>
 inline size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t numDecimals = 0;
+    constexpr FloatingType b = (FloatingType)base;
 
     while ((x-std::trunc(x)) > (FloatingType)0)
     {
-        x *= (FloatingType)base;
+        x *= b;
         ++numDecimals;
     }
 
@@ -106,7 +107,7 @@ template <typename IntegralType, IntegralType base = 10l>
 inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsSigned<IntegralType>::value, IntegralType>::type x)
 {
     size_t signByte = (int)x < 0;
-    size_t numDigits = 0 || !x;
+    size_t numDigits = !x;
 
     while (x)
     {
@@ -122,7 +123,7 @@ inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::Is
 template <typename IntegralType, IntegralType base = 10l>
 inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsUnsigned<IntegralType>::value, IntegralType>::type x)
 {
-    size_t numDigits = 0 || !x;
+    size_t numDigits = !x;
 
     while (x)
     {
@@ -192,7 +193,7 @@ inline size_t _count_printable_digits(
     ret += *pIntegral ? *pNumIntegrals : 1;
     ret += 1; // decimal point
     ret += *pLeadingZeroes;
-    ret += _count_printable_digits<long long, base>(*pDecimal);
+    ret += _count_printable_digits<unsigned long long, base>(*pDecimal);
 
     return ret;
 }
