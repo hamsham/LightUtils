@@ -6,8 +6,7 @@
  */
 
 #include <climits> // CHAR_BIT
-//#include <clocale> // std::setlocale()
-#include <cmath> // std::abs(), std::pow(), std::trunc
+#include <cmath> // std::abs(), std::pow(), std::trunc()
 #include <codecvt> // std::c16rtomb(), std::c32rtomb(), std::mbstate_t
 #include <cwchar> // std::wcstombs
 #include <utility> // std::move
@@ -76,10 +75,11 @@ template <typename FloatingType, long long base = 10>
 inline size_t _count_printable_decimals(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
     size_t numDecimals = 0;
+    constexpr FloatingType b = (FloatingType)base;
 
     while ((x-std::trunc(x)) > (FloatingType)0)
     {
-        x *= (FloatingType)base;
+        x *= b;
         ++numDecimals;
     }
 
@@ -107,7 +107,7 @@ template <typename IntegralType, IntegralType base = 10l>
 inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsSigned<IntegralType>::value, IntegralType>::type x)
 {
     size_t signByte = (int)x < 0;
-    size_t numDigits = 0 || !x;
+    size_t numDigits = !x;
 
     while (x)
     {
@@ -123,7 +123,7 @@ inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::Is
 template <typename IntegralType, IntegralType base = 10l>
 inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsUnsigned<IntegralType>::value, IntegralType>::type x)
 {
-    size_t numDigits = 0 || !x;
+    size_t numDigits = !x;
 
     while (x)
     {
@@ -156,6 +156,7 @@ inline size_t _float_info_to_int(
 
 
 
+/*
 template <typename FloatingType, long long base = 10>
 inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
@@ -171,16 +172,63 @@ inline size_t _count_printable_digits(typename ls::setup::EnableIf<ls::setup::Is
 
     return ret;
 }
+*/
+
+
+
+template <typename FloatingType, long long base = 10>
+inline size_t _count_printable_digits(
+    typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x,
+    size_t* haveSign,
+    size_t* pIntegral,
+    size_t* pNumIntegrals,
+    size_t* pDecimal,
+    size_t* pNumDecimals,
+    size_t* pLeadingZeroes)
+{
+    *haveSign = _float_info_to_int<FloatingType, base>(x, pIntegral, pDecimal, pNumDecimals, pLeadingZeroes);
+
+    size_t ret = *haveSign;
+    *pNumIntegrals = _count_printable_digits<long long, base>(*pIntegral);
+    ret += *pIntegral ? *pNumIntegrals : 1;
+    ret += 1; // decimal point
+    ret += *pLeadingZeroes;
+    ret += _count_printable_digits<unsigned long long, base>(*pDecimal);
+
+    return ret;
+}
+
+
+
+/*
+template <typename IntegralType, IntegralType base = 10l>
+inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf)
+{
+    static_assert(base == 10, "Support not added for bases other than 10.");
+    constexpr char asciiTable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '\0'};
+    size_t iter = _count_printable_digits<IntegralType, base>(x);
+    size_t numDigits = iter;
+    char* pOut = (pBuf + iter) - 1;
+
+    while (iter--)
+    {
+        (*pOut--) = asciiTable[x % base];
+        x /= base;
+    }
+
+    return numDigits;
+}
+*/
 
 
 
 template <typename IntegralType, IntegralType base = 10l>
-inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf)
+inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value, IntegralType>::type x, char* pBuf, size_t numPrintable)
 {
     static_assert(base == 10, "Suport not added for bases other than 10.");
     constexpr char asciiTable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '\0'};
-    size_t iter = _count_printable_digits<IntegralType, base>(x);
-    size_t numDigits = iter;
+    size_t iter = numPrintable;
+    size_t numDigits = numPrintable;
     char* pOut = (pBuf + iter) - 1;
 
     while (iter--)
@@ -197,12 +245,28 @@ inline size_t _integral_to_char_buffer(typename ls::setup::EnableIf<ls::setup::I
 template <typename FloatingType, size_t base = 10>
 std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<FloatingType>::value, FloatingType>::type x)
 {
-    size_t integral, decimal, numDecimals, leadingZeroes, haveSign;
+    constexpr size_t nanVal = (size_t)((~0ull >> 1ull)+1ull);
+    size_t integral, numIntegrals, decimal, numDecimals, leadingZeroes, haveSign;
+    const size_t numPrintable = _count_printable_digits<FloatingType, base>(x, &haveSign, &integral, &numIntegrals, &decimal, &numDecimals, &leadingZeroes);
 
-    haveSign = _float_info_to_int<FloatingType, base>(x, &integral, &decimal, &numDecimals, &leadingZeroes);
+    if (decimal == nanVal || integral == ~(size_t)0)
+    {
 
+        if (integral == nanVal)
+        {
+            return std::string{"NaN"};
+        }
+        else if (x > (FloatingType)0)
+        {
+            return std::string{"Inf"};
+        }
+        else
+        {
+            return std::string{"-Inf"};
+        }
+    }
 
-    std::string ret(_count_printable_digits<FloatingType, base>(x), 'x');
+    std::string ret(numPrintable, 'x');
     typename std::string::size_type iter = 0;
 
     if (haveSign)
@@ -216,18 +280,18 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
     }
     else
     {
-        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter], numIntegrals);
     }
 
     ret[iter++] = '.';
 
-    while (leadingZeroes--)
+    for (size_t lz = 0; lz < leadingZeroes; --lz)
     {
         char c = '0';
         ret[iter++] = c;
     }
 
-    _integral_to_char_buffer<long long, base>(decimal, &ret[iter]);
+    _integral_to_char_buffer<long long, base>(decimal, &ret[iter], numDecimals ? numDecimals : 1);
 
     return ret;
 }
@@ -237,12 +301,13 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsFloat<Floa
 template <typename IntegralType, size_t base = 10>
 std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsSigned<IntegralType>::value, IntegralType>::type x)
 {
-    size_t integral, haveSign;
+    size_t integral, haveSign, numPrintable;
 
     integral = (size_t)_impl_abs<IntegralType>(x);
     haveSign = (int)x < 0;
+    numPrintable = _count_printable_digits<IntegralType, base>(x);
 
-    std::string ret(_count_printable_digits<IntegralType, base>(x), 'x');
+    std::string ret(numPrintable, 'x');
     typename std::string::size_type iter = 0;
 
     if (haveSign)
@@ -256,7 +321,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<I
     }
     else
     {
-        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter], numPrintable-iter);
     }
 
     return ret;
@@ -268,8 +333,9 @@ template <typename IntegralType, size_t base = 10>
 std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<IntegralType>::value && ls::setup::IsUnsigned<IntegralType>::value, IntegralType>::type x)
 {
     const size_t integral = (size_t)_impl_abs<IntegralType>(x);
+    const size_t numPrintable = _count_printable_digits<IntegralType, base>(x);
 
-    std::string ret(_count_printable_digits<IntegralType, base>(x), 'x');
+    std::string ret(numPrintable, 'x');
     typename std::string::size_type iter = 0;
 
     if (!integral)
@@ -278,7 +344,7 @@ std::string _impl_to_string(typename ls::setup::EnableIf<ls::setup::IsIntegral<I
     }
     else
     {
-        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter]);
+        iter += _integral_to_char_buffer<long long, base>(integral, &ret[iter], numPrintable);
     }
 
     return ret;

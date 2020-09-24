@@ -5,12 +5,22 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <ctime>
 #include <thread>
+
+#include "lightsky/setup/Arch.h"
+#include "lightsky/setup/Compiler.h"
+#include "lightsky/setup/Types.h"
+
+#ifdef LS_ARCH_X86
+    #include <immintrin.h>
+
+    #ifdef LS_COMPILER_GNU
+        #include <x86intrin.h>
+    #endif
+#endif
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
@@ -20,7 +30,7 @@
 
 #if 1
 enum {
-    MAX_RAND_NUMS = 16777216
+    MAX_RAND_NUMS = 131072
 };
 #else
 enum
@@ -62,7 +72,16 @@ void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>);
 // Quick Sort - Reference Implementation
 void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>);
 
-template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+template <typename data_type>
+struct RadixIndexer
+{
+    constexpr unsigned long long operator()(const typename ls::setup::EnableIf<ls::setup::IsIntegral<data_type>::value, data_type>::type& val) const noexcept
+    {
+        return (unsigned long long)val;
+    }
+};
+
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>, class Indexer = RadixIndexer<data_type>, unsigned long long base = 256, unsigned long long mask = base-1ull>
 void sort_radix(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
 
 // Function to populate a list of random numbers
@@ -76,39 +95,39 @@ void gen_rand_nums(int* const nums, long long count);
 int main(void)
 {
     void (* pTests[])(int* const, long long, ls::utils::IsLess<int>) = {
-        //&ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
-        //&quick_sort_2,
+        &ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
+        &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
-        //&quick_sort_ref,
-        //&sort_radix<int, ls::utils::IsLess<int>>,
-        //nullptr,
+        &quick_sort_ref,
+        &sort_radix<int, ls::utils::IsLess<int>>,
+        nullptr,
         nullptr
     };
 
     void (* pThreadedTests[])(int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* numThreadsFinished, std::atomic_llong* numSortPhases, ls::utils::IsLess<int>, ls::utils::IsGreater<int>) = {
-        //&ls::utils::sort_sheared<int>,
+        &ls::utils::sort_sheared<int>,
         &ls::utils::sort_bitonic<int>
     };
 
     const char* testNames[] = {
-        //"Bubble Sort",
-        //"Selection Sort",
-        //"Insertion Sort",
-        //"Shell Sort",
-        //"Merge Sort (recursive)",
-        //"Merge Sort (iterative)",
-        //"Quick Sort (recursive)",
-        //"Quick Sort (iterative)",
+        "Bubble Sort",
+        "Selection Sort",
+        "Insertion Sort",
+        "Shell Sort",
+        "Merge Sort (recursive)",
+        "Merge Sort (iterative)",
+        "Quick Sort (recursive)",
+        "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
-        //"Quick Sort-Reference",
-        //"Radix Sort",
-        //"Shear Sort (Parallel)",
+        "Quick Sort-Reference",
+        "Radix Sort",
+        "Shear Sort (Parallel)",
         "Bitonic Sort (Parallel)"
     };
 
@@ -396,53 +415,79 @@ void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
 -----------------------------------------------------------------------------*/
 // The main function to that sorts arr[] of size n using
 // Radix Sort
-template <typename data_type, class Comparator>
-void sort_radix(data_type* const items, long long count, Comparator cmp) noexcept
+template <typename data_type, class Comparator, class Indexer, unsigned long long base, unsigned long long mask>
+void sort_radix(data_type* const items, long long count, Comparator) noexcept
 {
-    if (!count)
+    if (count <= 0ll)
     {
         return;
     }
 
     // Find the maximum value to know number of digits
-    long long m = (long long)items[0];
+    constexpr Indexer indexer;
+    unsigned long long m = indexer(*items);
 
-    for (long long i = 1; i < count; ++i)
+    for (long long i = 1ll; i < count; ++i)
     {
-        if (!cmp((long long)items[i], m))
+        unsigned long long val = indexer(items[i]);
+        if (val > m)
         {
-            m = (long long)items[i];
+            m = val;
         }
     }
 
-    ls::utils::Pointer<long long[]> indices{new long long[count]}; // output array
+    // output array
+    ls::utils::Pointer<data_type[]>&& indices = ls::utils::make_unique_array<data_type>(count);
 
-    const auto radix_count_sort = [&items, &count, &indices](long long x)->void
+    const auto&& ctz = [](long long e)->long long
     {
-        long long radices[10] = {0ll};
+        #if defined(LS_ARCH_X86) && !defined(LS_COMPILER_MSC)
+            return (long long)_tzcnt_u64((unsigned long long)e);
+        #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
+            return __builtin_ctzll(e);
+        #else
+            long long ret = 0ll;
+            while (!(e & 1ll))
+            {
+                e >>= 1ll;
+                ++ret;
+            }
+            return ret;
+        #endif
+    };
+
+    // Do counting sort for every digit. Note that instead
+    // of passing digit number, exp is passed. exp is 10^i
+    // where i is current digit number
+    for (long long exponent = 1ll, divisor = 0ll; (m >> divisor) > 0ll; exponent *= base, divisor = ctz(exponent))
+    {
+        unsigned long long radices[base] = {0ull};
 
         // Store count of occurrences in radices[]
         for (long long i = 0; i < count; ++i)
         {
-            long long val = (long long)items[i];
-            radices[(val / x) % 10ll]++;
+            const unsigned long long inIndex = indexer(items[i]);
+            const unsigned long long radix   = (inIndex >> divisor) & mask;
+            radices[radix]++;
         }
 
         // Change radices[i] so that radices[i] now contains actual
         //  position of this digit in output[]
-        for (long long i = 1; i < 10ll; i++)
+        for (unsigned long long i = 1ull; i < base; i++)
         {
-            radices[i] += radices[i - 1ll];
+            radices[i] += radices[i - 1ull];
         }
 
         // Build the output array
-        for (long long i = count - 1; i >= 0; i--)
+        for (long long i = count - 1ll; i >= 0ll; i--)
         {
-            long long radix = ((long long)items[i] / x) % 10ll;
-            long long index = radices[radix] - 1ll;
+            const data_type&   elem     = items[i];
+            unsigned long long radix    = indexer(elem);
+            unsigned long long inIndex  = (radix >> divisor) & mask;
+            unsigned long long outIndex = radices[inIndex] - 1ull;
 
-            indices[index] = items[i];
-            radices[((long long)items[i] / x) % 10ll]--;
+            indices[outIndex] = elem;
+            radices[inIndex]--;
         }
 
         // Copy the output array to arr[], so that arr[] now
@@ -451,14 +496,6 @@ void sort_radix(data_type* const items, long long count, Comparator cmp) noexcep
         {
             items[i] = indices[i];
         }
-    };
-
-    // Do counting sort for every digit. Note that instead
-    // of passing digit number, exp is passed. exp is 10^i
-    // where i is current digit number
-    for (long long exponent = 1ll; m/exponent > 0ll; exponent *= 10ll)
-    {
-        radix_count_sort(exponent);
     }
 }
 
