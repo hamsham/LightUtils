@@ -86,7 +86,7 @@ void test_pooled_worker()
         std::this_thread::sleep_for(std::chrono::milliseconds{1000});
 
         // push tasks while waiting for the test to complete
-        for (unsigned i = thread.concurrency(); i--;)
+        for (size_t i = thread.concurrency(); i--;)
         {
             thread.push(SampleTask(), i);
         }

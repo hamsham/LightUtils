@@ -217,7 +217,7 @@ WorkerPool<WorkerTaskType>& WorkerPool<WorkerTaskType>::operator=(const WorkerPo
 
     mCurrentBuffer = w.mCurrentBuffer;
 
-    for (unsigned i = mThreads.size(); i--;)
+    for (size_t i = mThreads.size(); i--;)
     {
         mTasks[0][i] = w.mTasks[0][i];
         mTasks[1][i] = w.mTasks[1][i];
@@ -249,7 +249,7 @@ WorkerPool<WorkerTaskType>& WorkerPool<WorkerTaskType>::operator=(WorkerPool&& w
     mCurrentBuffer = w.mCurrentBuffer;
     w.mCurrentBuffer = -1;
 
-    for (unsigned i = mThreads.size(); i--;)
+    for (size_t i = mThreads.size(); i--;)
     {
         mTasks[0][i] = w.mTasks[0][i];
         mTasks[1][i] = w.mTasks[1][i];

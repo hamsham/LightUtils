@@ -17,7 +17,16 @@ option(BUILD_ENET "Force ENet to build from source." OFF)
 
 if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NOTFOUND AND NOT ENET_SYS_LIB STREQUAL ENET_SYS_LIB-NOTFOUND)
     set(ENET_INCLUDE_DIR "${ENET_SYS_INCLUDE_DIR}")
-    set(ENET_LIBRARIES "${ENET_SYS_LIB}")
+
+    if (WIN32)
+        if (MINGW)
+            set(ENET_LIBRARIES "${ENET_SYS_LIB}" winmm ws2_32)
+        else()
+            set(ENET_LIBRARIES "${ENET_SYS_LIB}" winmm ws2_32 msvcrt msvcmrt)
+        endif()
+    else()
+        set(ENET_LIBRARIES "${ENET_SYS_LIB}")
+    endif()
 
 else()
     message("-- Building ENet from source")
