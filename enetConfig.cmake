@@ -13,9 +13,20 @@ find_library(ENET_SYS_LIB
         ${ENET_SYS_INCLUDE_DIR}/../lib64
 )
 
-option(BUILD_ENET "Force ENet to build from source." OFF)
+if (ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NOTFOUND OR ENET_SYS_LIB STREQUAL ENET_SYS_LIB-NOTFOUND)
+    set(NEED_BUILD_ENET TRUE)
+else()
+    set(NEED_BUILD_ENET FALSE)
+endif()
 
-if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NOTFOUND AND NOT ENET_SYS_LIB STREQUAL ENET_SYS_LIB-NOTFOUND)
+set(BUILD_ENET "Force ENet to build from source." CACHE BOOL ${NEED_BUILD_ENET})
+
+
+
+if (NOT BUILD_ENET)
+    message("-- Found ENet include path: ${ENET_SYS_INCLUDE_DIR}")
+    message("-- Found ENet library: ${ENET_SYS_LIB}")
+
     set(ENET_INCLUDE_DIR "${ENET_SYS_INCLUDE_DIR}")
 
     if (WIN32)
@@ -127,6 +138,3 @@ else()
         set(ENET_LIBRARIES enet)
     endif()
 endif()
-
-message("-- Found ENet include path: ${ENET_INCLUDE_DIR}")
-message("-- Found ENet library: ${ENET_LIBRARIES}")
