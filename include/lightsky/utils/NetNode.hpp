@@ -42,7 +42,7 @@ class NetNode
 
     static uint32_t resolve_hostname_to_ip(const char* pHostname) noexcept;
 
-    virtual ~NetNode() noexcept;
+    virtual ~NetNode() noexcept = default;
 
     NetNode() noexcept;
 

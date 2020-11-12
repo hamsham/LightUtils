@@ -21,11 +21,19 @@ namespace utils
 -----------------------------------------------------------------------------*/
 class NetConnection
 {
+  public:
+    enum : uint32_t
+    {
+        DEFAULT_CONNECTION_TIMEOUT_MS = 5000, // 5 seconds
+        CHANNEL_COUNT_LIMITLESS = 0,
+        CONNECTION_BYTES_PER_SEC_LIMITLESS = 0,
+    };
+
   private:
     struct _ENetPeer* mPeer;
 
   public:
-    ~NetConnection() noexcept;
+    ~NetConnection() noexcept = default;
 
     NetConnection() noexcept;
 
@@ -39,7 +47,14 @@ class NetConnection
 
     bool valid() const noexcept;
 
-    int connect(_ENetHost* pHost, uint32_t ipAddr, uint16_t port, bool clientConnection, uint8_t maxChannels = 0, uint32_t timeoutMillis = 5000) noexcept;
+    int connect(
+        _ENetHost* pHost,
+        uint32_t ipAddr,
+        uint16_t port,
+        bool clientConnection,
+        uint8_t maxChannels = (uint32_t)CHANNEL_COUNT_LIMITLESS,
+        uint32_t timeoutMillis = (uint32_t)DEFAULT_CONNECTION_TIMEOUT_MS
+    ) noexcept;
 
     int connect(_ENetPeer* pHost) noexcept;
 

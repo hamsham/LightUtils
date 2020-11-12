@@ -1,7 +1,5 @@
 
 #include <cstring> // std::memset
-//#include <iostream>
-#include <cstdlib> // std::atexit()
 #include <mutex>
 #include <utility> // std::move()
 
@@ -78,15 +76,6 @@ uint32_t NetNode::resolve_hostname_to_ip(const char* pHostname) noexcept
     }
 
     return addr.host;
-}
-
-
-
-/*-------------------------------------
- * Destructor
--------------------------------------*/
-NetNode::~NetNode() noexcept
-{
 }
 
 

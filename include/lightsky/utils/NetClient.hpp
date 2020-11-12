@@ -5,8 +5,6 @@
 #include "lightsky/utils/NetNode.hpp"
 #include "lightsky/utils/NetConnection.hpp"
 
-
-
 struct _ENetHost;
 
 
@@ -27,7 +25,7 @@ class NetClient final : public NetNode
     NetConnection mNode;
 
   public:
-    ~NetClient() noexcept;
+    ~NetClient() noexcept override;
 
     NetClient() noexcept;
 
@@ -39,7 +37,14 @@ class NetClient final : public NetNode
 
     NetClient& operator=(NetClient&&) noexcept;
 
-    int connect(uint32_t ip, uint16_t port, uint8_t maxChannels = 0, uint32_t inBps = 0, uint32_t outBps = 0, uint32_t timeoutMillis = 5000) noexcept;
+    int connect(
+        uint32_t ip,
+        uint16_t port,
+        uint8_t maxChannels = (uint32_t)NetConnection::CHANNEL_COUNT_LIMITLESS,
+        uint32_t inBps = (uint32_t)NetConnection::CONNECTION_BYTES_PER_SEC_LIMITLESS,
+        uint32_t outBps = (uint32_t)NetConnection::CONNECTION_BYTES_PER_SEC_LIMITLESS,
+        uint32_t timeoutMillis = (uint32_t)NetConnection::DEFAULT_CONNECTION_TIMEOUT_MS
+    ) noexcept;
 
     void disconnect() noexcept override;
 

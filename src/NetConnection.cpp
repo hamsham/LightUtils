@@ -1,6 +1,4 @@
 
-//#include <iostream>
-
 #include <enet/enet.h>
 
 #include "lightsky/utils/NetConnection.hpp"
@@ -14,15 +12,6 @@ namespace ls
 {
 namespace utils
 {
-
-/*-------------------------------------
- * Destructor
--------------------------------------*/
-NetConnection::~NetConnection() noexcept
-{
-}
-
-
 
 /*-------------------------------------
  * Constructor

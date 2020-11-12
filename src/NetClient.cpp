@@ -1,7 +1,4 @@
 
-//#include <iostream>
-
-#include <mutex>
 #include <utility> // std::move()
 
 #include <enet/enet.h>
@@ -43,10 +40,10 @@ NetClient::NetClient() noexcept :
  * Move Constructor
 -------------------------------------*/
 NetClient::NetClient(NetClient&& server) noexcept :
-    NetNode{std::move(server)},
-    mNode{std::move(server.mNode)}
+    NetClient{}
 {
-    server.mHost = nullptr;
+    mNode = std::move(server.mNode);
+    NetNode::operator=(std::move(server));
 }
 
 
@@ -56,9 +53,8 @@ NetClient::NetClient(NetClient&& server) noexcept :
 -------------------------------------*/
 NetClient& NetClient::operator=(NetClient&& server) noexcept
 {
-    NetNode::operator=(std::move(server));
-
     mNode = std::move(server.mNode);
+    NetNode::operator=(std::move(server));
 
     return *this;
 }
@@ -90,7 +86,7 @@ int NetClient::connect(uint32_t ip, uint16_t port, uint8_t maxChannels, uint32_t
         return -2;
     }
 
-    if (node.connect(pClient, ip, port, maxChannels, timeoutMillis) != 0)
+    if (node.connect(pClient, ip, port, true, maxChannels, timeoutMillis) != 0)
     {
         enet_host_destroy(pClient);
         return -3;

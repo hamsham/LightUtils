@@ -26,7 +26,7 @@ class NetServer final : public NetNode
     std::vector<NetConnection> mClients;
 
   public:
-    ~NetServer() noexcept;
+    ~NetServer() noexcept override;
 
     NetServer() noexcept;
 
@@ -38,7 +38,14 @@ class NetServer final : public NetNode
 
     NetServer& operator=(NetServer&&) noexcept;
 
-    int connect(uint32_t ip, uint16_t port, size_t maxClients, uint8_t maxChannels = 0, uint32_t inBps = 0, uint32_t outBps = 0) noexcept;
+    int connect(
+        uint32_t ip,
+        uint16_t port,
+        size_t maxClients,
+        uint8_t maxChannels = (uint32_t)NetConnection::CHANNEL_COUNT_LIMITLESS,
+        uint32_t inBps = (uint32_t)NetConnection::CONNECTION_BYTES_PER_SEC_LIMITLESS,
+        uint32_t outBps = (uint32_t)NetConnection::CONNECTION_BYTES_PER_SEC_LIMITLESS
+    ) noexcept;
 
     void disconnect(uint32_t clientIp) noexcept;
 
