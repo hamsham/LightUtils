@@ -18,8 +18,6 @@ include(enetConfig.cmake)
 # -------------------------------------
 # Source Paths
 # -------------------------------------
-include_directories(include)
-
 set(LS_UTILS_SOURCES
     src/Argument.cpp
     src/ArgParser.cpp
@@ -129,6 +127,8 @@ else()
 endif()
 
 add_library(${OUTPUT_NAME} ${LS_LIB_TYPE} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
+
+target_include_directories(${OUTPUT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
 # Dependencies
 target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
