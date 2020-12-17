@@ -40,7 +40,7 @@ inline void* aligned_malloc(size_t numBytes) noexcept
 {
     #ifdef LS_ARCH_X86
         return _mm_malloc(numBytes, 32);
-    #elif defined(LS_ARCH_ARM) && defined(LS_COMPILER_GNU)
+    #elif !defined(LS_OS_ANDROID) && defined(LS_ARCH_ARM) && defined(LS_COMPILER_GNU)
         if (numBytes % sizeof(float32x4_t) == 0)
         {
             return aligned_alloc(sizeof(float32x4_t), numBytes);

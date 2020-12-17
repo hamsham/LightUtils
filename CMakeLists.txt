@@ -10,7 +10,6 @@ set(OUTPUT_NAME lsutils)
 # -------------------------------------
 # 3rd-party libraries
 # -------------------------------------
-include(external_deps.cmake)
 include(enetConfig.cmake)
 
 

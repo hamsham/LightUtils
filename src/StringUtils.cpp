@@ -13,7 +13,7 @@
 
 #include "lightsky/setup/OS.h"
 
-#if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+#if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM) || defined(LS_OS_ANDROID)
 #include <locale> // std::wstring_convert<>
 #else
 #include <cuchar> // std::c16rtombs(), std::c32rtombs()
@@ -508,7 +508,7 @@ std::string utils::to_str(const std::wstring& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u16string& wstr)
 {
-    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM) || defined(LS_OS_ANDROID)
         std::string u8 = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(wstr);
         return u8;
     #else
@@ -546,7 +546,7 @@ std::string utils::to_str(const std::u16string& wstr)
  * ----------------------------------*/
 std::string utils::to_str(const std::u32string& wstr)
 {
-    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+    #if defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM) || defined(LS_OS_ANDROID)
         std::string u8 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.to_bytes(wstr);
         return u8;
     #else
