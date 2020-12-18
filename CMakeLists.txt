@@ -101,7 +101,7 @@ set(LS_UTILS_HEADERS
 # Extra Libraries
 # -------------------------------------
 if (NOT WIN32)
-    find_library(LS_UTILS_DL_LIB dl)
+    find_library(LS_UTILS_DL_LIB NAMES libdl.so dl)
     if (LS_UTILS_DL_LIB)
         message("-- Found libdl.so: ${LS_UTILS_DL_LIB}")
     else()
