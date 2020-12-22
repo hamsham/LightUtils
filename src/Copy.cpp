@@ -23,7 +23,28 @@ namespace ls {
 -------------------------------------*/
 void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const uint_fast64_t count)
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE3)
+        const __m128i* simdSrc    = reinterpret_cast<const __m128i*>(src);
+        __m128i*       simdDst    = reinterpret_cast<__m128i*>(dst);
+        uint_fast64_t  simdCount  = count >> 4;
+        uint_fast64_t  stragglers = count - (count & ~15);
+
+        if ((uintptr_t)simdDst % sizeof(__m128i))
+        {
+            while (simdCount--)
+            {
+                _mm_storeu_si128(simdDst++, _mm_lddqu_si128(simdSrc++));
+            }
+        }
+        else
+        {
+            while (simdCount--)
+            {
+                _mm_stream_si128(simdDst++, _mm_lddqu_si128(simdSrc++));
+            }
+        }
+
+    #elif defined(LS_X86_AVX)
         const __m256i* simdSrc    = reinterpret_cast<const __m256i*>(src);
         __m256i*       simdDst    = reinterpret_cast<__m256i*>(dst);
         uint_fast64_t  simdCount  = count >> 5;
@@ -89,7 +110,30 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 -------------------------------------*/
 void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t count)
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE3)
+        const __m128i simdFillByte = _mm_set1_epi64x(fillBytes);
+        __m128i*      simdTo       = reinterpret_cast<__m128i*>(dst);
+        uint_fast64_t simdCount    = count >> 4;
+        uint_fast64_t stragglers   = count - (count & ~15);
+
+        // Using stream intrinsics here is OK because we're not reading data
+        // from memory
+        if ((uintptr_t)simdTo % sizeof(__m128i))
+        {
+            while (simdCount--)
+            {
+                _mm_storeu_si128(simdTo++, simdFillByte);
+            }
+        }
+        else
+        {
+            while (simdCount--)
+            {
+                _mm_stream_si128(simdTo++, simdFillByte);
+            }
+        }
+
+    #elif defined(LS_X86_AVX)
         const __m256i simdFillByte = _mm256_set1_epi64x(fillBytes);
         __m256i*      simdTo       = reinterpret_cast<__m256i*>(dst);
         uint_fast64_t simdCount    = count >> 5;
