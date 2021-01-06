@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstdio> // long long
 
+#include "lightsky/setup/Types.h"
 #include "lightsky/utils/Algorithm.hpp" // utils::IsLess
 
 namespace ls
@@ -81,6 +82,51 @@ inline void sort_quick(data_type* const items, long long count, Comparator cmp =
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 inline void sort_quick_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Radix Sort Reference Implementation
+ *
+ * Note: The "Indexer" template parameter is responsible for turning an input
+ * element from "items" into an unsigned long integer hash. This hash will
+ * then be used for sorting "items" in ascending order.
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Radix sort adapter for increasing magnitude
+-------------------------------------*/
+template <typename data_type>
+struct RadixIndexerAscending
+{
+    constexpr unsigned long long operator()(const typename ls::setup::EnableIf<ls::setup::IsIntegral<data_type>::value, data_type>::type& val) const noexcept
+    {
+        return (unsigned long long)(ls::setup::IsUnsigned<data_type>::value ? val : (val - ~(data_type)0 + (data_type)1));
+    }
+};
+
+/*-------------------------------------
+ * Radix sort adapter for decreasing magnitude
+-------------------------------------*/
+template <typename data_type>
+struct RadixIndexerDescending
+{
+    constexpr unsigned long long operator()(const typename ls::setup::EnableIf<ls::setup::IsIntegral<data_type>::value, data_type>::type& val) const noexcept
+    {
+        return ~RadixIndexerAscending<data_type>{}(val);
+    }
+};
+
+/*-------------------------------------
+ * Radix sort
+-------------------------------------*/
+template <typename data_type, class Indexer = RadixIndexerAscending<data_type>>
+inline void sort_radix(data_type* const items, long long count, Indexer indexer = Indexer{}) noexcept;
+
+/*-------------------------------------
+ * Adapter to emulate the radix sort as a comparative numerical sort
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>, class AscendingIndexer = RadixIndexerAscending<data_type>, class DescendingIndexer = RadixIndexerDescending<data_type>>
+inline void sort_radix_comparative(data_type* const items, long long count, Comparator cmp) noexcept;
 
 
 

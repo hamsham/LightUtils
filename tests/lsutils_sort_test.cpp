@@ -3,26 +3,12 @@
  * @file Testing implementations of different sorting methods.
  */
 
-#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <thread>
 
-#include "lightsky/setup/Arch.h"
-#include "lightsky/setup/Compiler.h"
-#include "lightsky/setup/Types.h"
-
-#ifdef LS_ARCH_X86
-    #include <immintrin.h>
-
-    #ifdef LS_COMPILER_GNU
-        #include <x86intrin.h>
-    #endif
-#endif
-
-#include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Sort.hpp"
 
@@ -72,18 +58,6 @@ void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>);
 // Quick Sort - Reference Implementation
 void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>);
 
-template <typename data_type>
-struct RadixIndexer
-{
-    constexpr unsigned long long operator()(const typename ls::setup::EnableIf<ls::setup::IsIntegral<data_type>::value, data_type>::type& val) const noexcept
-    {
-        return (unsigned long long)val;
-    }
-};
-
-template <typename data_type, class Comparator = ls::utils::IsLess<data_type>, class Indexer = RadixIndexer<data_type>, unsigned long long base = 256, unsigned long long mask = base-1ull>
-void sort_radix(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
-
 // Function to populate a list of random numbers
 void gen_rand_nums(int* const nums, long long count);
 
@@ -105,7 +79,7 @@ int main(void)
         &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
         &quick_sort_ref,
-        &sort_radix<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_radix_comparative<int, ls::utils::IsLess<int>>,
         nullptr,
         nullptr
     };
@@ -231,15 +205,25 @@ int bench_sorts(
         printf("The %s test took %f seconds.\n", testNames[i], timeToSort);
 
         printf("Verifying the %s...", testNames[i]);
-        const long long matchPos = (long long)(std::is_sorted_until(nums, nums+MAX_RAND_NUMS)-nums);
+        long long matchPos = 0;
+        while (matchPos < MAX_RAND_NUMS)
+        {
+            if (nums[matchPos] != validation[matchPos])
+            {
+                printf("%d != %d\n", nums[matchPos], validation[matchPos]);
+                break;
+            }
+
+            ++matchPos;
+        }
 
         if (matchPos != MAX_RAND_NUMS)
         {
-            #if defined(DEBUG)
+            printf("Failed! Mismatch at position %lld\n", matchPos);
+
+            #if 0
                 print_nums(nums, matchPos, MAX_RAND_NUMS, testNames[i], stdout);
             #endif
-
-            printf("Failed! Mismatch at position %lld\n", matchPos);
         }
         else
         {
@@ -411,96 +395,8 @@ void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
 
 
 /*-----------------------------------------------------------------------------
- * Quick Sort Reference Implementation
+ * Sorting Methods Under Test
 -----------------------------------------------------------------------------*/
-// The main function to that sorts arr[] of size n using
-// Radix Sort
-template <typename data_type, class Comparator, class Indexer, unsigned long long base, unsigned long long mask>
-void sort_radix(data_type* const items, long long count, Comparator) noexcept
-{
-    if (count <= 0ll)
-    {
-        return;
-    }
-
-    // Find the maximum value to know number of digits
-    constexpr Indexer indexer;
-    unsigned long long m = indexer(*items);
-
-    for (long long i = 1ll; i < count; ++i)
-    {
-        unsigned long long val = indexer(items[i]);
-        if (val > m)
-        {
-            m = val;
-        }
-    }
-
-    // output array
-    ls::utils::Pointer<data_type[]>&& indices = ls::utils::make_unique_array<data_type>(count);
-
-    const auto&& ctz = [](long long e)->long long
-    {
-        #if defined(LS_ARCH_X86) && !defined(LS_COMPILER_MSC)
-            return (long long)_tzcnt_u64((unsigned long long)e);
-        #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
-            return __builtin_ctzll(e);
-        #else
-            long long ret = 0ll;
-            while (!(e & 1ll))
-            {
-                e >>= 1ll;
-                ++ret;
-            }
-            return ret;
-        #endif
-    };
-
-    // Do counting sort for every digit. Note that instead
-    // of passing digit number, exp is passed. exp is 10^i
-    // where i is current digit number
-    for (long long exponent = 1ll, divisor = 0ll; (m >> divisor) > 0ll; exponent *= base, divisor = ctz(exponent))
-    {
-        unsigned long long radices[base] = {0ull};
-
-        // Store count of occurrences in radices[]
-        for (long long i = 0; i < count; ++i)
-        {
-            const unsigned long long inIndex = indexer(items[i]);
-            const unsigned long long radix   = (inIndex >> divisor) & mask;
-            radices[radix]++;
-        }
-
-        // Change radices[i] so that radices[i] now contains actual
-        //  position of this digit in output[]
-        for (unsigned long long i = 1ull; i < base; i++)
-        {
-            radices[i] += radices[i - 1ull];
-        }
-
-        // Build the output array
-        for (long long i = count - 1ll; i >= 0ll; i--)
-        {
-            const data_type&   elem     = items[i];
-            unsigned long long radix    = indexer(elem);
-            unsigned long long inIndex  = (radix >> divisor) & mask;
-            unsigned long long outIndex = radices[inIndex] - 1ull;
-
-            indices[outIndex] = elem;
-            radices[inIndex]--;
-        }
-
-        // Copy the output array to arr[], so that arr[] now
-        // contains sorted numbers according to current digit
-        for (long long i = 0ll; i < count; i++)
-        {
-            items[i] = indices[i];
-        }
-    }
-}
-
-
-
 /*
 https://pdfs.semanticscholar.org/3536/3f8ccda03736320f3ebff92e744dbd245257.pdf
 

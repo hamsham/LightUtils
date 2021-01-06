@@ -1,9 +1,20 @@
 
-#include <time.h> // nanosleep, time_spec
-
 #include <climits> // CHAR_BIT
 
+//#include "lightsky/setup/CPU.h"
+
 #include "lightsky/utils/Pointer.h" // Pointer<>
+
+/*
+#ifdef LS_ARCH_X86
+    #include <immintrin.h>
+
+    #ifdef LS_COMPILER_GNU
+        #include <x86intrin.h>
+    #endif
+#endif
+*/
+
 
 
 namespace ls
@@ -764,6 +775,126 @@ inline void utils::sort_quick_iterative(data_type* const items, long long count,
 
             space += 2;
         }
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Radix Sort Reference Implementation
+-----------------------------------------------------------------------------*/
+template <typename data_type, class Indexer>
+void utils::sort_radix(data_type* const items, long long count, Indexer indexer) noexcept
+{
+    if (count <= 1ll)
+    {
+        return;
+    }
+
+    // temp storage array
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(count);
+
+    constexpr unsigned long long base = 256ull;
+    constexpr unsigned long long mask = base - 1ull;
+    static_assert(base && !(base & (base-1ull)), "Input template parameter 'base' must be a power of two.");
+
+    /*
+    // Find the maximum value to know number of digits needing processing
+    unsigned long long m = indexer(*items);
+
+    for (long long i = 1ll; i < count; ++i)
+    {
+        const unsigned long long val = indexer(items[i]);
+        m = (val > m) ? val : m;
+    }
+
+    const auto&& ctz = [](unsigned long long e)->unsigned long long
+    {
+        #ifdef LS_X86_BMI
+            return (unsigned long long)_tzcnt_u64((unsigned long long)e);
+        #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
+            return (unsigned long long)__builtin_ctzll(e);
+        #elif defined(LS_COMPILER_MSC)
+            unsigned long ret;
+            #if defined(LS_ARCH_AARCH64) || (defined(LS_ARCH_X86) && LS_ARCH_X86 == 64)
+                return _BitScanForward64(&ret, (unsigned long)e) ? (unsigned long long)ret : 64ull;
+            #else
+                return _BitScanForward(&ret, (unsigned long)e) ? (unsigned long long)ret : 64ull;
+            #endif
+        #else
+            unsigned long long ret = 0ull;
+            while (!(e & 1ull))
+            {
+                e >>= 1ull;
+                ++ret;
+            }
+            return ret;
+        #endif
+    };
+
+    // Do counting sort for every digit. Note that instead
+    // of passing digit number, exp is passed. exp is 10^i
+    // where i is current digit number
+    for (unsigned long long exponent = 1ll, divisor = 0ll; -(long long)(divisor < 64ull) & (long long)(m >> divisor); exponent *= base, divisor = ctz(exponent))
+    */
+
+    for (unsigned long long divisor = 0ll, m = 0ull; m < 4ull; divisor += 8, ++m)
+    {
+        unsigned long long radices[base] = {0ull};
+
+        // Store count of occurrences in radices[]
+        for (long long i = 0; i < count; ++i)
+        {
+            const unsigned long long inIndex = indexer(items[i]);
+            const unsigned long long radix   = (inIndex >> divisor) & mask;
+            radices[radix]++;
+        }
+
+        // Change radices[i] so that radices[i] now contains actual
+        //  position of this digit in output[]
+        for (unsigned long long i = 1ull; i < base; i++)
+        {
+            radices[i] += radices[i - 1ull];
+        }
+
+        // Build the output array
+        for (long long i = count - 1ll; i >= 0ll; i--)
+        {
+            const data_type&   elem     = items[i];
+            unsigned long long radix    = indexer(elem);
+            unsigned long long inIndex  = (radix >> divisor) & mask;
+            unsigned long long outIndex = --radices[inIndex];
+
+            indices[outIndex] = elem;
+        }
+
+        // Copy the output array to arr[], so that arr[] now
+        // contains sorted numbers according to current digit
+        for (long long i = 0ll; i < count; i++)
+        {
+            items[i] = indices[i];
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Radix Sort comparative adapter
+-------------------------------------*/
+template <typename data_type, class Comparator, class AscendingIndexer, class DescendingIndexer>
+inline void utils::sort_radix_comparative(data_type* const items, long long count, Comparator cmp) noexcept
+{
+    const bool cmpLt = cmp((data_type)0, (data_type)1);
+    const bool cmpGt = cmp((data_type)1, (data_type)0);
+
+    if (cmpLt)
+    {
+        return ls::utils::sort_radix<data_type, AscendingIndexer>(items, count, AscendingIndexer{});
+    }
+    else if (cmpGt)
+    {
+        return ls::utils::sort_radix<data_type, DescendingIndexer>(items, count, DescendingIndexer{});
     }
 }
 
