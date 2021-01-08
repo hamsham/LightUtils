@@ -628,13 +628,43 @@ inline void utils::sort_shell(data_type* const items, long long count, Comparato
 
 
 /*-------------------------------------
- * Merge Sort (recursive)
+ * Merge Sort (recursive, unbuffered)
 -------------------------------------*/
 template <typename data_type, class Comparator>
 inline void utils::sort_merge(data_type* const items, long long count, Comparator cmp) noexcept
 {
-    ls::utils::Pointer<data_type[]> temp{new data_type[count]};
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& temp = ls::utils::make_unique_aligned_array<data_type>(count);
+    if (temp)
+    {
+        ls::utils::sort_merge<data_type, Comparator>(items, temp, count, cmp);
+    }
+
+}
+
+
+
+/*-------------------------------------
+ * Merge Sort (recursive)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+inline void utils::sort_merge(data_type* const items, data_type* const temp, long long count, Comparator cmp) noexcept
+{
     impl::sort_merge_impl<data_type, Comparator>(items, temp, 0, count-1, cmp);
+}
+
+
+
+/*-------------------------------------
+ * Merge Sort (iterative, unbuffered)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+inline void utils::sort_merge_iterative(data_type* const items, long long count, Comparator cmp) noexcept
+{
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& temp = ls::utils::make_unique_aligned_array<data_type>(count);
+    if (temp)
+    {
+        ls::utils::sort_merge_iterative<data_type, Comparator>(items, temp, count, cmp);
+    }
 }
 
 
@@ -643,16 +673,10 @@ inline void utils::sort_merge(data_type* const items, long long count, Comparato
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge_iterative(data_type* const items, long long count, Comparator cmp) noexcept
+inline void utils::sort_merge_iterative(data_type* const items, data_type* const temp, long long count, Comparator cmp) noexcept
 {
     long long left, rght, rend;
     long long i,j,k,m;
-    ls::utils::Pointer<data_type[]> temp{new data_type[count]};
-
-    if (!temp)
-    {
-        return;
-    }
 
     for (k=1; k < count; k <<= 1)
     {
@@ -706,7 +730,6 @@ inline void utils::sort_merge_iterative(data_type* const items, long long count,
             }
         }
     }
-
 }
 
 
@@ -731,7 +754,8 @@ inline void utils::sort_quick(data_type* const items, long long count, Comparato
 template <typename data_type, class Comparator>
 inline void utils::sort_quick_iterative(data_type* const items, long long count, Comparator cmp) noexcept
 {
-    long long stack[CHAR_BIT*sizeof(int)];
+    constexpr long long stackSpace = CHAR_BIT*sizeof(int);
+    long long stack[stackSpace];
     long long mid;
     long long space = 0;
     long long l = 0;
@@ -741,7 +765,7 @@ inline void utils::sort_quick_iterative(data_type* const items, long long count,
     {
         const long long remaining = r - l;
 
-        if (remaining < (long long)(CHAR_BIT*sizeof(int))-1l)
+        if (remaining < stackSpace)
         {
             ls::utils::sort_insertion<data_type, Comparator>(items + l, remaining + 1, cmp);
 
@@ -780,19 +804,32 @@ inline void utils::sort_quick_iterative(data_type* const items, long long count,
 
 
 
-/*-----------------------------------------------------------------------------
- * Radix Sort Reference Implementation
------------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Radix Sort
+-------------------------------------*/
 template <typename data_type, class Indexer>
 void utils::sort_radix(data_type* const items, long long count, Indexer indexer) noexcept
+{
+    // temp storage array
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(count);
+    if (indices)
+    {
+        ls::utils::sort_radix<data_type, Indexer>(items, indices, count, indexer);
+    }
+}
+
+
+
+/*-------------------------------------
+ * Radix Sort (buffered)
+-------------------------------------*/
+template <typename data_type, class Indexer>
+void utils::sort_radix(data_type* const items, data_type* const indices, long long count, Indexer indexer) noexcept
 {
     if (count <= 1ll)
     {
         return;
     }
-
-    // temp storage array
-    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(count);
 
     constexpr unsigned long long base = 256ull;
     constexpr unsigned long long mask = base - 1ull;
@@ -885,16 +922,32 @@ void utils::sort_radix(data_type* const items, long long count, Indexer indexer)
 template <typename data_type, class Comparator, class AscendingIndexer, class DescendingIndexer>
 inline void utils::sort_radix_comparative(data_type* const items, long long count, Comparator cmp) noexcept
 {
+    // temp storage array
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(count);
+    if (indices)
+    {
+        ls::utils::sort_radix_comparative<data_type, Comparator, AscendingIndexer, DescendingIndexer>(items, indices, count, cmp);
+    }
+}
+
+
+
+/*-------------------------------------
+ * Radix Sort comparative adapter (preallocated)
+-------------------------------------*/
+template <typename data_type, class Comparator, class AscendingIndexer, class DescendingIndexer>
+inline void utils::sort_radix_comparative(data_type* const items, data_type* const indices, long long count, Comparator cmp) noexcept
+{
     const bool cmpLt = cmp((data_type)0, (data_type)1);
     const bool cmpGt = cmp((data_type)1, (data_type)0);
 
     if (cmpLt)
     {
-        return ls::utils::sort_radix<data_type, AscendingIndexer>(items, count, AscendingIndexer{});
+        return ls::utils::sort_radix<data_type, AscendingIndexer>(items, indices, count, AscendingIndexer{});
     }
     else if (cmpGt)
     {
-        return ls::utils::sort_radix<data_type, DescendingIndexer>(items, count, DescendingIndexer{});
+        return ls::utils::sort_radix<data_type, DescendingIndexer>(items, indices, count, DescendingIndexer{});
     }
 }
 

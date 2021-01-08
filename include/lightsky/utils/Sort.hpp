@@ -62,10 +62,26 @@ inline void sort_merge(data_type* const items, long long count, Comparator cmp =
 
 
 /*-------------------------------------
+ * Merge Sort with pre-allocated storage
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+inline void sort_merge(data_type* const items, data_type* const temp, long long count, Comparator cmp = Comparator{}) noexcept;
+
+
+
+/*-------------------------------------
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 inline void sort_merge_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
+
+
+
+/*-------------------------------------
+ * Merge Sort with pre-allocated storage (iterative)
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+inline void sort_merge_iterative(data_type* const items, data_type* const temp, long long count, Comparator cmp = Comparator{}) noexcept;
 
 
 
@@ -122,11 +138,29 @@ struct RadixIndexerDescending
 template <typename data_type, class Indexer = RadixIndexerAscending<data_type>>
 inline void sort_radix(data_type* const items, long long count, Indexer indexer = Indexer{}) noexcept;
 
+
+
+/*-------------------------------------
+ * Radix sort with pre-allocated storage
+-------------------------------------*/
+template <typename data_type, class Indexer = RadixIndexerAscending<data_type>>
+inline void sort_radix(data_type* const items, data_type* const temp, long long count, Indexer indexer = Indexer{}) noexcept;
+
+
+
 /*-------------------------------------
  * Adapter to emulate the radix sort as a comparative numerical sort
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>, class AscendingIndexer = RadixIndexerAscending<data_type>, class DescendingIndexer = RadixIndexerDescending<data_type>>
 inline void sort_radix_comparative(data_type* const items, long long count, Comparator cmp) noexcept;
+
+
+
+/*-------------------------------------
+ * Pre-allocated radix-sort adapter
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>, class AscendingIndexer = RadixIndexerAscending<data_type>, class DescendingIndexer = RadixIndexerDescending<data_type>>
+inline void sort_radix_comparative(data_type* const items, data_type* const temp, long long count, Comparator cmp) noexcept;
 
 
 
