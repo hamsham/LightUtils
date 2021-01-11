@@ -11,6 +11,8 @@
 
     #ifdef LS_COMPILER_GNU
         #include <x86intrin.h> // __builtin_ctzll
+    #elif defined(LS_COMPILER_MSC)
+        #include <intrin.h>
     #endif
 #endif
 
@@ -313,10 +315,31 @@ inline long long fast_log2(long long n) noexcept
     ++n;
 
     // count trailing zeroes
-    #if defined(LS_ARCH_X86) && !defined(LS_COMPILER_MSC)
+    #if defined(LS_COMPILER_MSC) && (defined(LS_ARCH_X86) || defined(LS_ARCH_ARM))
+        #if (defined(LS_ARCH_X86) && LS_ARCH_X86 == 64) || defined(LS_ARCH_AARCH64)
+            unsigned long ret;
+            if (_BitScanForward64(&ret, (unsigned long)n))
+            {
+                return (long long)ret;
+            }
+            return 64ll;
+
+        #else
+            unsigned long ret;
+            if (_BitScanForward(&ret, (unsigned long)n))
+            {
+                return (long long)ret;
+            }
+            return 32ll;
+
+        #endif
+
+    #elif defined(LS_ARCH_X86)
         return (long long)_tzcnt_u64((unsigned long long)n);
-    #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
+
+    #elif defined(LS_COMPILER_GNU)
         return __builtin_ctzll(n);
+
     #else
         long long ret = 0ll;
         while (!(n & 1ll))
