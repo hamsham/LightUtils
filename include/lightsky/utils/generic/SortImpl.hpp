@@ -1,19 +1,18 @@
 
+#include <cstdio>
 #include <climits> // CHAR_BIT
 
-//#include "lightsky/setup/CPU.h"
+#include "lightsky/setup/CPU.h"
 
 #include "lightsky/utils/Pointer.h" // Pointer<>
 
-/*
 #ifdef LS_ARCH_X86
-    #include <immintrin.h>
+    #include <immintrin.h> // _tzcnt_u64
 
     #ifdef LS_COMPILER_GNU
-        #include <x86intrin.h>
+        #include <x86intrin.h> // __builtin_ctzll
     #endif
 #endif
-*/
 
 
 
@@ -293,135 +292,94 @@ inline long long int_sqrt(long long x) noexcept
 
 
 /*-------------------------------------
- * fast, approximate log-base 2
+ * fast, approximate log-base2 (round to the next power of 2 and count the
+ * trailing zeroes.
 -------------------------------------*/
-inline float fast_log2(float n) noexcept
+inline long long fast_log2(long long n) noexcept
 {
-    static_assert(sizeof(int) == sizeof(float), "Failed test for data-type aliasing");
-    int* exp;
-    int x;
-    int log2;
-    float ret;
-
-    exp = (int*)&n;
-    x = *exp;
-
-    log2 = ((x >> 23) & 255) - 128;
-
-    x &= ~(255 << 23);
-    x += 127 << 23;
-
-    *exp = x;
-    ret = ((-1.f / 3.f) * n + 2.f) * n - 2.f / 3.f;
-
-    return ret + log2;
-}
-
-
-
-/*-------------------------------------
- * fast, approximate ln
--------------------------------------*/
-inline float fast_log(float n) noexcept
-{
-    return fast_log2(n) * 0.693147181f; /* ln( 2 ) */
-}
-
-
-
-/*-------------------------------------
- * shear-sort partitioning for less-than comparison
--------------------------------------*/
-template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline long long shear_partition_lt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
-{
-    data_type temp;
-    data_type pivot;
-    long long i;
-    long long i0;
-    long long mid = (l + r) / 2;
-
-    long long mid0 = offset+(mid*stride);
-    long long l0 = offset+(l*stride);
-
-    temp = items[mid0];
-    items[mid0] = items[l0];
-    items[l0] = temp;
-
-    pivot = items[l0];
-    mid = l;
-    i = l + 1;
-
-    i0 = offset+(i*stride);
-    mid0 = offset+(mid*stride);
-
-    while (i <= r)
+    if (n == 0)
     {
-        if (cmp(items[i0], pivot))
-        {
-            ++mid;
-            mid0 = offset+(mid*stride);
-
-            temp = items[i0];
-            items[i0] = items[mid0];
-            items[mid0] = temp;
-        }
-
-        ++i;
-        i0 = offset+(i*stride);
+        return 0;
     }
 
-    temp = items[l0];
-    items[l0] = items[mid0];
-    items[mid0] = temp;
+    // next power of 2
+    --n;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    ++n;
 
-    return mid;
+    // count trailing zeroes
+    #if defined(LS_ARCH_X86) && !defined(LS_COMPILER_MSC)
+        return (long long)_tzcnt_u64((unsigned long long)n);
+    #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
+        return __builtin_ctzll(n);
+    #else
+        long long ret = 0ll;
+        while (!(n & 1ll))
+        {
+            n >>= 1ll;
+            ++ret;
+        }
+        return ret;
+    #endif
 }
 
 
 
 /*-------------------------------------
- * shear-sort with less-than comparison
+ * shear-sort implementation
 -------------------------------------*/
-template <typename data_type, class Comparator>
-inline void shear_sort_lt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
+template <typename data_type, class Indexer>
+inline void shear_sort_internal(data_type* const items, data_type* const indices, long long count, long long stride, Indexer indexer) noexcept
 {
-    long long stack[64];
-    long long mid;
-    long long space = 0;
-    long long l = 0;
-    long long r = count - 1;
-
-    while (1)
+    if (count <= 1ll)
     {
-        if (l < r)
-        {
-            mid = shear_partition_lt<data_type, Comparator>(items, l, r, offset, stride, cmp);
+        return;
+    }
 
-            if (mid < (l + r) / 2)
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
+    constexpr unsigned long long base = 256ull;
+    constexpr unsigned long long mask = base - 1ull;
+    static_assert(base && !(base & (base-1ull)), "Input template parameter 'base' must be a power of two.");
 
-            space += 2;
-        }
-        else if (space > 0)
+    for (unsigned long long divisor = 0ll, m = 0ull; m < 4ull; divisor += 8, ++m)
+    {
+        unsigned long long radices[base] = {0ull};
+
+        // Store count of occurrences in radices[]
+        for (long long i = 0, j = 0; i < count; ++i, j = i * stride)
         {
-            space -= 2;
-            l = stack[space];
-            r = stack[space + 1];
+            const unsigned long long inIndex = indexer(items[j]);
+            const unsigned long long radix   = (inIndex >> divisor) & mask;
+            radices[radix]++;
         }
-        else
+
+        // Change radices[i] so that radices[i] now contains actual
+        //  position of this digit in output[]
+        for (unsigned long long i = 1ull; i < base; i++)
         {
-            break;
+            radices[i] += radices[i - 1ull];
+        }
+
+        // Build the output array
+        for (long long i = count - 1ll, j = i*stride; i >= 0ll; i--, j = i*stride)
+        {
+            const data_type&   elem     = items[j];
+            unsigned long long radix    = indexer(elem);
+            unsigned long long inIndex  = (radix >> divisor) & mask;
+            unsigned long long outIndex = --radices[inIndex];
+
+            indices[outIndex] = elem;
+        }
+
+        // Copy the output array to arr[], so that arr[] now
+        // contains sorted numbers according to current digit
+        for (long long i = 0ll, j = 0ll; i < count; i++, j = i*stride)
+        {
+            items[j] = indices[i];
         }
     }
 }
@@ -429,99 +387,21 @@ inline void shear_sort_lt(data_type* const items, long long count, long long off
 
 
 /*-------------------------------------
- * shear-sort partitioning for greater-than comparison
+ * shear-sort partitioning
 -------------------------------------*/
-template <typename data_type, class Comparator>
-inline long long shear_partition_gt(data_type* items, long long l, long long r, long long offset, long long stride, Comparator cmp) noexcept
+template <typename data_type, class Comparator, class AscendingIndexer = ls::utils::RadixIndexerAscending<data_type>, class DescendingIndexer = ls::utils::RadixIndexerDescending<data_type>>
+inline void shear_sort_dispatch(data_type* items, data_type* indices, long long count, long long offset, long long stride, Comparator cmp) noexcept
 {
-    data_type temp;
-    data_type pivot;
-    long long i;
-    long long i0;
-    long long mid = (l + r) / 2;
+    const bool cmpLt = cmp((data_type)0, (data_type)1);
+    const bool cmpGt = cmp((data_type)1, (data_type)0);
 
-    long long mid0 = offset+(mid*stride);
-    long long l0 = offset+(l*stride);
-
-    temp = items[mid0];
-    items[mid0] = items[l0];
-    items[l0] = temp;
-
-    pivot = items[l0];
-    mid = l;
-    i = l + 1;
-
-    i0 = offset+(i*stride);
-    mid0 = offset+(mid*stride);
-
-    while (i <= r)
+    if (cmpLt)
     {
-        if (cmp(items[i0], pivot))
-        {
-            ++mid;
-            mid0 = offset+(mid*stride);
-
-            temp = items[i0];
-            items[i0] = items[mid0];
-            items[mid0] = temp;
-        }
-
-        ++i;
-        i0 = offset+(i*stride);
+        ls::utils::impl::shear_sort_internal<data_type, AscendingIndexer>(items+offset, indices, count, stride, AscendingIndexer{});
     }
-
-    temp = items[l0];
-    items[l0] = items[mid0];
-    items[mid0] = temp;
-
-    return mid;
-}
-
-
-
-/*-------------------------------------
- * shear-sort with greater-than comparison
--------------------------------------*/
-template <typename data_type, class Comparator>
-inline void shear_sort_gt(data_type* const items, long long count, long long offset, long long stride, Comparator cmp) noexcept
-{
-    long long stack[64];
-    long long mid;
-    long long space = 0;
-    long long l = 0;
-    long long r = count - 1;
-
-    while (1)
+    else if (cmpGt)
     {
-        if (l < r)
-        {
-            mid = shear_partition_gt<data_type, Comparator>(items, l, r, offset, stride, cmp);
-
-            if (mid < (l + r) / 2)
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
-
-            space += 2;
-        }
-        else if (space > 0)
-        {
-            space -= 2;
-            l = stack[space];
-            r = stack[space + 1];
-        }
-        else
-        {
-            break;
-        }
+        ls::utils::impl::shear_sort_internal<data_type, DescendingIndexer>(items+offset, indices, count, stride, DescendingIndexer{});
     }
 }
 
@@ -808,7 +688,7 @@ inline void utils::sort_quick_iterative(data_type* const items, long long count,
  * Radix Sort
 -------------------------------------*/
 template <typename data_type, class Indexer>
-void utils::sort_radix(data_type* const items, long long count, Indexer indexer) noexcept
+inline void utils::sort_radix(data_type* const items, long long count, Indexer indexer) noexcept
 {
     // temp storage array
     ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(count);
@@ -943,11 +823,11 @@ inline void utils::sort_radix_comparative(data_type* const items, data_type* con
 
     if (cmpLt)
     {
-        return ls::utils::sort_radix<data_type, AscendingIndexer>(items, indices, count, AscendingIndexer{});
+        ls::utils::sort_radix<data_type, AscendingIndexer>(items, indices, count, AscendingIndexer{});
     }
     else if (cmpGt)
     {
-        return ls::utils::sort_radix<data_type, DescendingIndexer>(items, indices, count, DescendingIndexer{});
+        ls::utils::sort_radix<data_type, DescendingIndexer>(items, indices, count, DescendingIndexer{});
     }
 }
 
@@ -974,12 +854,6 @@ void utils::sort_sheared(
     long long i;
     long long phase;
     long long numSortable;
-
-    /*
-     * Calculate the total number of times needed to iterate over each row &
-     * column
-     */
-    long long totalPhases = 2l * (long long)impl::fast_log((float)count) + 1l;
 
     /*
      * Shear Sort works on MxN matrices. Here we calculate the dimensions of a
@@ -1012,19 +886,25 @@ void utils::sort_sheared(
      */
     long long offsetIncrement = numTotalCols * numThreads * 2l;
 
+    // Calculate the total number of times needed to iterate over each row &
+    // column
+    long long totalPhases = 2ll * impl::fast_log2(numTotalCols) + 1ll;
+
     #if 0
-    if (!threadId)
+    if (threadId == numThreads-1)
     {
-        printf("\nThread Count:   %zd", numThreads);
-        printf("\nSortable Nums:  %ld", count);
-        printf("\nTotal Phases:   %ld", totalPhases);
-        printf("\nN x N Dimens:   %ld", numTotalCols);
-        printf("\nN x X Count:    %ld", numSquared);
-        printf("\nTotal Rows:     %ld", numTotalRows);
-        printf("\nFull Rows:      %ld", numFullRows);
-        printf("\nFinal Row:      %ld\n", numFinalCol);
+        printf("\nThread Count:   %lld", numThreads);
+        printf("\nSortable Nums:  %lld", count);
+        printf("\nTotal Phases:   %lld", totalPhases);
+        printf("\nN x N Dimens:   %lld", numTotalCols);
+        printf("\nN x X Count:    %lld", numSquared);
+        printf("\nTotal Rows:     %lld", numTotalRows);
+        printf("\nFull Rows:      %lld", numFullRows);
+        printf("\nFinal Row:      %lld\n", numFinalCol);
     }
     #endif
+
+    ls::utils::Pointer<data_type[], AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(numTotalRows+numFullRows);
 
     /*
      * A phase counts as a single pass over the rows or  columns of the MxM
@@ -1041,8 +921,7 @@ void utils::sort_sheared(
             for (i = threadId; i < numTotalCols; i += numThreads)
             {
                 numSortable = (i < numFinalCol) ? numTotalRows : numFullRows;
-                impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i, numTotalCols, cmpL);
-                //impl::sort_shell_insert<data_type, LessComparator>(nums+i*numTotalCols, numSortable*numTotalCols, numTotalCols, cmpL);
+                impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numSortable, i, numTotalCols, cmpL);
             }
         }
         else
@@ -1060,11 +939,11 @@ void utils::sort_sheared(
                  */
                 if (i & 1)
                 {
-                    impl::shear_sort_gt<data_type, GreaterComparator>(nums, numSortable, i*numTotalCols, 1, cmpG);
+                    impl::shear_sort_dispatch<data_type, GreaterComparator>(nums, indices, numSortable, i*numTotalCols, 1, cmpG);
                 }
                 else
                 {
-                    impl::shear_sort_lt<data_type, LessComparator>(nums, numSortable, i*numTotalCols, 1, cmpL);
+                    impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numSortable, i*numTotalCols, 1, cmpL);
                 }
             }
         }
@@ -1074,11 +953,6 @@ void utils::sort_sheared(
          * sorting rows to sorting columns).
          */
         numSortPhases->fetch_add(1, std::memory_order_acq_rel);
-        if ((phase+1) == totalPhases)
-        {
-            break;
-        }
-
         while (numSortPhases->load(std::memory_order_consume) < (unsigned)(phase+1)*numThreads);
     }
 
@@ -1104,8 +978,7 @@ void utils::sort_sheared(
             numsToSort = count-offset;
         }
 
-        impl::shear_sort_lt<data_type, LessComparator>(nums, numsToSort, offset, 1, cmpL);
-        //impl::sort_shell_insert<data_type, LessComparator>(nums+offset, numsToSort, cmpL);
+        impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numsToSort, offset, 1, cmpL);
     }
 
     /*
@@ -1114,14 +987,15 @@ void utils::sort_sheared(
     numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
     while (numThreadsFinished->load(std::memory_order_consume) < numThreads)
     {
+        ls::setup::cpu_yield();
     }
 
     #if 0
-    if (!threadId)
+    if (threadId == numThreads-1)
     {
         for (long long k = 0, j = 0; k < count; ++k)
         {
-            if (!(k % impl::int_sqrt(count)))
+            if (!(k % numTotalCols))
             {
                 printf("\n%-4lld: ", j++);
             }

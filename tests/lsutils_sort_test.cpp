@@ -11,7 +11,6 @@
 
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Sort.hpp"
-#include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
 
 
@@ -31,15 +30,18 @@ static const unsigned int MAX_THREADS = (unsigned int)std::thread::hardware_conc
 
 
 
-
 /*-----------------------------------------------------------------------------
- * FUNCTION PROTOTYPES
+ * Quick Sort Reference Implementation
 -----------------------------------------------------------------------------*/
-// Quick Sort (iterative)
-void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>);
-
-// Quick Sort - Reference Implementation
-void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>);
+void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
+{
+    qsort(nums, (long long)count, sizeof(int), [](const void* x, const void* y)->int
+    {
+        const int a = *(const int*)x;
+        const int b = *(const int*)y;
+        return a - b;
+    });
+}
 
 
 
@@ -89,26 +91,6 @@ void print_nums(
 
 
 /*-----------------------------------------------------------------------------
- * Verify that a list has been sorted
------------------------------------------------------------------------------*/
-long long is_sorted(int* const nums, long long count)
-{
-    long long i;
-
-    for (i = 0; (i < count - 1); ++i)
-    {
-        if (nums[i] > nums[i + 1])
-        {
-            return i+1;
-        }
-    }
-
-    return 0;
-}
-
-
-
-/*-----------------------------------------------------------------------------
  * MAIN()
 -----------------------------------------------------------------------------*/
 int main(void)
@@ -123,7 +105,6 @@ int main(void)
         &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
-        &quick_sort_2,
         &ls::utils::sort_quick_iterative<int, ls::utils::IsLess<int>>,
         &quick_sort_ref,
         &ls::utils::sort_radix_comparative<int, ls::utils::IsLess<int>>
@@ -137,7 +118,7 @@ int main(void)
 
     constexpr void (*pThreadedSorts[])(int* const, long long, long long, long long, std::atomic_llong*, std::atomic_llong*, ls::utils::IsLess<int>, ls::utils::IsGreater<int>) = {
         &ls::utils::sort_sheared<int>,
-        //&ls::utils::sort_bitonic<int>
+        &ls::utils::sort_bitonic<int>
     };
 
     const char* sortNames[] = {
@@ -148,7 +129,6 @@ int main(void)
         "Merge Sort (recursive)",
         "Merge Sort (iterative)",
         "Quick Sort (recursive)",
-        "Quick Sort (iterative)",
         "Quick Sort (with insertion sort)",
         "Quick Sort-Reference",
         "Radix Sort",
@@ -158,7 +138,7 @@ int main(void)
         "Radix Sort (prebuffered)",
 
         "Shear Sort (Parallel)",
-        //"Bitonic Sort (Parallel)"
+        "Bitonic Sort (Parallel)"
     };
 
     ls::utils::Clock<double> ticks;    
@@ -212,7 +192,7 @@ int main(void)
             std::atomic_llong numSortPhases{0};
             for (unsigned t = 1; t < MAX_THREADS; ++t)
             {
-                std::thread{pThreadedSorts[sortIndex], nums.get(), MAX_RAND_NUMS, MAX_THREADS, MAX_THREADS-1-t, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
+                std::thread{pThreadedSorts[sortIndex], nums.get(), MAX_RAND_NUMS, MAX_THREADS, t-1, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
             }
 
             ticks.start(); // start time
@@ -224,9 +204,7 @@ int main(void)
         ticks.stop();
 
         fprintf(stdout, "Done!\n");
-
-        const std::string&& sortTimeStr = ls::utils::to_str(timeToSort);
-        fprintf(stdout, "The %s test took %s seconds.\n", sortNames[i], sortTimeStr.c_str());
+        fprintf(stdout, "The %s test took %.10f seconds.\n", sortNames[i], timeToSort);
 
         fprintf(stdout, "Verifying the %s...", sortNames[i]);
         long long matchPos = 0;
@@ -246,7 +224,7 @@ int main(void)
             fprintf(stdout, "Failed! Mismatch at position %lld\n", matchPos);
 
             #if 0
-            print_nums(nums, matchPos, MAX_RAND_NUMS, SORT_NAMES[i], stdout);
+                print_nums(nums, matchPos, MAX_RAND_NUMS, SORT_NAMES[i], stdout);
             #endif
         }
         else
@@ -259,176 +237,3 @@ int main(void)
 
     return 0;
 }
-
-
-
-/*-----------------------------------------------------------------------------
- * Quick Sort (iterative)
------------------------------------------------------------------------------*/
-// Function to partition an array during a quicksort
-long long partitionqsort2(int* nums, long long l, long long r)
-{
-    int temp;
-    int pivot;
-    long long i;
-    long long mid = (l + r) >> 1;
-
-    temp = nums[mid];
-    nums[mid] = nums[l];
-    nums[l] = temp;
-
-    pivot = nums[l];
-    mid = l;
-    i = l + 1;
-
-    while (i <= r)
-    {
-        if (nums[i] < pivot)
-        {
-            ++mid;
-
-            temp = nums[i];
-            nums[i] = nums[mid];
-            nums[mid] = temp;
-        }
-
-        ++i;
-    }
-
-    temp = nums[l];
-    nums[l] = nums[mid];
-    nums[mid] = temp;
-
-    return mid;
-}
-
-// Iterative Quicksort
-void quick_sort_2(int* const nums, long long count, ls::utils::IsLess<int>)
-{
-    long long stack[64];
-    long long mid;
-    long long space = 0;
-    long long l = 0;
-    long long r = count - 1;
-
-    while (true)
-    {
-        if (l < r)
-        {
-            mid = partitionqsort2(nums, l, r);
-
-            if (mid < ((l + r) >> 1))
-            {
-                stack[space] = mid + 1;
-                stack[space + 1] = r;
-                r = mid - 1;
-            }
-            else
-            {
-                stack[space] = l;
-                stack[space + 1] = mid - 1;
-                l = mid + 1;
-            }
-
-            space += 2;
-        }
-        else if (space > 0)
-        {
-            space -= 2;
-            l = stack[space];
-            r = stack[space + 1];
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-/*-----------------------------------------------------------------------------
- * Quick Sort Reference Implementation
------------------------------------------------------------------------------*/
-// Quick Sort Comparison function
-inline int qsortcompare(const void* x, const void* y)
-{
-    const int a = *(const int*)x;
-    const int b = *(const int*)y;
-    return a - b;
-}
-
-// Quick Sort Implementation
-void quick_sort_ref(int* const nums, long long count, ls::utils::IsLess<int>)
-{
-    qsort(nums, (long long)count, sizeof(int), &qsortcompare);
-}
-
-
-
-/*-----------------------------------------------------------------------------
- * Sorting Methods Under Test
------------------------------------------------------------------------------*/
-/*
-https://pdfs.semanticscholar.org/3536/3f8ccda03736320f3ebff92e744dbd245257.pdf
-
-template <typename data_type, class LessComparator, class GreaterComparator>
-void sort_quick_parallel(
-    data_type* const items,
-    long long count,
-    long long numThreads,
-    long long threadId,
-    std::atomic_llong* numThreadsFinished,
-    std::atomic_llong* numSortPhases,
-    LessComparator cmpL,
-    GreaterComparator cmpG) noexcept
-{
-
-Algorithm ParallelQuicksort(data_set, n, p)
-{
-    threshold : = (p > 1)? (1 + n / (p << 3)): n
-    submitToThreadPool (PQuicksort (data_set, 0, n - 1))
-    // wait for all threads to complete execution
-}
-
-Algorithm PQuicksort (data_set, low, high)
-{
-    if ((high - low) < threshold)
-    {
-        sortDirectly (data_set, low, high)
-    }
-    else
-    {
-        i := low
-        j := high
-        pivot:= data_set[(low + (high-low)/2)
-
-        while i <= j
-        {
-            while data_set[i] < pivot
-            {
-                increment i
-            }
-
-            while data_set[j] > pivot
-            {
-                decrement j
-            }
-
-            if i <= j
-            {
-                swap data_set[i] with data_set[j]
-                increment i
-                decrement j
-            }
-        }
-        if low < j
-        {
-             submitToThreadPool(PQuicksort(data_set, low, j))
-         }
-        if i < high
-        {
-             submitToThreadPool (PQuicksort(data_set, i, high)
-         }
-    }
-}
-}
-*/
