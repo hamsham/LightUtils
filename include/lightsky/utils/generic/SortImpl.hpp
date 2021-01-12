@@ -907,11 +907,13 @@ void utils::sort_sheared(
     /*
      * Increment of which rows should be modified in the last sorting phase.
      */
-    long long offsetIncrement = numTotalCols * numThreads * 2l;
+    long long offsetIncrement = numTotalCols * numThreads * 2ll;
 
-    // Calculate the total number of times needed to iterate over each row &
-    // column
-    long long totalPhases = 2ll * impl::fast_log2(numTotalCols) + 1ll;
+    /*
+     * Calculate the total number of times needed to iterate over each row &
+     * column
+     */
+    long long totalPhases = 2ll * impl::fast_log2(numTotalCols);
 
     #if 0
     if (threadId == numThreads-1)
@@ -927,7 +929,7 @@ void utils::sort_sheared(
     }
     #endif
 
-    ls::utils::Pointer<data_type[], AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(numTotalRows+numFullRows);
+    ls::utils::Pointer<data_type[], AlignedDeleter>&& indices = ls::utils::make_unique_aligned_array<data_type>(numTotalRows+numFullRows+numFinalCol);
 
     /*
      * A phase counts as a single pass over the rows or  columns of the MxM
@@ -984,21 +986,24 @@ void utils::sort_sheared(
      * increasing and decreasing values. Use one final sort to re-order the
      * final rows.
      */
-    for (i = (threadId*2l+1l)*numTotalCols; i <= numSquared; i += offsetIncrement)
+    for (i = (threadId*2ll+1ll)*numTotalCols; i <= numSquared; i += offsetIncrement)
     {
-        long long offset = i;
+        long long offset = i-numTotalCols;
 
         /* ensure the last row gets sorted with a full row */
         long long numsToSort = numTotalCols;
 
-        if (i+numTotalCols >= numSquared)
+        if (i == numSquared)
         {
-            if (count-i < numTotalCols)
-            {
-                offset -= numTotalCols;
-            }
-
-            numsToSort = count-offset;
+            numsToSort += numFinalCol;
+        }
+        else if (i+numTotalCols == numSquared)
+        {
+            numsToSort += numTotalCols + numFinalCol;
+        }
+        else
+        {
+            numsToSort += numTotalCols;
         }
 
         impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numsToSort, offset, 1, cmpL);
@@ -1010,7 +1015,6 @@ void utils::sort_sheared(
     numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
     while (numThreadsFinished->load(std::memory_order_consume) < numThreads)
     {
-        ls::setup::cpu_yield();
     }
 
     #if 0
