@@ -788,6 +788,8 @@ void utils::sort_radix(data_type* const items, data_type* const indices, long lo
             const unsigned long long inIndex = indexer(items[i]);
             const unsigned long long radix   = (inIndex >> divisor) & mask;
             radices[radix]++;
+
+            LS_PREFETCH(items+i+8, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
         }
 
         // Change radices[i] so that radices[i] now contains actual
@@ -806,6 +808,8 @@ void utils::sort_radix(data_type* const items, data_type* const indices, long lo
             unsigned long long outIndex = --radices[inIndex];
 
             indices[outIndex] = elem;
+
+            LS_PREFETCH(items+i-8, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
         }
 
         // Copy the output array to arr[], so that arr[] now
