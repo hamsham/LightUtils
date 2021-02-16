@@ -15,7 +15,7 @@
 #if defined(LS_ARCH_X86)
     #include <immintrin.h> // _mm_malloc(), _mm_free()
     #include <cstdlib> // size_t
-#elif defined(LS_ARCH_ARM)
+#elif defined(LS_ARM_NEON)
 #include <arm_neon.h> // sizeof(float32x4_t) for 16-byte alignment
     #include <stdlib.h> // POSIX aligned_alloc()
 #else
@@ -40,7 +40,7 @@ inline void* aligned_malloc(size_t numBytes) noexcept
 {
     #ifdef LS_ARCH_X86
         return _mm_malloc(numBytes, 32);
-    #elif !defined(LS_OS_ANDROID) && defined(LS_ARCH_ARM) && defined(LS_COMPILER_GNU)
+    #elif !defined(LS_OS_ANDROID) && defined(LS_ARM_NEON) && defined(LS_COMPILER_GNU)
         if (numBytes % sizeof(float32x4_t) == 0)
         {
             return aligned_alloc(sizeof(float32x4_t), numBytes);

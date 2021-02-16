@@ -8,7 +8,7 @@
 
 #ifdef LS_ARCH_X86
     #include <immintrin.h>
-#elif defined(LS_ARCH_ARM)
+#elif defined(LS_ARM_NEON)
     #include <arm_neon.h>
 #endif
 
@@ -67,7 +67,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
             }
         }
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const uint32x4_t* simdSrc    = reinterpret_cast<const uint32x4_t*>(src);
         uint32x4_t*       simdDst    = reinterpret_cast<uint32x4_t*>(dst);
         uint_fast64_t     simdCount  = count;
@@ -158,7 +158,7 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
             }
         }
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const uint64x2_t fillByteSimd = vdupq_n_u64(fillBytes);
         uint64x2_t*      simdTo       = reinterpret_cast<uint64x2_t*>(dst);
         uint_fast64_t    simdCount    = count >> 5;
