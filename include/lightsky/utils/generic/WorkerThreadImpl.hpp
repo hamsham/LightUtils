@@ -114,8 +114,10 @@ WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
     mWaitMtx{},
     mWaitCond{},
     mExecCond{},
-    mThread{&WorkerThread::thread_loop, this}
-{}
+    mThread{}
+{
+    mThread = std::thread{&WorkerThread::thread_loop, this};
+}
 
 
 

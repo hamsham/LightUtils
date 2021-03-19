@@ -21,7 +21,7 @@ int main()
 
     for (unsigned i = numBytes; i--;)
     {
-        pTest[i] = (char)0xFF;
+        pTest[i] = (char)'\xFF';
         pDst[i] = '\0';
     }
 
@@ -37,7 +37,7 @@ int main()
 
     std::cout << "Running std::fill() benchmark..." << std::endl;
     ticks.start();
-    std::fill(pDst.get(), pDst.get()+numBytes, 0xFF);
+    std::fill(pDst.get(), pDst.get()+numBytes, '\xFF');
     ticks.tick();
     const unsigned long long stdFillTime = ticks.tick_time().count();
     LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
@@ -45,7 +45,7 @@ int main()
 
     std::cout << "Running ls::utils::fast_memset() benchmark..." << std::endl;
     ticks.start();
-    ls::utils::fast_memset(pDst.get(), 0xFF, numBytes);
+    ls::utils::fast_memset(pDst.get(), '\xFF', numBytes);
     ticks.tick();
     const unsigned long long lsMemsetTime = ticks.tick_time().count();
     LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
@@ -53,7 +53,7 @@ int main()
 
     std::cout << "Running ls::utils::fast_fill() benchmark..." << std::endl;
     ticks.start();
-    ls::utils::fast_fill(pDst.get(), 0xFF, numBytes);
+    ls::utils::fast_fill<char, char>(pDst.get(), '\xFF', numBytes);
     ticks.tick();
     const unsigned long long lsFillTime = ticks.tick_time().count();
     LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
