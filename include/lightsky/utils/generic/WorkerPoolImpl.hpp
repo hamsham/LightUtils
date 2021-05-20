@@ -479,7 +479,7 @@ size_t WorkerPool<WorkerTaskType>::concurrency(size_t inNumThreads) noexcept
     mWaitMtx.lock();
     for (size_t i = inNumThreads; i--;)
     {
-        mThreads.emplace_back(std::thread{&WorkerPool<WorkerTaskType>::thread_loop, this});
+        mThreads.emplace_back(&WorkerPool<WorkerTaskType>::thread_loop, this);
     }
     mWaitMtx.unlock();
 
