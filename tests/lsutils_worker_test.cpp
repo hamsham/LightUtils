@@ -124,7 +124,7 @@ int main()
         << std::endl;
 
     test_single_worker();
-    test_pooled_worker();
+    //test_pooled_worker();
 
     return 0;
 }

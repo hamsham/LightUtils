@@ -16,6 +16,21 @@
 
 #include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
+#include "lightsky/setup/OS.h" // LS_OS_WINDOWS
+
+#ifdef LS_OS_WINDOWS
+    #ifndef LS_UTILS_USE_WINDOWS_THREADS
+        #define LS_UTILS_USE_WINDOWS_THREADS
+    #endif
+#endif /* LS_OS_WINDOWS */
+
+#ifdef LS_UTILS_USE_WINDOWS_THREADS
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #include <synchapi.h>
+#endif /* LS_UTILS_USE_WINDOWS_THREADS */
 
 #include "lightsky/utils/SpinLock.hpp"
 #include "lightsky/utils/Pointer.h"
@@ -50,11 +65,19 @@ class WorkerThread
 
     std::vector<WorkerTaskType> mTasks[2];
 
+#ifndef LS_UTILS_USE_WINDOWS_THREADS
     mutable std::mutex mWaitMtx;
 
     mutable std::condition_variable mWaitCond;
 
     std::condition_variable mExecCond;
+#else
+    mutable CRITICAL_SECTION mWaitMtx;
+
+    mutable CONDITION_VARIABLE mWaitCond;
+
+    CONDITION_VARIABLE mExecCond;
+#endif
 
     std::thread mThread;
 
