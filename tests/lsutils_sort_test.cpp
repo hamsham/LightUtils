@@ -17,8 +17,7 @@
 
 #if 1
 enum {
-    //MAX_RAND_NUMS = 1 << 24
-    MAX_RAND_NUMS = 65536
+    MAX_RAND_NUMS = 131072
 };
 #else
 enum
@@ -105,10 +104,10 @@ int main(void)
     ls::utils::UniqueAlignedArray<int>&& validation = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
 
     constexpr void (*pSorts[])(int* const, long long, ls::utils::IsLess<int>) = {
-        //&ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
-        //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
+        &ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
@@ -137,10 +136,10 @@ int main(void)
     };
 
     const char* sortNames[] = {
-        //"Bubble Sort",
-        //"Selection Sort",
-        //"Insertion Sort",
-        //"Shell Sort",
+        "Bubble Sort",
+        "Selection Sort",
+        "Insertion Sort",
+        "Shell Sort",
         "Merge Sort (recursive)",
         "Merge Sort (iterative)",
         "Quick Sort (recursive)",
