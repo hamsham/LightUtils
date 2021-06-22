@@ -17,7 +17,8 @@
 
 #if 1
 enum {
-    MAX_RAND_NUMS = 131072
+    //MAX_RAND_NUMS = 1 << 24
+    MAX_RAND_NUMS = 65536
 };
 #else
 enum
@@ -93,15 +94,21 @@ void print_nums(
 /*-----------------------------------------------------------------------------
  * MAIN()
 -----------------------------------------------------------------------------*/
+ls::utils::UniqueAlignedArray<int>&& MERGE_SORT_TEMP_BUFFER = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
+
 int main(void)
 {
     srand(time(nullptr));
 
+    ls::utils::UniqueAlignedArray<int>&& nums = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
+    ls::utils::UniqueAlignedArray<int>&& temp = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
+    ls::utils::UniqueAlignedArray<int>&& validation = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
+
     constexpr void (*pSorts[])(int* const, long long, ls::utils::IsLess<int>) = {
-        &ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
-        &ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_bubble<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_selection<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_insertion<int, ls::utils::IsLess<int>>,
+        //&ls::utils::sort_shell<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_merge<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_merge_iterative<int, ls::utils::IsLess<int>>,
         &ls::utils::sort_quick<int, ls::utils::IsLess<int>>,
@@ -116,16 +123,24 @@ int main(void)
         &ls::utils::sort_radix_comparative<int, ls::utils::IsLess<int>>,
     };
 
-    constexpr void (*pThreadedSorts[])(int* const, long long, long long, long long, std::atomic_llong*, std::atomic_llong*, ls::utils::IsLess<int>, ls::utils::IsGreater<int>) = {
+    void (*merge_sort_parallel)(int* const, long long, long long, long long, std::atomic_llong*, ls::utils::IsLess<int>) =
+    [](int* const items, long long count, long long numThreads, long long threadId, std::atomic_llong* sortPhases, ls::utils::IsLess<int> cmp)
+    {
+        ls::utils::sort_merge_iterative<int, decltype(cmp)>(items, MERGE_SORT_TEMP_BUFFER.get(), count, numThreads, threadId,  sortPhases, cmp);
+    };
+
+    void (*pThreadedSorts[])(int* const, long long, long long, long long, std::atomic_llong*, ls::utils::IsLess<int>) = {
         &ls::utils::sort_sheared<int>,
-        &ls::utils::sort_bitonic<int>
+        &ls::utils::sort_bitonic<int>,
+        &ls::utils::sort_odd_even<int>,
+        merge_sort_parallel
     };
 
     const char* sortNames[] = {
-        "Bubble Sort",
-        "Selection Sort",
-        "Insertion Sort",
-        "Shell Sort",
+        //"Bubble Sort",
+        //"Selection Sort",
+        //"Insertion Sort",
+        //"Shell Sort",
         "Merge Sort (recursive)",
         "Merge Sort (iterative)",
         "Quick Sort (recursive)",
@@ -138,7 +153,9 @@ int main(void)
         "Radix Sort (prebuffered)",
 
         "Shear Sort (Parallel)",
-        "Bitonic Sort (Parallel)"
+        "Bitonic Sort (Parallel)",
+        "Odd-Even Merge Sort (Parallel)",
+        "Merge Sort (Parallel, prebuffered, iterative)"
     };
 
     ls::utils::Clock<double> ticks;    
@@ -146,10 +163,6 @@ int main(void)
     constexpr unsigned sortOffset = 0;
     constexpr unsigned bufferedSortOffset = LS_ARRAY_SIZE(pSorts);
     constexpr unsigned threadedSortOffset = bufferedSortOffset + LS_ARRAY_SIZE(pBufferedSorts);
-
-    ls::utils::UniqueAlignedArray<int>&& nums = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
-    ls::utils::UniqueAlignedArray<int>&& temp = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
-    ls::utils::UniqueAlignedArray<int>&& validation = ls::utils::make_unique_aligned_array<int>(MAX_RAND_NUMS);
 
     if (!nums || !temp || !validation)
     {
@@ -162,6 +175,7 @@ int main(void)
         fprintf(stdout, "Initializing a %s test...", sortNames[i]);
         gen_rand_nums(nums, MAX_RAND_NUMS);
         ls::utils::fast_memcpy(validation, nums.get(), MAX_RAND_NUMS*sizeof(int));
+        ls::utils::fast_memset(MERGE_SORT_TEMP_BUFFER.get(), 0, MAX_RAND_NUMS*sizeof(int));
         quick_sort_ref(validation, MAX_RAND_NUMS, ls::utils::IsLess<int>{});
         fprintf(stdout, "Done!\n");
 
@@ -188,15 +202,14 @@ int main(void)
         {
             sortIndex = i - threadedSortOffset;
 
-            std::atomic_llong numThreadsFinished{0};
             std::atomic_llong numSortPhases{0};
             for (unsigned t = 1; t < MAX_THREADS; ++t)
             {
-                std::thread{pThreadedSorts[sortIndex], nums.get(), MAX_RAND_NUMS, MAX_THREADS, t-1, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{}}.detach();
+                std::thread{pThreadedSorts[sortIndex], nums.get(), MAX_RAND_NUMS, MAX_THREADS, t, &numSortPhases, ls::utils::IsLess<int>{}}.detach();
             }
 
             ticks.start(); // start time
-            pThreadedSorts[sortIndex](nums.get(), MAX_RAND_NUMS, MAX_THREADS, MAX_THREADS-1, &numThreadsFinished, &numSortPhases, ls::utils::IsLess<int>{}, ls::utils::IsGreater<int>{});
+            pThreadedSorts[sortIndex](nums.get(), MAX_RAND_NUMS, MAX_THREADS, 0, &numSortPhases, ls::utils::IsLess<int>{});
             ticks.tick(); // stop time
         }
 
@@ -224,7 +237,7 @@ int main(void)
             fprintf(stdout, "Failed! Mismatch at position %lld\n", matchPos);
 
             #if 0
-                print_nums(nums, matchPos, MAX_RAND_NUMS, SORT_NAMES[i], stdout);
+                print_nums(nums, matchPos, MAX_RAND_NUMS, sortNames[i], stdout);
             #endif
         }
         else

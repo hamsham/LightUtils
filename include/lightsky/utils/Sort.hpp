@@ -73,7 +73,7 @@ inline void sort_merge(data_type* const items, data_type* const temp, long long 
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void sort_merge_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
+void sort_merge_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
 
 
 
@@ -82,6 +82,35 @@ inline void sort_merge_iterative(data_type* const items, long long count, Compar
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 inline void sort_merge_iterative(data_type* const items, data_type* const temp, long long count, Comparator cmp = Comparator{}) noexcept;
+
+
+
+/*-------------------------------------
+ * Merge Sort (parallel, iterative, buffered)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+void sort_merge_iterative(
+    data_type* const items,
+    data_type* const temp,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp) noexcept;
+
+
+
+/*-------------------------------------
+ * Merge Sort (parallel, iterative, unbuffered)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+inline void sort_merge_iterative(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp) noexcept;
 
 
 
@@ -97,7 +126,7 @@ inline void sort_quick(data_type* const items, long long count, Comparator cmp =
  * Quick Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
-inline void sort_quick_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
+void sort_quick_iterative(data_type* const items, long long count, Comparator cmp = Comparator{}) noexcept;
 
 
 
@@ -144,7 +173,7 @@ inline void sort_radix(data_type* const items, long long count, Indexer indexer 
  * Radix sort with pre-allocated storage
 -------------------------------------*/
 template <typename data_type, class Indexer = RadixIndexerAscending<data_type>>
-inline void sort_radix(data_type* const items, data_type* const temp, long long count, Indexer indexer = Indexer{}) noexcept;
+void sort_radix(data_type* const items, data_type* const temp, long long count, Indexer indexer = Indexer{}) noexcept;
 
 
 
@@ -167,32 +196,42 @@ inline void sort_radix_comparative(data_type* const items, data_type* const temp
 /*-------------------------------------
  * Shear Sort (parallel, SLOW)
 -------------------------------------*/
-template <typename data_type, class LessComparator = ls::utils::IsLess<data_type>, class GreaterComparator = ls::utils::IsGreater<data_type>>
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 void sort_sheared(
     data_type* const items,
     long long count,
     long long numThreads,
     long long threadId,
-    std::atomic_llong* numThreadsFinished,
     std::atomic_llong* numSortPhases,
-    LessComparator cmpL = LessComparator{},
-    GreaterComparator cmpG = GreaterComparator{}) noexcept;
+    Comparator cmp = Comparator{}) noexcept;
 
 
 
 /*-------------------------------------
     Bitonic Sort (parallel, only for arrays that are powers of 2 in size).
 -------------------------------------*/
-template <typename data_type, class LessComparator, class GreaterComparator>
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
 void sort_bitonic(
     data_type* const items,
     long long count,
     long long numThreads,
     long long threadId,
-    std::atomic_llong* numThreadsFinished,
     std::atomic_llong* numSortPhases,
-    LessComparator cmpL = LessComparator{},
-    GreaterComparator cmpG = GreaterComparator{}) noexcept;
+    Comparator cmp = Comparator{}) noexcept;
+
+
+
+/*-------------------------------------
+    Bitonic Sort (parallel, only for arrays that are powers of 2 in size).
+-------------------------------------*/
+template <typename data_type, class Comparator = ls::utils::IsLess<data_type>>
+void sort_odd_even(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp = Comparator{}) noexcept;
 
 
 

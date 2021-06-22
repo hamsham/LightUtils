@@ -137,7 +137,7 @@ inline void sort_shell_insert(data_type* const items, const long long count, Com
  * Recursive Merge Sort
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void sort_merge_impl(data_type* const items, data_type* const temp, long long left, long long right, Comparator cmp) noexcept
+void sort_merge_impl(data_type* const items, data_type* const temp, long long left, long long right, Comparator cmp) noexcept
 {
     if (right-left < 1)
     {
@@ -412,17 +412,14 @@ inline void shear_sort_internal(data_type* const items, data_type* const indices
 /*-------------------------------------
  * shear-sort partitioning
 -------------------------------------*/
-template <typename data_type, class Comparator, class AscendingIndexer = ls::utils::RadixIndexerAscending<data_type>, class DescendingIndexer = ls::utils::RadixIndexerDescending<data_type>>
-inline void shear_sort_dispatch(data_type* items, data_type* indices, long long count, long long offset, long long stride, Comparator cmp) noexcept
+template <typename data_type, class AscendingIndexer = ls::utils::RadixIndexerAscending<data_type>, class DescendingIndexer = ls::utils::RadixIndexerDescending<data_type>>
+inline void shear_sort_dispatch(data_type* items, data_type* indices, long long count, long long offset, long long stride, bool ascending) noexcept
 {
-    const bool cmpLt = cmp((data_type)0, (data_type)1);
-    const bool cmpGt = cmp((data_type)1, (data_type)0);
-
-    if (cmpLt)
+    if (ascending)
     {
         ls::utils::impl::shear_sort_internal<data_type, AscendingIndexer>(items+offset, indices, count, stride, AscendingIndexer{});
     }
-    else if (cmpGt)
+    else
     {
         ls::utils::impl::shear_sort_internal<data_type, DescendingIndexer>(items+offset, indices, count, stride, DescendingIndexer{});
     }
@@ -576,14 +573,16 @@ inline void utils::sort_merge_iterative(data_type* const items, long long count,
  * Merge Sort (iterative)
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_merge_iterative(data_type* const items, data_type* const temp, long long count, Comparator cmp) noexcept
+void utils::sort_merge_iterative(data_type* const items, data_type* const temp, long long count, Comparator cmp) noexcept
 {
     long long left, rght, rend;
     long long i,j,k,m;
 
-    for (k=1; k < count; k <<= 1)
+    for (k = 1; k < count; k *= 2)
     {
-        for (left=0; left+k < count; left += (k << 1))
+        long long k2 = k*2;
+        
+        for (left = 0; left+k < count; left += k2)
         {
             rght = left + k;
             rend = rght + k;
@@ -615,23 +614,117 @@ inline void utils::sort_merge_iterative(data_type* const items, data_type* const
 
             while (i < rght)
             {
-                temp[m] = items[i];
-                i++;
-                m++;
+                temp[m++] = items[i++];
             }
 
             while (j < rend)
             {
-                temp[m] = items[j];
-                j++;
-                m++;
+                temp[m++] = items[j++];
             }
 
-            for (m=left; m < rend; m++)
+            for (m = left; m < rend; m++)
             {
                 items[m] = temp[m];
             }
         }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Merge Sort (parallel, iterative, buffered)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+void utils::sort_merge_iterative(
+    data_type* const items,
+    data_type* const temp,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp) noexcept
+{
+    long long left, rght, rend;
+    long long i,j,k,m;
+    long long phase = numThreads;
+
+    for (k = 1; k < count; k *= 2, phase += numThreads)
+    {
+        const long long k2 = k * 2;
+        const long long kt = k2 * numThreads;
+
+        for (left = k2 * threadId; left+k < count; left += kt)
+        {
+            rght = left + k;
+            rend = rght + k;
+
+            if (rend > count)
+            {
+                rend = count;
+            }
+
+            m = left;
+            i = left;
+            j = rght;
+
+            while (i < rght && j < rend)
+            {
+                if (cmp(items[j], items[i]))
+                {
+                    temp[m] = items[j++];
+                }
+                else
+                {
+                    temp[m] = items[i++];
+                }
+
+                m++;
+            }
+
+            while (i < rght)
+            {
+                temp[m++] = items[i++];
+            }
+
+            while (j < rend)
+            {
+                temp[m++] = items[j++];
+            }
+
+            for (m = left; m < rend; ++m)
+            {
+                items[m] = temp[m];
+            }
+        }
+
+        // sync
+        numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+        while (numSortPhases->load(std::memory_order_consume) < phase)
+        {
+            // spin
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Merge Sort (parallel, iterative, unbuffered)
+-------------------------------------*/
+template <typename data_type, class Comparator>
+inline void utils::sort_merge_iterative(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp) noexcept
+{
+    ls::utils::Pointer<data_type[], ls::utils::AlignedDeleter>&& temp = ls::utils::make_unique_aligned_array<data_type>(count);
+    if (temp)
+    {
+        ls::utils::sort_merge_iterative<data_type, Comparator>(items, temp, count, numThreads, threadId, numSortPhases, cmp);
     }
 }
 
@@ -655,7 +748,7 @@ inline void utils::sort_quick(data_type* const items, long long count, Comparato
  * https://kabas.online/tutor/sorting.html
 -------------------------------------*/
 template <typename data_type, class Comparator>
-inline void utils::sort_quick_iterative(data_type* const items, long long count, Comparator cmp) noexcept
+void utils::sort_quick_iterative(data_type* const items, long long count, Comparator cmp) noexcept
 {
     constexpr long long stackSpace = CHAR_BIT*sizeof(int);
     long long stack[stackSpace];
@@ -794,13 +887,13 @@ void utils::sort_radix(data_type* const items, data_type* const indices, long lo
 
         // Change radices[i] so that radices[i] now contains actual
         //  position of this digit in output[]
-        for (unsigned long long i = 1ull; i < base; i++)
+        for (unsigned long long i = 1ull; i < base; ++i)
         {
             radices[i] += radices[i - 1ull];
         }
 
         // Build the output array
-        for (long long i = count - 1ll; i >= 0ll; i--)
+        for (long long i = count - 1ll; i >= 0ll; --i)
         {
             const data_type&   elem     = items[i];
             unsigned long long radix    = indexer(elem);
@@ -814,7 +907,7 @@ void utils::sort_radix(data_type* const items, data_type* const indices, long lo
 
         // Copy the output array to arr[], so that arr[] now
         // contains sorted numbers according to current digit
-        for (long long i = 0ll; i < count; i++)
+        for (long long i = 0ll; i < count; ++i)
         {
             items[i] = indices[i];
         }
@@ -863,16 +956,14 @@ inline void utils::sort_radix_comparative(data_type* const items, data_type* con
 /*-------------------------------------
  * Shear Sort for parallel sorting
 -------------------------------------*/
-template <typename data_type, class LessComparator, class GreaterComparator>
+template <typename data_type, class Comparator>
 void utils::sort_sheared(
     data_type* const items,
     long long count,
     long long numThreads,
     long long threadId,
-    std::atomic_llong* numThreadsFinished,
     std::atomic_llong* numSortPhases,
-    LessComparator cmpL,
-    GreaterComparator cmpG) noexcept
+    Comparator) noexcept
 {
     /*
      * Attempt to sort the numbers as if they were an MxN matrix.
@@ -950,7 +1041,7 @@ void utils::sort_sheared(
             for (i = threadId; i < numTotalCols; i += numThreads)
             {
                 numSortable = (i < numFinalCol) ? numTotalRows : numFullRows;
-                impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numSortable, i, numTotalCols, cmpL);
+                impl::shear_sort_dispatch<data_type>(nums, indices, numSortable, i, numTotalCols, true);
             }
         }
         else
@@ -966,14 +1057,7 @@ void utils::sort_sheared(
                  * The original shear sort algorithm sorts alternating rows
                  * from smallest to largest, then largest to smallest.
                  */
-                if (i & 1)
-                {
-                    impl::shear_sort_dispatch<data_type, GreaterComparator>(nums, indices, numSortable, i*numTotalCols, 1, cmpG);
-                }
-                else
-                {
-                    impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numSortable, i*numTotalCols, 1, cmpL);
-                }
+                impl::shear_sort_dispatch<data_type>(nums, indices, numSortable, i*numTotalCols, 1, (i & 1) != 0);
             }
         }
 
@@ -982,7 +1066,7 @@ void utils::sort_sheared(
          * sorting rows to sorting columns).
          */
         numSortPhases->fetch_add(1, std::memory_order_acq_rel);
-        while (numSortPhases->load(std::memory_order_consume) < (unsigned)(phase+1)*numThreads);
+        while (numSortPhases->load(std::memory_order_consume) < (phase+1)*numThreads);
     }
 
     /*
@@ -1010,16 +1094,16 @@ void utils::sort_sheared(
             numsToSort += numTotalCols;
         }
 
-        impl::shear_sort_dispatch<data_type, LessComparator>(nums, indices, numsToSort, offset, 1, cmpL);
+        impl::shear_sort_dispatch<data_type>(nums, indices, numsToSort, offset, 1, true);
     }
 
     /*
-     * Sync
+     * Sync all threads before moving onto a new phase (i.e., switch from
+     * sorting rows to sorting columns).
      */
-    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
-    while (numThreadsFinished->load(std::memory_order_consume) < numThreads)
-    {
-    }
+    numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+    ++phase;
+    while (numSortPhases->load(std::memory_order_consume) < phase*numThreads);
 
     #if 0
     if (threadId == numThreads-1)
@@ -1044,40 +1128,143 @@ void utils::sort_sheared(
 /*-------------------------------------
     Bitonic Sort for arrays of size 2^n
 -------------------------------------*/
-template <typename data_type, class LessComparator, class GreaterComparator>
+template <typename data_type, class Comparator>
 void utils::sort_bitonic(
     data_type* const items,
     long long count,
     long long numThreads,
     long long threadId,
-    std::atomic_llong* numThreadsFinished,
     std::atomic_llong* numSortPhases,
-    LessComparator cmpL,
-    GreaterComparator cmpG) noexcept
+    Comparator cmp) noexcept
 {
+    // Can only sort powers of 2
+    if ((count == 0) || (count & (count - 1ll)))
+    {
+        return;
+    }
+
     long long phase = numThreads;
 
-    for (long long i = 1; i < count; i *= 2)
-    {
-        for (long long j = i; j > 0; j /= 2, phase += numThreads)
+    // Improved algorithm to reduce false sharing
+    #if 1
+        const long long chunks = (count / numThreads);
+        const long long start  = chunks * threadId;
+        const long long c      = start + chunks;
+        const long long end    = c > count ? count : c;
+
+        for (long long k = 1; k < count; k <<= 1)
         {
-            const long long jt0 = 2 * j * threadId;
-            const long long jt1 = 2 * j * numThreads;
+            long long k2 = k << 1;
 
-            for (long long k = jt0; k < count; k += jt1)
+            for (long long j = k; j > 0; j >>= 1, phase += numThreads)
             {
-                const long long kj = k+j;
-                const long long cmpLess = k & (i * 2);
+                LS_PREFETCH(items+start, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
 
-                for (long long l = k; l < kj; ++l)
+                for (long long i = start; i < end; ++i)
                 {
-                    const long long lj = l + j;
+                    const long long ik = i & k2;
+                    const long long l = i ^ j;
+                    const long long a = ik ? i : l;
+                    const long long b = ik ? l : i;
 
-                    if (cmpLess ? cmpL(items[l], items[lj]) : cmpG(items[l], items[lj]))
+                    if (l > i && cmp(items[a], items[b]))
                     {
-                        const data_type temp = items[l];
-                        items[l] = items[lj];
-                        items[lj] = temp;
+                        const data_type temp = items[a];
+                        items[a] = items[b];
+                        items[b] = temp;
+                    }
+                }
+
+                numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+                while (numSortPhases->load(std::memory_order_consume) < phase)
+                {
+                    // spin
+                }
+            }
+        }
+
+    #else
+        for (long long i = 1; i < count; i *= 2)
+        {
+            for (long long j = i; j > 0; j /= 2, phase += numThreads)
+            {
+                const long long jt0 = 2 * j * threadId;
+                const long long jt1 = 2 * j * numThreads;
+
+                for (long long k = jt0; k < count; k += jt1)
+                {
+                    const long long kj = k + j;
+                    const long long cmpLess = k & (i * 2);
+
+                    for (long long l = k; l < kj; ++l)
+                    {
+                        const long long lj = l + j;
+                        const long long c0 = cmpLess ? l : lj;
+                        const long long c1 = cmpLess ? lj : l;
+
+                        if (cmp(items[c0], items[c1]))
+                        {
+                            const data_type temp = items[l];
+                            items[l] = items[lj];
+                            items[lj] = temp;
+                        }
+                    }
+                }
+
+                numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+                while (numSortPhases->load(std::memory_order_consume) < phase)
+                {
+                    // spin
+                }
+            }
+        }
+
+    #endif
+}
+
+
+
+/*-------------------------------------
+    Odd-Even Merge Sort for arrays of size 2^n
+-------------------------------------*/
+template <typename data_type, class Comparator>
+void utils::sort_odd_even(
+    data_type* const items,
+    long long count,
+    long long numThreads,
+    long long threadId,
+    std::atomic_llong* numSortPhases,
+    Comparator cmp) noexcept
+{
+    // Can only sort powers of 2
+    if ((count == 0) || (count & (count - 1ll)))
+    {
+        return;
+    }
+
+    long long phase = numThreads;
+
+    for (long long p = 1, p2 = 1; p < count; p *= 2, p2 += 1)
+    {
+        for (long long k = p; k > 0; k /= 2, phase += numThreads)
+        {
+            const long long kpmod = k & (p-1); // k % p
+            const long long k2 = 2 * k;
+            const long long kt0 = k2 * threadId;
+            const long long kt1 = k2 * numThreads;
+
+            for (long long j = kpmod+kt0; j+k < count; j += kt1)
+            {
+                for (long long i = 0; i < k; ++i)
+                {
+                    const long long ij = j + i;
+                    const long long ijk = ij + k;
+
+                    if ((ij >> p2) == (ijk >> p2) && cmp(items[ijk], items[ij]))
+                    {
+                        const data_type temp = items[ij];
+                        items[ij] = items[ijk];
+                        items[ijk] = temp;
                     }
                 }
             }
@@ -1089,15 +1276,7 @@ void utils::sort_bitonic(
             }
         }
     }
-
-    // sync
-    numThreadsFinished->fetch_add(1, std::memory_order_acq_rel);
-    while (numThreadsFinished->load(std::memory_order_consume) != numThreads)
-    {
-        // spin
-    }
 }
-
 
 
 } // end ls namespace
