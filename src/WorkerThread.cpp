@@ -6,7 +6,7 @@
 #include "lightsky/utils/Log.h"
 #include "lightsky/utils/WorkerThread.hpp"
 
-#ifdef LS_OS_LINUX
+#ifdef LS_OS_UNIX
     #ifndef _GNU_SOURCE
         #define _GNU_SOURCE
     #endif
@@ -23,7 +23,7 @@
 -----------------------------------------------------------------------------*/
 size_t ls::utils::get_thread_id() noexcept
 {
-    #ifdef LS_OS_LINUX
+    #ifdef LS_OS_UNIX
         return (size_t)pthread_self();
     #else
         constexpr std::hash<std::thread::id> hasher;
@@ -38,7 +38,7 @@ size_t ls::utils::get_thread_id() noexcept
 -----------------------------------------------------------------------------*/
 bool ls::utils::set_thread_affinity(size_t threadId, unsigned affinity) noexcept
 {
-    #ifndef LS_OS_LINUX
+    #ifndef LS_OS_UNIX
         (void)threadId;
         (void)affinity;
         return false;
@@ -74,7 +74,7 @@ bool ls::utils::set_thread_affinity(size_t threadId, unsigned affinity) noexcept
 
 bool ls::utils::set_thread_affinity(std::thread& t, unsigned affinity) noexcept
 {
-    return set_thread_affinity(t.native_handle(), affinity);
+    return set_thread_affinity((size_t)t.native_handle(), affinity);
 }
 
 
