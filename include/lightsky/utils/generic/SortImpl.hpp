@@ -1320,6 +1320,8 @@ void utils::sort_odd_even(
             }
 
             numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+            currentIters = 1;
+
             while (numSortPhases->load(std::memory_order_consume) < phase)
             {
                 // spin
