@@ -38,7 +38,8 @@ size_t ls::utils::get_thread_id() noexcept
 -----------------------------------------------------------------------------*/
 bool ls::utils::set_thread_affinity(size_t threadId, unsigned affinity) noexcept
 {
-    #ifndef LS_OS_UNIX
+    // TODO: Implement for OSX and Windows
+    #ifndef LS_OS_LINUX
         (void)threadId;
         (void)affinity;
         return false;
