@@ -44,6 +44,17 @@ namespace utils
 
 
 
+/*-----------------------------------------------------------------------------
+ * CPU Utilities
+-----------------------------------------------------------------------------*/
+size_t get_thread_id() noexcept;
+
+bool set_thread_affinity(size_t threadId, unsigned affinity) noexcept;
+
+bool set_thread_affinity(std::thread& t, unsigned affinity) noexcept;
+
+
+
 /**----------------------------------------------------------------------------
  * @brief WorkerThread is an asynchronous thread which can have tasks pushed
  * to it for execution.
@@ -88,7 +99,7 @@ class WorkerThread
   public:
     ~WorkerThread() noexcept;
 
-    WorkerThread() noexcept;
+    WorkerThread(unsigned affinity = ~0u) noexcept;
 
     WorkerThread(const WorkerThread&) noexcept;
 

@@ -140,7 +140,7 @@ WorkerThread<WorkerTaskType>::~WorkerThread() noexcept
  * Constructor
 -------------------------------------*/
 template <class WorkerTaskType>
-WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
+WorkerThread<WorkerTaskType>::WorkerThread(unsigned affinity) noexcept :
     mBusyWait{false},
     mIsPaused{true},
     mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
@@ -153,12 +153,19 @@ WorkerThread<WorkerTaskType>::WorkerThread() noexcept :
     #endif
     mThread{}
 {
+    (void)affinity;
+
     #ifdef LS_UTILS_USE_WINDOWS_THREADS
         InitializeCriticalSectionAndSpinCount(&mWaitMtx, 1);
         InitializeConditionVariable(&mWaitCond);
         InitializeConditionVariable(&mExecCond);
     #endif
+
     mThread = std::thread{&WorkerThread::thread_loop, this};
+    if (affinity != ~0u)
+    {
+        set_thread_affinity(mThread, affinity);
+    }
 }
 
 

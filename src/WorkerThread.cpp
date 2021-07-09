@@ -1,11 +1,81 @@
 
+#ifndef LS_DEBUG
+    #define LS_DEBUG
+#endif
+
+#include "lightsky/utils/Log.h"
 #include "lightsky/utils/WorkerThread.hpp"
 
+#ifdef LS_OS_LINUX
+    #ifndef _GNU_SOURCE
+        #define _GNU_SOURCE
+    #endif
 
-namespace ls
+    #include <sched.h>
+    #include <unistd.h>
+    #include <pthread.h>
+#endif
+
+
+
+/*-----------------------------------------------------------------------------
+ * Thread ID
+-----------------------------------------------------------------------------*/
+size_t ls::utils::get_thread_id() noexcept
 {
-namespace utils
+    #ifdef LS_OS_LINUX
+        return (size_t)pthread_self();
+    #else
+        constexpr std::hash<std::thread::id> hasher;
+        return (size_t)hasher(std::this_thread::get_id());
+    #endif
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Thread Affinity
+-----------------------------------------------------------------------------*/
+bool ls::utils::set_thread_affinity(size_t threadId, unsigned affinity) noexcept
 {
+    #ifndef LS_OS_LINUX
+        (void)t;
+        (void)affinity;
+        return false;
+
+    #else
+        const unsigned numThreads = (unsigned)sysconf(_SC_NPROCESSORS_ONLN);
+        bool ret = true;
+
+        if (affinity < numThreads)
+        {
+            cpu_set_t cpuSet;
+            CPU_ZERO(&cpuSet);
+            CPU_SET(affinity, &cpuSet);
+
+            pthread_t t = (pthread_t)threadId;
+            if (pthread_setaffinity_np(t, sizeof(cpu_set_t), &cpuSet))
+            {
+                LS_LOG_ERR("Unable to set CPU affinity.");
+                ret = false;
+            }
+        }
+        else
+        {
+            LS_LOG_ERR("Requested CPU affinity is out of range for expected values (", affinity, " vs. 0 - ", numThreads, ").");
+            ret = false;
+        }
+
+        return ret;
+    #endif
+}
+
+
+
+bool ls::utils::set_thread_affinity(std::thread& t, unsigned affinity) noexcept
+{
+    return set_thread_affinity(t.native_handle(), affinity);
+}
 
 
 
@@ -13,8 +83,3 @@ namespace utils
  * WorkerThread
 -----------------------------------------------------------------------------*/
 LS_DEFINE_CLASS_TYPE(ls::utils::WorkerThread, void (*)());
-
-
-
-} // end utils namespace
-} // end ls namespace

@@ -648,13 +648,19 @@ void utils::sort_merge_iterative(
     long long left, rght, rend;
     long long i,j,k,m;
     long long phase = numThreads;
+    constexpr unsigned maxIters = 8;
+    unsigned currentIters;
 
     for (k = 1; k < count; k *= 2, phase += numThreads)
     {
         const long long k2 = k * 2;
+        const long long ki = k2 * threadId;
         const long long kt = k2 * numThreads;
 
-        for (left = k2 * threadId; left+k < count; left += kt)
+        LS_PREFETCH(items+ki, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
+        LS_PREFETCH(temp+ki, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
+
+        for (left = ki; left+k < count; left += kt)
         {
             rght = left + k;
             rend = rght + k;
@@ -700,9 +706,28 @@ void utils::sort_merge_iterative(
 
         // sync
         numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+        currentIters = 1;
+
         while (numSortPhases->load(std::memory_order_consume) < phase)
         {
             // spin
+            // spin
+            switch (currentIters)
+            {
+                case 8:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 4:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 2:
+                    ls::setup::cpu_yield();
+                default:
+                    ls::setup::cpu_yield();
+                    currentIters = currentIters < maxIters ? (currentIters+currentIters) : maxIters;
+            }
         }
     }
 }
@@ -1066,7 +1091,11 @@ void utils::sort_sheared(
          * sorting rows to sorting columns).
          */
         numSortPhases->fetch_add(1, std::memory_order_acq_rel);
-        while (numSortPhases->load(std::memory_order_consume) < (phase+1)*numThreads);
+        while (numSortPhases->load(std::memory_order_consume) < (phase+1)*numThreads)
+        {
+            ls::setup::cpu_yield();
+            ls::setup::cpu_yield();
+        }
     }
 
     /*
@@ -1144,6 +1173,8 @@ void utils::sort_bitonic(
     }
 
     long long phase = numThreads;
+    constexpr unsigned maxIters = 8;
+    unsigned currentIters;
 
     // Improved algorithm to reduce false sharing
     #if 1
@@ -1158,8 +1189,6 @@ void utils::sort_bitonic(
 
             for (long long j = k; j > 0; j >>= 1, phase += numThreads)
             {
-                LS_PREFETCH(items+start, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
-
                 for (long long i = start; i < end; ++i)
                 {
                     const long long ik = i & k2;
@@ -1176,9 +1205,28 @@ void utils::sort_bitonic(
                 }
 
                 numSortPhases->fetch_add(1, std::memory_order_acq_rel);
+                LS_PREFETCH(items+start, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
+                currentIters = 1;
+
                 while (numSortPhases->load(std::memory_order_consume) < phase)
                 {
                     // spin
+                    switch (currentIters)
+                    {
+                        case 8:
+                            ls::setup::cpu_yield();
+                            ls::setup::cpu_yield();
+                            ls::setup::cpu_yield();
+                            ls::setup::cpu_yield();
+                        case 4:
+                            ls::setup::cpu_yield();
+                            ls::setup::cpu_yield();
+                        case 2:
+                            ls::setup::cpu_yield();
+                        default:
+                            ls::setup::cpu_yield();
+                            currentIters = currentIters < maxIters ? (currentIters+currentIters) : maxIters;
+                    }
                 }
             }
         }
@@ -1243,6 +1291,8 @@ void utils::sort_odd_even(
     }
 
     long long phase = numThreads;
+    constexpr unsigned maxIters = 8;
+    unsigned currentIters;
 
     for (long long p = 1, p2 = 1; p < count; p *= 2, p2 += 1)
     {
@@ -1273,6 +1323,22 @@ void utils::sort_odd_even(
             while (numSortPhases->load(std::memory_order_consume) < phase)
             {
                 // spin
+                switch (currentIters)
+                {
+                    case 8:
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                    case 4:
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                    case 2:
+                        ls::setup::cpu_yield();
+                    default:
+                        ls::setup::cpu_yield();
+                        currentIters = currentIters < maxIters ? (currentIters+currentIters) : maxIters;
+                }
             }
         }
     }
