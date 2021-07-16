@@ -1,10 +1,6 @@
 
 #include "lightsky/setup/OS.h" // LS_OS_WINDOWS
 
-#ifdef LS_OS_WINDOWS
-    #include <windows.h>
-#endif /* LS_OS_WINDOWS */
-
 #include "lightsky/utils/Log.h"
 #include "lightsky/utils/WorkerThread.hpp"
 

@@ -27,8 +27,14 @@
 #ifdef LS_UTILS_USE_WINDOWS_THREADS
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
-    #endif
+    #endif  /* WIN32_LEAN_AND_MEAN */
 
+    // Typycal windows bullshit
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif /* NOMINMAX */
+
+    #include <windows.h>
     #include <synchapi.h>
 #endif /* LS_UTILS_USE_WINDOWS_THREADS */
 
