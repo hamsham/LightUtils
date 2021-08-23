@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 
     parser.set_argument("test6", '6')
           .num_required(argparse::ArgCount::LEAST_ONE)
-          .const_value("Test 6")
+          .const_value("T")
           .required(false)
           .type(argparse::ArgType::CHAR)
           .description("Test 6")

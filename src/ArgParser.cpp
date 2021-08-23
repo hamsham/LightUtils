@@ -407,20 +407,35 @@ void ArgParser::validate_internal() const noexcept
 {
     for (const Argument& arg : mArgs)
     {
-        if (!arg.required() || arg.num_required() != static_cast<size_t>(ArgCount::LEAST_ONE))
+        if (arg.const_value().empty() && (!arg.required() || arg.num_required() != static_cast<size_t>(ArgCount::LEAST_ONE)))
         {
             continue;
         }
 
-        if (arg.const_value().empty())
+        std::vector<std::string>::size_type constSize = arg.const_value().size();
+        bool constValidation0 = (constSize == 1 && arg.num_required() == static_cast<size_t>(ArgCount::ONE));
+        bool constValidation1 = (constSize >= 1 && arg.num_required() == static_cast<size_t>(ArgCount::LEAST_ONE));
+        bool constValidation2 = (constSize == arg.num_required());
+
+        if (!(constValidation0 || constValidation1 || constValidation2))
         {
-            continue;
+            print_err_and_quit("Internal error: Constant argument count does not match number of required arguments.", -1);
         }
         else
         {
-            if (arg.const_value().size() != arg.num_required())
+            for (const std::string& argN : arg.const_value())
             {
-                print_err_and_quit("Internal error: Constant argument count does not match number of required arguments.", -1);
+                if (!param_matches_type(argN.c_str(), arg.type()))
+                {
+                    std::string&& err = std::string{"Const Value element \""};
+                    err += argN;
+                    err += "\" within \"";
+                    err += arg.long_name();
+                    err += std::string{"\" does not match expected data type: "};
+                    err += param_type_str(arg.type());
+
+                    print_err_and_quit(err, -3);
+                }
             }
         }
     }
@@ -448,12 +463,13 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
         if (arg.num_required() && !numArgsForOpt && arg.const_value().empty())
         {
             const std::string msgParam = !currentOpt.empty() ? currentOpt : std::string{currentFlag};
-            print_err_and_quit(std::string{"No parameters provided for argument \""} + msgParam + '\"', -3);
+            print_err_and_quit(std::string{"No parameters provided for argument \""} + msgParam + '\"', -4);
         }
+
         if (arg.num_required() == static_cast<size_t>(ArgCount::LEAST_ONE) && !numArgsForOpt && arg.const_value().empty())
         {
             const std::string msgParam = !currentOpt.empty() ? currentOpt : std::string{currentFlag};
-            print_err_and_quit(std::string{"Argument \""} + msgParam + std::string{"\" requires at least one parameter."}, -3);
+            print_err_and_quit(std::string{"Argument \""} + msgParam + std::string{"\" requires at least one parameter."}, -5);
         }
         else if (arg.num_required() != static_cast<size_t>(ArgCount::LEAST_ONE) && arg.num_required() > numArgsForOpt)
         {
@@ -465,7 +481,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
             err.append(" of ");
             err.append(std::to_string(arg.num_required()));
             err.append(" parameters.");
-            print_err_and_quit(err, -4);
+            print_err_and_quit(err, -6);
         }
         else if (arg.num_required() < numArgsForOpt)
         {
@@ -477,7 +493,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
             err.append(" of ");
             err.append(std::to_string(arg.num_required()));
             err.append(" parameters.");
-            print_err_and_quit(err, -5);
+            print_err_and_quit(err, -7);
         }
     };
 
@@ -506,7 +522,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
 
             if (!mLongOptToIndices.count(currentHash))
             {
-                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -1);
+                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -8);
             }
 
             if (currentOpt == "help")
@@ -528,7 +544,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
 
                 if (!mShortOptToIndices.count(currentHash))
                 {
-                    print_err_and_quit(std::string{"Unknown option: "} + pOpt[j], -2);
+                    print_err_and_quit(std::string{"Unknown option: "} + pOpt[j], -9);
                 }
 
                 if (pOpt[j] == 'h')
@@ -548,7 +564,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
         {
             if (currentHash == ~(size_t)0)
             {
-                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -3);
+                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -10);
             }
 
             size_t lastArgIndex = currentOpt.empty() ? mShortOptToIndices.at(currentHash) : mLongOptToIndices.at(currentHash);
@@ -562,7 +578,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
                 err += std::string{"\" does not match expected type: "};
                 err += param_type_str(type);
 
-                print_err_and_quit(err, -4);
+                print_err_and_quit(err, -11);
             }
 
             ++numArgsForOpt;
@@ -662,8 +678,8 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
     char currentFlag = '\0';
     std::string currentOpt;
 
-    mFoundOpts.clear();
-    mValues.clear();
+    //mFoundOpts.clear();
+    //mValues.clear();
 
     while (i < argc)
     {
