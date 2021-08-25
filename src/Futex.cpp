@@ -22,8 +22,9 @@ Futex::~Futex() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-Futex::Futex() noexcept :
-    mLock{0}
+Futex::Futex(uint_fast16_t maxPauses) noexcept :
+    mLock{},
+    mMaxPauseCount{maxPauses}
 {}
 
 

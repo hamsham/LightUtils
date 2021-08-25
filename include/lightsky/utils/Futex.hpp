@@ -4,7 +4,7 @@
 
 #include <atomic>
 
-#include "lightsky/setup/Arch.h" // LS_ARCH_X86
+#include "lightsky/utils/SpinLock.hpp"
 
 
 
@@ -22,12 +22,14 @@ namespace utils
 class Futex
 {
   private:
-    std::atomic_int_fast32_t mLock;
+    ls::utils::SpinLock mLock;
+
+    uint_fast64_t mMaxPauseCount;
 
   public:
     ~Futex() noexcept;
 
-    Futex() noexcept;
+    Futex(uint_fast64_t maxPauses = 16) noexcept;
 
     Futex(const Futex&) = delete;
 
@@ -36,6 +38,10 @@ class Futex
     Futex& operator=(const Futex&) = delete;
 
     Futex& operator=(Futex&&) = delete;
+
+    void pause_count(uint_fast64_t maxPauses) noexcept;
+
+    uint_fast64_t pause_count() const noexcept;
 
     void lock() noexcept;
 
@@ -51,10 +57,6 @@ class Futex
 
 
 
-#if defined(LS_ARCH_X86)
-    #include "lightsky/utils/x86/FutexImpl.hpp"
-#else
-    #include "lightsky/utils/generic/FutexImpl.hpp"
-#endif
+#include "lightsky/utils/generic/FutexImpl.hpp"
 
 #endif /* LS_UTILS_FUTEX_HPP */

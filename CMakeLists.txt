@@ -92,7 +92,6 @@ set(LS_UTILS_HEADERS
 
     include/lightsky/utils/android/LogImpl.h
 
-    include/lightsky/utils/x86/FutexImpl.hpp
 )
 
 
