@@ -1,8 +1,4 @@
 
-#if defined(LS_ARCH_X86)
-    #include <immintrin.h>
-#endif
-
 
 
 namespace ls
@@ -19,9 +15,6 @@ inline void SpinLock::lock() noexcept
 {
     while (mLock.test_and_set(std::memory_order_acquire))
     {
-        #if defined(LS_ARCH_X86)
-            _mm_pause();
-        #endif
     }
 }
 
