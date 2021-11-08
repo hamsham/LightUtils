@@ -23,6 +23,8 @@ function(LS_UTILS_ADD_TARGET target sources)
 	else()
 		target_link_libraries(${target} LightSky::Utils LightSky::Setup)
 	endif()
+
+	ls_configure_target(${target})
 endfunction(LS_UTILS_ADD_TARGET)
 
 LS_UTILS_ADD_TARGET(lsutils_alloc_chunk_test   lsutils_alloc_chunk_test.cpp)
