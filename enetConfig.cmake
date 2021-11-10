@@ -115,12 +115,7 @@ else()
     set_target_properties(enet PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${EXTERNAL_PROJECT_PREFIX}/include)
     set_target_properties(enet PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX})
 
-    add_custom_command(
-        OUTPUT ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX}
-        COMMAND ""
-        DEPENDS ENet
-    )
-
+    add_dependencies(enet ENet)
 
     set(ENET_INCLUDE_DIR "${EXTERNAL_PROJECT_PREFIX}/include")
 
