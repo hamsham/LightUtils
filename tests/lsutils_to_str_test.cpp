@@ -93,7 +93,8 @@ unsigned long long bench_str_conversionf() noexcept
 
         try
         {
-            std::stof(converter(x));
+            float val = std::stof(converter(x));
+            (void)val;
         }
         catch (const std::exception& e)
         {
@@ -121,7 +122,8 @@ unsigned long long bench_str_conversioni() noexcept
 
         try
         {
-            std::stoi(converter(x));
+            int val = std::stoi(converter(x));
+            (void)val;
         }
         catch (const std::exception& e)
         {
