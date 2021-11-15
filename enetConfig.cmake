@@ -22,7 +22,7 @@ if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NO
         if (MINGW)
             set(ENET_LIBRARIES "${ENET_SYS_LIB}" winmm ws2_32)
         else()
-            set(ENET_LIBRARIES "${ENET_SYS_LIB}" winmm ws2_32 msvcrt msvcmrt)
+            set(ENET_LIBRARIES "${ENET_SYS_LIB}" winmm ws2_32 $<IF:$<CONFIG:Debug,RelWithDebInfo>,msvcrtd,msvcrt> $<IF:$<CONFIG:Debug,RelWithDebInfo>,msvcmrtd,msvcmrt>)
         endif()
     else()
         set(ENET_LIBRARIES "${ENET_SYS_LIB}")
@@ -30,6 +30,9 @@ if (NOT BUILD_ENET AND NOT ENET_SYS_INCLUDE_DIR STREQUAL ENET_SYS_INCLUDE_DIR-NO
 
 else()
     message("-- Building ENet from source")
+
+    # Version Control Tools
+    find_package(Git REQUIRED)
 
     # MSBuild
     if (CMAKE_GENERATOR MATCHES "Xcode" OR CMAKE_VS_MSBUILD_COMMAND)
@@ -48,15 +51,23 @@ else()
         endif()
     endif()
 
-    # Version Control Tools
-    find_package(Git REQUIRED)
+    if (MSVC)
+        set(ENET_C_FLAGS "${CMAKE_C_FLAGS} /p:CharacterSet=Unicode")
+        set(ENET_CXX_FLAGS "${CMAKE_CXX_FLAGS} /p:CharacterSet=Unicode")
+    else()
+        set(ENET_C_FLAGS "${CMAKE_C_FLAGS}")
+        set(ENET_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    endif()
+
+    mark_as_advanced(ENET_CXX_FLAGS)
+    mark_as_advanced(ENET_C_FLAGS)
 
     # Build Setup
     set(ENET_BUILD_FLAGS
         -DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
-        -DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
+        -DCMAKE_CXX_FLAGS:STRING=${ENET_CXX_FLAGS}
         -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-        -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
+        -DCMAKE_C_FLAGS:STRING=${ENET_C_FLAGS}
         -DCMAKE_RC_COMPILER:FILEPATH=${CMAKE_RC_COMPILER}
         -DCMAKE_INSTALL_PREFIX:FILEPATH=${EXTERNAL_PROJECT_PREFIX}
         #-DCMAKE_SYSTEM_NAME:STRING=${CMAKE_SYSTEM_NAME}
@@ -122,8 +133,10 @@ else()
     if (WIN32)
         if (MINGW)
             set(ENET_LIBRARIES enet winmm ws2_32)
+        elseif(MSVC)
+            set(ENET_LIBRARIES enet winmm ws2_32 $<IF:$<CONFIG:Debug,RelWithDebInfo>,msvcrtd,msvcrt> $<IF:$<CONFIG:Debug,RelWithDebInfo>,msvcmrtd,msvcmrt>)
         else()
-            set(ENET_LIBRARIES enet winmm ws2_32 msvcrt msvcmrt)
+            set(ENET_LIBRARIES enet)
         endif()
     else()
         set(ENET_LIBRARIES enet)
