@@ -2,7 +2,6 @@
 #ifndef LS_UTILS_TUPLE_H
 #define LS_UTILS_TUPLE_H
 
-#include <cassert>
 #include <limits>
 #include <new>
 #include <type_traits>

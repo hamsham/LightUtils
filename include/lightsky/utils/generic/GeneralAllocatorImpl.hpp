@@ -1,5 +1,5 @@
 
-#include <cassert>
+#include "lightsky/utils/Assertions.h"
 
 namespace ls
 {
@@ -200,11 +200,7 @@ void GeneralAllocator<block_size, total_size>::free(void* p, size_t n) noexcept
     size_t* header = reinterpret_cast<size_t*>(p)-1;
     size_t allocSize = *header;
 
-    if (allocSize != blocksFreed)
-    {
-        // non-fatal on release builds
-        assert(allocSize != blocksFreed);
-    }
+    LS_ASSERT(allocSize != blocksFreed);
 
     char* reclaimed = reinterpret_cast<char*>(header);
     uintptr_t first = reinterpret_cast<uintptr_t>(header);

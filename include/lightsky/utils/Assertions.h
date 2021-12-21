@@ -2,28 +2,21 @@
 #ifndef LS_UTILS_ASSERT_H
 #define LS_UTILS_ASSERT_H
 
-#include <cassert>
-
 #include "lightsky/setup/Api.h"
 #include "lightsky/setup/Macros.h"
 
-namespace ls {
-namespace utils {
+namespace ls
+{
+namespace utils
+{
 
 
 
 /**
- *  @brief error_t
- *  A basic enumeration for ls assertions.
+ * @brief Error levels to determine assertion severity.
  */
-enum error_t : int {
-    /**
-     *  @brief ALERT
-     *  when used with runtime_assert, this indicates that a message will print
-     *  to std::cout.
-     */
-    LS_ALERT,
-
+enum class ErrorLevel
+{
     /**
      *  @brief WARNING
      *  when used with runtime_assert, this indicates that a message will print
@@ -33,15 +26,17 @@ enum error_t : int {
 
     /**
      *  @brief ERROR
-     *  when used with runtime_assert, this indicates that a message will print
-     *  to std::cerr, and an exception of type ls::utils::error_t is thrown.
+     *  When used with runtime_assert, this indicates that a message will print
+     *  to std::cerr then raise a SIGABRT signal.
      */
     LS_ERROR
 };
 
+
+
 /**
  *  @brief runtime_assert
- *  Throw an ls::utils::error_t and/or send a message to stdout/stderr.
+ *  Throw an ls::utils::ErrorType and/or send a message to stdout/stderr.
  *
  *  @param condition
  *  The boolean check to determine if an assertion should be raised. If the
@@ -57,10 +52,12 @@ enum error_t : int {
  *  The message that will be printed to an standard output stream if the
  *  condition tests FALSE.
  */
-void runtime_assert(bool condition, error_t type, const char* const msg);
+void runtime_assert(bool condition, ErrorLevel severity, const char* const msg);
 
-} // end Utils namespace
+} // end utils namespace
 } // end ls namespace
+
+
 
 /*-------------------------------------
  * Basic Assertion Template
@@ -73,12 +70,16 @@ void runtime_assert(bool condition, error_t type, const char* const msg);
         )
 #endif /* LS_ASSERT_BASIC */
 
+
+
 /*-------------------------------------
  * Standard Assertion/Exception
  * ----------------------------------*/
 #ifndef LS_ASSERT
-    #define LS_ASSERT( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::LS_ERROR)
+    #define LS_ASSERT( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::ErrorLevel::LS_ERROR)
 #endif /* ASSERT */
+
+
 
 /*-------------------------------------
  * Debug Assertion/Exception
@@ -91,18 +92,15 @@ void runtime_assert(bool condition, error_t type, const char* const msg);
     #define LS_DEBUG_ASSERT( x )
 #endif /* DEBUG */
 
+
+
 /*-------------------------------------
  * Warning Message
  * ----------------------------------*/
 #ifndef LS_WARN
-    #define LS_WARN( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::LS_WARNING)
+    #define LS_WARN( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::ErrorLevel::LS_WARNING)
 #endif /* ASSERT_WARN */
 
-/*-------------------------------------
- * Simple Alert Message
- * ----------------------------------*/
-#ifndef LS_ALERT
-    #define LS_ALERT( x ) LS_ASSERT_BASIC(x, __FILE__, __LINE__, ls::utils::LS_ALERT)
-#endif /* ASSERT_ALERT */
+
 
 #endif /* LS_UTILS_ASSERT_H */
