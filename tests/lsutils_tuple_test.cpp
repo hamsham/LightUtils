@@ -36,8 +36,8 @@ void print_tuple(const std::string& name, const test_t& t)
 template <unsigned numArgs, unsigned currentArg, typename... ArgsType>
 struct SoaPrinter;
 
-template <typename... ArgsType, unsigned numArgs>
-struct SoaPrinter<numArgs, sizeof...(ArgsType)-1u, ArgsType...>
+template <unsigned numArgs, typename... ArgsType>
+struct SoaPrinter<numArgs, numArgs, ArgsType...>
 {
     void operator()(const ls::utils::Tuple<ArgsType...>& tuple)
     {
@@ -62,7 +62,7 @@ struct SoaPrinter
         }
         std::cout << std::endl;
 
-        SoaPrinter<sizeof...(ArgsType), currentArg+1u, ArgsType...> soaPrinter;
+        SoaPrinter<sizeof...(ArgsType)-1u, currentArg+1u, ArgsType...> soaPrinter;
         soaPrinter(tuple);
     }
 };
@@ -72,7 +72,7 @@ struct SoaPrinter
 template <typename... ArgsType>
 void print_soa(const ls::utils::Tuple<ArgsType...>& tuple) noexcept
 {
-    SoaPrinter<sizeof...(ArgsType), 0u, ArgsType...> soaPrinter;
+    SoaPrinter<sizeof...(ArgsType)-1u, 0u, ArgsType...> soaPrinter;
     soaPrinter(tuple);
 }
 
