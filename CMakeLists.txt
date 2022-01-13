@@ -5,6 +5,11 @@
 project(LightUtils CXX)
 set(OUTPUT_NAME lsutils)
 
+if (APPLE AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+endif()
+
 
 
 # -------------------------------------
