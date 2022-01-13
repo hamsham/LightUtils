@@ -99,22 +99,20 @@ else()
             ${EXTERNAL_PROJECT_PREFIX}
         GIT_REPOSITORY
             "https://github.com/lsalzman/enet.git"
+        GIT_TAG
+            "${ENET_BRANCH}"
         GIT_SHALLOW
             TRUE
         GIT_PROGRESS
             TRUE
-        GIT_TAG
-            "${ENET_BRANCH}"
         UPDATE_COMMAND
             ${GIT_EXECUTABLE} pull origin ${ENET_BRANCH}
+        CMAKE_GENERATOR
+            "${CMAKE_GENERATOR}"
         CMAKE_COMMAND
             ${CMAKE_COMMAND}
-        CMAKE_ARGS
-            ${ENET_BUILD_FLAGS}
         CMAKE_CACHE_ARGS
             ${ENET_BUILD_FLAGS}
-        BUILD_COMMAND
-            ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build ${CMAKE_COMMAND} --build . --config ${ENET_BUILD_CONFIG}
         INSTALL_COMMAND
             ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_PROJECT_PREFIX}/include/enet &&
             ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build${ENET_IDE_BUILD_CONFIG}/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
