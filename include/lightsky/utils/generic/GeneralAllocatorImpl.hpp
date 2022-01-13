@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_GENERIC_ALLOCATOR_IMPL_HPP
+#define LS_UTILS_GENERIC_ALLOCATOR_IMPL_HPP
+
 #include "lightsky/utils/Assertions.h"
 
 namespace ls
@@ -246,3 +249,5 @@ void GeneralAllocator<block_size, total_size>::free(void* p, size_t n) noexcept
 
 } // utils namespace
 } // ls namespace
+
+#endif /* LS_UTILS_GENERIC_ALLOCATOR_IMPL_HPP */

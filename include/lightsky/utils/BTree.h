@@ -10,6 +10,7 @@
 
 #include <utility> // std::move(...)
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Bits.h"
 
 namespace ls {
@@ -567,9 +568,7 @@ template <typename key_t, typename data_t>
 const data_t& BTree<key_t, data_t>::operator[](const key_t& k) const {
     const BTreeNode<data_t> * const iter = iterate(&k);
 
-    if (!iter || !iter->data) {
-        throw ls::utils::error_t::LS_ERROR;
-    }
+    LS_ASSERT(iter && iter->data);
 
     return *iter->data;
 }
@@ -655,9 +654,7 @@ template <typename key_t, typename data_t>
 const data_t& BTree<key_t, data_t>::at(const key_t& k) const {
     const BTreeNode<data_t> * const iter = iterate(&k);
 
-    if (!iter || !iter->data) {
-        throw ls::utils::error_t::LS_ERROR;
-    }
+    LS_ASSERT(iter && iter->data);
 
     return *iter->data;
 }
@@ -678,9 +675,7 @@ template <typename key_t, typename data_t>
 data_t& BTree<key_t, data_t>::at(const key_t& k) {
     BTreeNode<data_t> * const iter = iterate(&k, false);
 
-    if (!iter || !iter->data) {
-        throw ls::utils::error_t::LS_ERROR;
-    }
+    LS_ASSERT(iter && iter->data);
 
     return *iter->data;
 }

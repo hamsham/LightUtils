@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_FUTEX_IMPL_HPP
+#define LS_UTILS_FUTEX_IMPL_HPP
+
 #include "lightsky/setup/CPU.h"
 
 
@@ -107,3 +110,5 @@ inline void Futex::unlock() noexcept
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_FUTEX_IMPL_HPP */

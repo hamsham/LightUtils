@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_WORKER_THREAD_IMPL_HPP
+#define LS_UTILS_WORKER_THREAD_IMPL_HPP
+
 namespace ls
 {
 namespace utils
@@ -472,3 +475,5 @@ inline size_t WorkerThread<WorkerTaskType>::concurrency() const noexcept
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_WORKER_THREAD_IMPL_HPP */

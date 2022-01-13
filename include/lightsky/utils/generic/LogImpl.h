@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_LOG_IMPL_H
+#define LS_UTILS_LOG_IMPL_H
+
 #include <iostream>
 
 namespace ls {
@@ -96,3 +99,5 @@ void utils::log_err(const arg_t& arg, const args_t&... args) {
 }
 
 } // end ls namespace
+
+#endif /* LS_UTILS_LOG_IMPL_H */

@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_ALGORITHM_IMPL_HPP
+#define LS_UTILS_ALGORITHM_IMPL_HPP
+
 namespace ls
 {
 namespace utils
@@ -74,3 +77,5 @@ constexpr bool LS_IMPERATIVE IsNotEqual<data_type>::operator() (const data_type&
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_ALGORITHM_IMPL_HPP */

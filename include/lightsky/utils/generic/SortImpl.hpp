@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_SORT_IMPL_HPP
+#define LS_UTILS_SORT_IMPL_HPP
+
 #include <cstdio>
 #include <climits> // CHAR_BIT
 
@@ -1348,3 +1351,5 @@ void utils::sort_odd_even(
 
 
 } // end ls namespace
+
+#endif /* LS_UTILS_SORT_IMPL_HPP */

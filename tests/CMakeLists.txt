@@ -25,6 +25,11 @@ function(LS_UTILS_ADD_TARGET target sources)
 	endif()
 
 	ls_configure_target(${target})
+
+	# Precompiled Headers
+	if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+		target_precompile_headers(${target} REUSE_FROM lsutils)
+	endif()
 endfunction(LS_UTILS_ADD_TARGET)
 
 LS_UTILS_ADD_TARGET(lsutils_alloc_chunk_test   lsutils_alloc_chunk_test.cpp)

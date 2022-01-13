@@ -1,5 +1,6 @@
 
-
+#ifndef LS_UTILS_SPINLOCK_IMPL_HPP
+#define LS_UTILS_SPINLOCK_IMPL_HPP
 
 namespace ls
 {
@@ -42,3 +43,5 @@ inline void SpinLock::unlock() noexcept
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_SPINLOCK_IMPL_HPP */

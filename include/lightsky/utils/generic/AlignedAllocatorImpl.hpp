@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_ALIGNED_ALLOCATOR_IMPL_HPP
+#define LS_UTILS_ALIGNED_ALLOCATOR_IMPL_HPP
+
 #include <limits> // std::numeric_limits<>
 #include <utility> // std::forward()
 #include <memory>
@@ -208,3 +211,5 @@ constexpr bool operator!=(const AlignedAllocator<T1>& lhs, const AlignedAllocato
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_ALIGNED_ALLOCATOR_IMPL_HPP */

@@ -77,19 +77,21 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/WorkerThread.hpp
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
-    include/lightsky/utils/generic/AlignedAllocatorImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
     include/lightsky/utils/generic/GeneralAllocatorImpl.hpp
     include/lightsky/utils/generic/IndexedCacheImpl.hpp
-    include/lightsky/utils/generic/LogImpl.h
     include/lightsky/utils/generic/LRUCacheImpl.hpp
     include/lightsky/utils/generic/HashImpl.h
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
     include/lightsky/utils/generic/WorkerPoolImpl.hpp
     include/lightsky/utils/generic/WorkerThreadImpl.hpp
+)
 
+set(LS_UTILS_PLATFORM_HEADERS
+    include/lightsky/utils/generic/AlignedAllocatorImpl.hpp  # Causes issues with PCH
+    include/lightsky/utils/generic/LogImpl.h
     include/lightsky/utils/android/LogImpl.h
 
 )
@@ -115,7 +117,7 @@ endif()
 # -------------------------------------
 # Library Setup
 # -------------------------------------
-add_library(${OUTPUT_NAME} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
+add_library(${OUTPUT_NAME} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS} ${LS_UTILS_PLATFORM_HEADERS})
 
 ls_configure_target(${OUTPUT_NAME})
 target_include_directories(${OUTPUT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
@@ -148,6 +150,31 @@ install(EXPORT LightUtils
 
 export(EXPORT LightUtils NAMESPACE LightSky::)
 add_library(LightSky::Utils ALIAS lsutils)
+
+
+
+# -------------------------------------
+# Precompiled Headers
+# -------------------------------------
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    target_precompile_headers(
+        lsutils
+        PRIVATE
+            <condition_variable>
+            <limits>
+            <map>
+            <memory>
+            <mutex>
+            <set>
+            <string>
+            <thread>
+            <unordered_map>
+            <unordered_set>
+            <utility>
+            <vector>
+            ${LS_UTILS_HEADERS}
+    )
+endif()
 
 
 

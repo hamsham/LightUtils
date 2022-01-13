@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_LRU_CACHE_IMPL_HPP
+#define LS_UTILS_LRU_CACHE_IMPL_HPP
+
 #include <utility> // std::move
 
 namespace ls
@@ -247,3 +250,5 @@ constexpr size_t LRUCache<T, cacheSize>::capacity() const noexcept
 
 } // end utils namespace
 } // end ls namespace
+
+#endif /* LS_UTILS_LRU_CACHE_IMPL_HPP */

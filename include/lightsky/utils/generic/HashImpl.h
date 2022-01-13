@@ -1,4 +1,7 @@
 
+#ifndef LS_UTILS_HASH_IMPL_H
+#define LS_UTILS_HASH_IMPL_H
+
 namespace ls {
 namespace utils {
 
@@ -141,3 +144,5 @@ utils::hash_t utils::hash_crc32(const char* str, hash_t prevCrc) {
 }
 
 } // end ls namespace
+
+#endif  /* LS_UTILS_HASH_IMPL_H */
