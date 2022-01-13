@@ -117,6 +117,8 @@ else()
             ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_PROJECT_PREFIX}/include/enet &&
             ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/ENet-build${ENET_IDE_BUILD_CONFIG}/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}enet${CMAKE_STATIC_LIBRARY_SUFFIX} &&
             ${CMAKE_COMMAND} -E copy_if_different ${ENET_HEADERS} ${EXTERNAL_PROJECT_PREFIX}/include/enet
+        STEP_TARGETS
+            lib
     )
 
     # Add the imported library target
