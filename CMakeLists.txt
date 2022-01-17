@@ -156,7 +156,7 @@ add_library(LightSky::Utils ALIAS lsutils)
 # -------------------------------------
 # Precompiled Headers
 # -------------------------------------
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+if (LIGHTSKY_ENABLE_PCH)
     target_precompile_headers(
         lsutils
         PRIVATE
@@ -181,8 +181,8 @@ endif()
 # -------------------------------------
 # Library Tests
 # -------------------------------------
-option(LS_BUILD_UTILS_TESTS "Build tests for the LightUtils library." ON)
+option(LS_UTILS_BUILD_TESTS "Build tests for the LightUtils library." ON)
 
-if(LS_BUILD_UTILS_TESTS)
+if(LS_UTILS_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
