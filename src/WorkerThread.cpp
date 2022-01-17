@@ -53,11 +53,19 @@ bool ls::utils::set_thread_affinity(size_t threadId, unsigned affinity) noexcept
             CPU_SET(affinity, &cpuSet);
 
             pthread_t t = (pthread_t)threadId;
+            #ifdef LS_OS_ANDROID
+            if (sched_setaffinity((pid_t)t, sizeof(cpu_set_t), &cpuSet))
+            {
+                LS_LOG_ERR("Unable to set CPU affinity.");
+                ret = false;
+            }
+            #else
             if (pthread_setaffinity_np(t, sizeof(cpu_set_t), &cpuSet))
             {
                 LS_LOG_ERR("Unable to set CPU affinity.");
                 ret = false;
             }
+            #endif
         }
         else
         {
