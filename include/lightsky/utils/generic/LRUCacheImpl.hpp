@@ -136,7 +136,7 @@ inline T& LRUCache<T, cacheSize>::update(size_t key, const UpdateFunc& updater) 
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T* LRUCache<T, cacheSize>::query_or_update(size_t key, T& out, const UpdateFunc& updater) noexcept
+inline T* LRUCache<T, cacheSize>::query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept
 {
     T* ret = nullptr;
     size_t i = get_index_for_key(key, true);
@@ -151,7 +151,7 @@ inline T* LRUCache<T, cacheSize>::query_or_update(size_t key, T& out, const Upda
         ret = &mData[i];
     }
 
-    out = mData[i];
+    *out = mData + i;
 
     return ret;
 }

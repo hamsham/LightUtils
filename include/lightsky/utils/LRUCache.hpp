@@ -46,7 +46,7 @@ class LRUCache
     T& update(size_t key, const UpdateFunc& updater) noexcept;
 
     template <class UpdateFunc>
-    T* query_or_update(size_t key, T& out, const UpdateFunc& updater) noexcept;
+    T* query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept;
 
     void insert(size_t key, const T& val) noexcept;
 

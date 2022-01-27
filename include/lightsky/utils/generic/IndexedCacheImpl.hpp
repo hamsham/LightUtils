@@ -82,7 +82,7 @@ inline T& IndexedCache<T, cacheSize>::update(size_t key, const UpdateFunc& updat
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T* IndexedCache<T, cacheSize>::query_or_update(size_t key, T& out, const UpdateFunc& updater) noexcept
+inline T* IndexedCache<T, cacheSize>::query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept
 {
     const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
     T* ret = (mCacheIds[i] != key) ? nullptr : &mData[i];
@@ -93,7 +93,7 @@ inline T* IndexedCache<T, cacheSize>::query_or_update(size_t key, T& out, const 
         mData[i] = std::move(updater(key));
     }
 
-    out = mData[i];
+    *out = mData + i;
 
     return ret;
 }
