@@ -2,10 +2,14 @@
 #ifndef LS_UTILS_RANDON_H
 #define LS_UTILS_RANDON_H
 
-#include "lightsky/setup/Api.h"
+#include <cstdint>
 
-namespace ls {
-namespace utils {
+
+
+namespace ls
+{
+namespace utils
+{
 
 
 
@@ -17,20 +21,21 @@ namespace utils {
  *  (see: Random Number Generation)
  *  http://www.lomont.org/Math/Papers/2008/Lomont_PRNG_2008.pdf
  */
-class RandomNum {
+class RandomNum
+{
   private:
     /**
-     *  @brief state
+     *  @brief mState
      *  A set of seeds that are used to extend the period of random
      *  numbers.
      */
-    unsigned long state[16] = {0};
+    uint32_t mState[16] = {0};
 
     /**
-     *  @brief index
-     *  An iterator that's used to extract random seeds from 'state'.
+     *  @brief mIndex
+     *  An iterator that's used to extract random seeds from 'mState'.
      */
-    unsigned int index = 0;
+    unsigned mIndex = 0u;
 
   public:
     /**
@@ -43,13 +48,13 @@ class RandomNum {
      *  PRNG algorithm. The same seed can be used repeatedly in order to
      *  generate the same set of values.
      */
-    RandomNum(const unsigned long s);
+    explicit RandomNum(uint32_t s) noexcept;
 
     /**
      *  @brief Constructor
      *  Initializes a non-seeded PRNG.
      */
-    RandomNum();
+    RandomNum() noexcept;
 
     /**
      *  @brief Copy Constructor
@@ -58,7 +63,7 @@ class RandomNum {
      *  @param prng
      *  A constant reference to another pseudo-random number generator.
      */
-    RandomNum(const RandomNum& prng);
+    RandomNum(const RandomNum& prng) noexcept;
 
     /**
      *  @brief Move Constructor
@@ -67,13 +72,13 @@ class RandomNum {
      *  @param prng
      *  An r-value reference to another pseudo-random number generator.
      */
-    RandomNum(RandomNum&& prng);
+    RandomNum(RandomNum&& prng) noexcept;
 
     /**
      *  @brief Destructor
      *  Frees all resources used by this.
      */
-    ~RandomNum();
+    ~RandomNum() = default;
 
     /**
      *  @brief Copy Operator
@@ -84,7 +89,7 @@ class RandomNum {
      *
      *  @return a reference to *this.
      */
-    RandomNum& operator=(const RandomNum&);
+    RandomNum& operator=(const RandomNum&) noexcept;
 
     /**
      *  @brief Move Operator
@@ -95,7 +100,7 @@ class RandomNum {
      *
      *  @return a reference to *this.
      */
-    RandomNum& operator=(RandomNum&&);
+    RandomNum& operator=(RandomNum&&) noexcept;
 
     /**
      *  @brief Seed
@@ -107,7 +112,7 @@ class RandomNum {
      *  algorithm. The same seed can be used repeatedly in order to
      *  generate the same set of values.
      */
-    void seed(unsigned long s);
+    void seed(uint32_t s) noexcept;
 
     /**
      *  @brief Seed
@@ -117,7 +122,7 @@ class RandomNum {
      *  This method uses the current system time in order to seed the
      *  internal PRNG algorithm.
      */
-    void seed();
+    void seed() noexcept;
 
     /**
      *  @brief Overloaded function operator.
@@ -125,7 +130,7 @@ class RandomNum {
      *
      *  @return a randomly generated unsigned integral type.
      */
-    unsigned long operator()();
+    uint32_t operator()() noexcept;
 
     /*-------------------------------------
      * Helper functions
@@ -147,13 +152,12 @@ class RandomNum {
      *  @return a pseudo-random floating-point value clamped in between 'low' and
      *  'high.'
      */
-    static
-    float randRangeF(RandomNum& prng, const float low, const float high);
+    float randRangeF(float low, float high) noexcept;
 
     /**
-     *  @brief randRangeF
-     *  Generates a random integral value in between two specified values
-     *  (inclusive).
+     *  @brief randRangeI
+     *  Generates a random signed integral value in between two specified
+     *  values (inclusive).
      *
      *  @param prng
      *  A reference to a random-number generator.
@@ -166,9 +170,28 @@ class RandomNum {
      *
      *  @return a pseudo-random integer value clamped in between 'low' and 'high.'
      */
-    static
-    int randRangeI(RandomNum& prng, const int low, const int high);
+    int randRangeI(int low, int high) noexcept;
+
+    /**
+     *  @brief randRangeU
+     *  Generates a random unsigned integral value in between two specified
+     *  values (inclusive).
+     *
+     *  @param prng
+     *  A reference to a random-number generator.
+     *
+     *  @param low
+     *  The lower-bound used to clamp a prng value.
+     *
+     *  @param high
+     *  The upper-bound used to clamp a prng value.
+     *
+     *  @return a pseudo-random integer value clamped in between 'low' and 'high.'
+     */
+    unsigned randRangeU(unsigned low, unsigned high) noexcept;
 };
+
+
 
 } // end utils namespace
 } // end ls namespace
