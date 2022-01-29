@@ -34,7 +34,7 @@ template <uintptr_t block_size, uintptr_t total_size>
 class ChunkAllocator
 {
     // insurance
-    static_assert(block_size >= sizeof(uintptr_t), "Allocation sizes must be less than sizeof(uintptr_t).");
+    static_assert(block_size >= sizeof(uintptr_t), "Allocation sizes must not be less than sizeof(uintptr_t).");
     static_assert(total_size >= sizeof(uintptr_t), "Allocated memory table cannot be less than sizeof(uintptr_t).");
     static_assert(total_size % block_size == 0,    "Cannot fit the current block size within an allocation table.");
     static_assert(block_size < total_size,         "Block size must be less than the total byte size.");
