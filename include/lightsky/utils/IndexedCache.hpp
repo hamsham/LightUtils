@@ -20,6 +20,8 @@ namespace utils
 template <typename T, size_t cacheSize = 16>
 class IndexedCache
 {
+    static_assert(cacheSize != 0, "Cache objects must have a nonzero capacity.");
+
   private:
     static constexpr size_t hash_id(size_t key) noexcept;
 
@@ -41,20 +43,21 @@ class IndexedCache
     T* query(size_t key) noexcept;
 
     template <class UpdateFunc>
-    T& update(size_t key, const UpdateFunc& updater) noexcept;
+    T& update(size_t key, UpdateFunc&& updater) noexcept;
 
     template <class UpdateFunc>
-    T* query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept;
+    T& query_or_update(size_t key, UpdateFunc&& updater) noexcept;
 
-    void insert(size_t key, const T& val) noexcept;
+    T& insert(size_t key, const T& val) noexcept;
 
-    void emplace(size_t key, T&& val) noexcept;
+    T& insert(size_t key, T&& val) noexcept;
 
-    template <typename index_type>
-    const T& operator[](index_type index) const noexcept;
+    template <typename... Args>
+    T& emplace(size_t key, Args&&... args) noexcept;
 
-    template <typename index_type>
-    T& operator[](index_type index) noexcept;
+    const T& operator[](size_t index) const noexcept;
+
+    T& operator[](size_t index) noexcept;
 
     void clear() noexcept;
 

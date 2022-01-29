@@ -21,19 +21,25 @@ namespace utils
 template <typename T, size_t cacheSize = 16>
 class LRUCache
 {
+    static_assert(cacheSize != 0, "Cache objects must have a nonzero capacity.");
+
   public:
     static constexpr size_t CACHE_SIZE = cacheSize;
 
     static constexpr size_t CACHE_MISS = ~(size_t)0;
 
   private:
-    size_t mCacheIds[CACHE_SIZE];
+    size_t mLruId;
 
     size_t mCacheCounts[CACHE_SIZE];
 
+    size_t mCacheIds[CACHE_SIZE];
+
     T mData[CACHE_SIZE];
 
-    size_t get_index_for_key(size_t key, bool incrementCounts) noexcept;
+    size_t _search_index(size_t key) const noexcept;
+
+    size_t _update_index(size_t key) noexcept;
 
   public:
     LRUCache() noexcept;
@@ -43,20 +49,21 @@ class LRUCache
     T* query(size_t key) noexcept;
 
     template <class UpdateFunc>
-    T& update(size_t key, const UpdateFunc& updater) noexcept;
+    T& update(size_t key, UpdateFunc&& updater) noexcept;
 
     template <class UpdateFunc>
-    T* query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept;
+    T& query_or_update(size_t key, UpdateFunc&& updater) noexcept;
 
-    void insert(size_t key, const T& val) noexcept;
+    T& insert(size_t key, const T& val) noexcept;
 
-    void emplace(size_t key, T&& val) noexcept;
+    T& insert(size_t key, T&& val) noexcept;
 
-    template <typename index_type>
-    const T& operator[](index_type index) const noexcept;
+    template <typename... Args>
+    T& emplace(size_t key, Args&&... args) noexcept;
 
-    template <typename index_type>
-    T& operator[](index_type index) noexcept;
+    const T& operator[](size_t index) const noexcept;
+
+    T& operator[](size_t index) noexcept;
 
     void clear() noexcept;
 

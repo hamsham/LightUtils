@@ -2,7 +2,7 @@
 #ifndef LS_UTILS_LRU_8_WAY_CACHE_IMPL_HPP
 #define LS_UTILS_LRU_8_WAY_CACHE_IMPL_HPP
 
-#include <utility> // std::move
+#include <utility> // std::move, std::forward
 
 #include "lightsky/setup/Api.h" // LS_INLINE
 #include "lightsky/setup/Compiler.h"
@@ -26,6 +26,9 @@ namespace utils
 /*-----------------------------------------------------------------------------
  * 8-way LRU
 -----------------------------------------------------------------------------*/
+/*--------------------------------------
+ * Determine if there's a key within the container
+--------------------------------------*/
 template <typename T>
 inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* map, uint32_t key) noexcept
 {
@@ -88,7 +91,7 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
         const int32_t k3 = -(key == map[3]) & 4;
         const int32_t k4 = -(key == map[4]) & 5;
         const int32_t k5 = -(key == map[5]) & 6;
-        const int32_t k6 = -(key == map[6]) & 7;
+        const int32_t k6 = -(key =std::forward= map[6]) & 7;
         const int32_t k7 = -(key == map[7]) & 8;
         return (k0|k1|k2|k3|k4|k5|k6|k7) - 1;
 
@@ -97,6 +100,9 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
 
 
 
+/*--------------------------------------
+ * Find the index of the least-recently used value
+--------------------------------------*/
 template <typename T>
 inline LS_INLINE unsigned LRU8WayCache<T>::_count_trailing_zero_bits(uint64_t n) noexcept
 {
@@ -125,6 +131,9 @@ inline LS_INLINE unsigned LRU8WayCache<T>::_count_trailing_zero_bits(uint64_t n)
 
 
 
+/*--------------------------------------
+ * Update the least-recently used value
+--------------------------------------*/
 template <typename T>
 inline LS_INLINE void LRU8WayCache<T>::_update_lru_index(uint64_t key0To8) noexcept
 {
@@ -135,6 +144,9 @@ inline LS_INLINE void LRU8WayCache<T>::_update_lru_index(uint64_t key0To8) noexc
 
 
 
+/*--------------------------------------
+ * Find the least-recently used value
+--------------------------------------*/
 template <typename T>
 inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() noexcept
 {
@@ -144,6 +156,9 @@ inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() noexcept
 
 
 
+/*--------------------------------------
+ * Constructor
+--------------------------------------*/
 template <typename T>
 LRU8WayCache<T>::LRU8WayCache() noexcept :
     mCols{},
@@ -153,37 +168,36 @@ LRU8WayCache<T>::LRU8WayCache() noexcept :
 
 
 
+/*--------------------------------------
+ * Query the cache for data (const)
+--------------------------------------*/
 template <typename T>
-const T* LRU8WayCache<T>::query(uint32_t key) const noexcept
+inline const T* LRU8WayCache<T>::query(uint32_t key) const noexcept
 {
     int index = _lookup_index_for_key(mKeys, key);
-    if (index >= 0)
-    {
-        return &mData[index];
-    }
-
-    return nullptr;
+    return (index >= 0) ? &mData[index] : nullptr;
 }
 
 
 
+/*--------------------------------------
+ * Query the cache for data
+--------------------------------------*/
 template <typename T>
-T* LRU8WayCache<T>::query(uint32_t key) noexcept
+inline T* LRU8WayCache<T>::query(uint32_t key) noexcept
 {
     int index = _lookup_index_for_key(mKeys, key);
-    if (index >= 0)
-    {
-        return &mData[index];
-    }
-
-    return nullptr;
+    return (index >= 0) ? &mData[index] : nullptr;
 }
 
 
 
+/*--------------------------------------
+ * Query the cache and update with new data
+--------------------------------------*/
 template <typename T>
 template <class UpdateFunc>
-T& LRU8WayCache<T>::update(uint32_t key, const UpdateFunc& updater) noexcept
+inline T& LRU8WayCache<T>::update(uint32_t key, UpdateFunc&& updater) noexcept
 {
     int32_t index = _lookup_index_for_key(mKeys, key);
     if (index < 0)
@@ -194,42 +208,40 @@ T& LRU8WayCache<T>::update(uint32_t key, const UpdateFunc& updater) noexcept
 
     _update_lru_index(index);
 
-    mData[index] = std::move(updater(key));
+    updater(key, mData[index]);
     return mData[index];
 }
 
 
 
+/*--------------------------------------
+ * Query the cache or update with new data
+--------------------------------------*/
 template <typename T>
 template <class UpdateFunc>
-T* LRU8WayCache<T>::query_or_update(uint32_t key, T** out, const UpdateFunc& updater) noexcept
+inline T& LRU8WayCache<T>::query_or_update(uint32_t key, UpdateFunc&& updater) noexcept
 {
     int32_t index = _lookup_index_for_key(mKeys, key);
-    T* ret;
 
     if (index < 0)
     {
         index = (int32_t)_get_lru_index();
         mKeys[index] = key;
-        mData[index] = std::move(updater(key));
-        ret = nullptr;
-    }
-    else
-    {
-        ret = mData + index;
+        updater(key, mData[index]);
     }
 
     _update_lru_index(index);
 
-    *out = mData+index;
-
-    return ret;
+    return mData[index];
 }
 
 
 
+/*--------------------------------------
+ * Insert an object
+--------------------------------------*/
 template <typename T>
-void LRU8WayCache<T>::insert(uint32_t key, const T& val) noexcept
+inline T& LRU8WayCache<T>::insert(uint32_t key, const T& val) noexcept
 {
     int32_t index = _lookup_index_for_key(mKeys, key);
 
@@ -242,12 +254,16 @@ void LRU8WayCache<T>::insert(uint32_t key, const T& val) noexcept
     _update_lru_index(index);
 
     mData[index] = val;
+    return mData[index];
 }
 
 
 
+/*--------------------------------------
+ * Insert an object (r-value)
+--------------------------------------*/
 template <typename T>
-void LRU8WayCache<T>::emplace(uint32_t key, T&& val) noexcept
+inline T& LRU8WayCache<T>::insert(uint32_t key, T&& val) noexcept
 {
     int32_t index = _lookup_index_for_key(mKeys, key);
 
@@ -260,12 +276,39 @@ void LRU8WayCache<T>::emplace(uint32_t key, T&& val) noexcept
     _update_lru_index(index);
 
     mData[index] = std::move(val);
+    return mData[index];
 }
 
 
 
+/*--------------------------------------
+ * Construct an object in-place
+--------------------------------------*/
 template <typename T>
-const T& LRU8WayCache<T>::operator[](uint32_t index) const noexcept
+template <typename... Args>
+inline T& LRU8WayCache<T>::emplace(uint32_t key, Args&&... args) noexcept
+{
+    int32_t index = _lookup_index_for_key(mKeys, key);
+
+    if (index < 0)
+    {
+        index = (int32_t)_get_lru_index();
+        mKeys[index] = key;
+    }
+
+    _update_lru_index(index);
+
+    mData[index] = T{std::forward<Args>(args)...};
+    return mData[index];
+}
+
+
+
+/*--------------------------------------
+ * Index an object (const)
+--------------------------------------*/
+template <typename T>
+inline const T& LRU8WayCache<T>::operator[](uint32_t index) const noexcept
 {
     LS_DEBUG_ASSERT(index < 8);
     return mData[index];
@@ -273,8 +316,11 @@ const T& LRU8WayCache<T>::operator[](uint32_t index) const noexcept
 
 
 
+/*--------------------------------------
+ * Index an object
+--------------------------------------*/
 template <typename T>
-T& LRU8WayCache<T>::operator[](uint32_t index) noexcept
+inline T& LRU8WayCache<T>::operator[](uint32_t index) noexcept
 {
     LS_DEBUG_ASSERT(index < 8);
     return mData[index];
@@ -282,8 +328,11 @@ T& LRU8WayCache<T>::operator[](uint32_t index) noexcept
 
 
 
+/*--------------------------------------
+ * Clear all keys and object in *this.
+--------------------------------------*/
 template <typename T>
-void LRU8WayCache<T>::clear() noexcept
+inline void LRU8WayCache<T>::clear() noexcept
 {
     mCols = 0;
 
@@ -295,6 +344,9 @@ void LRU8WayCache<T>::clear() noexcept
 
 
 
+/*--------------------------------------
+ * Get the container capacity
+--------------------------------------*/
 template <typename T>
 constexpr uint32_t LRU8WayCache<T>::capacity() const noexcept
 {

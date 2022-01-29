@@ -9,7 +9,7 @@
 #include "lightsky/utils/Time.hpp"
 
 // Explicit template instantiation to help catch compiler errors.
-constexpr size_t CACHE_SIZE = 8;
+constexpr size_t CACHE_SIZE = 16;
 constexpr bool TEST_LRU_CACHE = true;
 constexpr bool TEST_LRU8_CACHE = true;
 constexpr bool TEST_INDEXED_CACHE = true;
@@ -28,7 +28,7 @@ using TestCacheIndexed = ls::utils::IndexedCache<std::string, CACHE_SIZE>;
 
 
 template <typename CacheType>
-size_t test_hash(size_t totalElems, size_t indexModifier = 4096)
+size_t test_hash(size_t totalElems, size_t indexModifier = 15)
 {
     constexpr unsigned seed = 0xDEADBEEF;
     ls::utils::RandomNum rand512{seed};
@@ -36,6 +36,8 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 4096)
     size_t hits = 0;
 
     (void)indexModifier;
+    (void)seed;
+    (void)rand512;
 
     for (unsigned i = 0; i < totalElems; ++i)
     {
@@ -43,17 +45,18 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 4096)
         unsigned val = i + r;
         //unsigned val = (rand512() % (unsigned)indexModifier);
         //val = val + (3 - (val % 3));
-        std::string* j;
+        //unsigned val = i % indexModifier;
 
-        const std::string* cachedVal = cache.query_or_update(val, &j, [](size_t id)->std::string {
-            return ls::utils::to_str(id);
+        const std::string* cachedVal = cache.query(val);
+        hits += nullptr != cachedVal;
+
+        cache.update(val, [&](size_t key, std::string& result)->void {
+            result = ls::utils::to_str(key);
         });
-
-        hits += cachedVal != nullptr;
 
         if (VERBOSE_LOGGING)
         {
-            std::cout << "Caching " << i << ": ";
+            std::cout << "Caching " << val << ": ";
 
             if (cachedVal)
             {
@@ -64,7 +67,7 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 4096)
                 std::cout << "miss";
             }
 
-            std::cout << ' ' << j << std::endl;
+            std::cout << std::endl;
         }
     }
 

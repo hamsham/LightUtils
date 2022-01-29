@@ -26,43 +26,62 @@ inline LRUCache<T, cacheSize>::LRUCache() noexcept
  * Get an ID for a key
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-inline size_t LRUCache<T, cacheSize>::get_index_for_key(size_t key, bool incrementCounts) noexcept
+inline size_t LRUCache<T, cacheSize>::_search_index(size_t key) const noexcept
 {
-    size_t ret = CACHE_MISS;
-    size_t cacheIndex = 0;//capacity()-1;
-
-    for (size_t i = 0; i < capacity(); ++i)
+    for (size_t i = 0; i < cacheSize; ++i)
     {
-        if (mCacheIds[i] == key)
+        if (key == mCacheIds[i])
         {
-            ret = i;
-        }
-
-        if (mCacheCounts[cacheIndex] < mCacheCounts[i])
-        {
-            cacheIndex = i;
+            return i;
         }
     }
 
-    if (ret == CACHE_MISS)
+    return CACHE_MISS;
+}
+
+
+
+/*--------------------------------------
+ * Get an ID for a key and update the cache counts
+--------------------------------------*/
+template <typename T, size_t cacheSize>
+size_t LRUCache<T, cacheSize>::_update_index(size_t key) noexcept
+{
+    size_t keyIndex = _search_index(key);
+    if (keyIndex == CACHE_MISS)
     {
-        ret = cacheIndex;
+        keyIndex = mLruId;
+    }
+    else if (mCacheCounts[keyIndex] == (cacheSize-1))
+    {
+        // already the most-used element, no need to update anything
+        return keyIndex;
     }
 
-    if (incrementCounts)
+    size_t oldCount = mCacheCounts[keyIndex];
+    mCacheCounts[keyIndex] = cacheSize;
+
+    for (size_t i = 0; i < cacheSize; ++i)
     {
-        for (size_t i = capacity(); i--;)
+        if (oldCount < mCacheCounts[i])
         {
-            if (mCacheCounts[i] != CACHE_MISS)
-            {
-                ++mCacheCounts[i];
-            }
+            --mCacheCounts[i];
         }
-
-        mCacheCounts[ret] = 0;
     }
 
-     return ret;
+    // scan for LRU element
+    size_t lruId = 0;
+    for (size_t i = 0; i < cacheSize; ++i)
+    {
+        if (mCacheCounts[lruId] > mCacheCounts[i])
+        {
+            lruId = i;
+        }
+    }
+
+    mLruId = lruId;
+
+    return keyIndex;
 }
 
 
@@ -73,18 +92,8 @@ inline size_t LRUCache<T, cacheSize>::get_index_for_key(size_t key, bool increme
 template <typename T, size_t cacheSize>
 inline const T* LRUCache<T, cacheSize>::query(size_t key) const noexcept
 {
-    const T* ret = nullptr;
-
-    for (size_t i = capacity(); i--;)
-    {
-        if (mCacheIds[i] == key)
-        {
-            ret = &mData[i];
-            break;
-        }
-    }
-
-    return ret;
+    size_t i = _search_index(key);
+    return i != CACHE_MISS ? &mData[i] : nullptr;
 }
 
 
@@ -95,37 +104,27 @@ inline const T* LRUCache<T, cacheSize>::query(size_t key) const noexcept
 template <typename T, size_t cacheSize>
 inline T* LRUCache<T, cacheSize>::query(size_t key) noexcept
 {
-    T* ret = nullptr;
-
-    for (size_t i = capacity(); i--;)
-    {
-        if (mCacheIds[i] == key)
-        {
-            ret = &mData[i];
-            break;
-        }
-    }
-
-    return ret;
+    size_t i = _search_index(key);
+    return i != CACHE_MISS ? &mData[i] : nullptr;
 }
 
 
 
 /*--------------------------------------
- * Query the cache or update with new data
+ * Query the cache and update with new data
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T& LRUCache<T, cacheSize>::update(size_t key, const UpdateFunc& updater) noexcept
+inline T& LRUCache<T, cacheSize>::update(size_t key, UpdateFunc&& updater) noexcept
 {
-    size_t i = get_index_for_key(key, true);
+    size_t i = _update_index(key);
 
     if (mCacheIds[i] != key)
     {
         mCacheIds[i] = key;
-        mData[i] = std::move(updater(key));
     }
 
+    updater(key, mData[i]);
     return mData[i];
 }
 
@@ -136,24 +135,17 @@ inline T& LRUCache<T, cacheSize>::update(size_t key, const UpdateFunc& updater) 
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T* LRUCache<T, cacheSize>::query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept
+inline T& LRUCache<T, cacheSize>::query_or_update(size_t key, UpdateFunc&& updater) noexcept
 {
-    T* ret = nullptr;
-    size_t i = get_index_for_key(key, true);
+    size_t i = _update_index(key);
 
     if (mCacheIds[i] != key)
     {
         mCacheIds[i] = key;
-        mData[i] = std::move(updater(key));
-    }
-    else
-    {
-        ret = &mData[i];
+        updater(key, mData[i]);
     }
 
-    *out = mData + i;
-
-    return ret;
+    return mData[i];
 }
 
 
@@ -162,9 +154,9 @@ inline T* LRUCache<T, cacheSize>::query_or_update(size_t key, T** out, const Upd
  * Insert an object
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-inline void LRUCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
+inline T& LRUCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
 {
-    size_t i = get_index_for_key(key, true);
+    size_t i = _update_index(key);
 
     if (mCacheIds[i] != key)
     {
@@ -172,6 +164,26 @@ inline void LRUCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
     }
 
     mData[i] = val;
+    return mData[i];
+}
+
+
+
+/*--------------------------------------
+ * Insert an object (r-value)
+--------------------------------------*/
+template <typename T, size_t cacheSize>
+inline T& LRUCache<T, cacheSize>::insert(size_t key, T&& val) noexcept
+{
+    size_t i = _update_index(key);
+
+    if (mCacheIds[i] != key)
+    {
+        mCacheIds[i] = key;
+    }
+
+    mData[i] = std::move(val);
+    return mData[i];
 }
 
 
@@ -180,16 +192,18 @@ inline void LRUCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
  * Emplace an object
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-inline void LRUCache<T, cacheSize>::emplace(size_t key, T&& val) noexcept
+template <typename... Args>
+inline T& LRUCache<T, cacheSize>::emplace(size_t key, Args&&... args) noexcept
 {
-    size_t i = get_index_for_key(key, true);
+    size_t i = _update_index(key);
 
     if (mCacheIds[i] != key)
     {
         mCacheIds[i] = key;
     }
 
-    mData[i] = std::move(val);
+    mData[i] = T{std::forward<Args>(args)...};
+    return mData[i];
 }
 
 
@@ -198,8 +212,7 @@ inline void LRUCache<T, cacheSize>::emplace(size_t key, T&& val) noexcept
  * Element indexing (const)
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-template <typename index_type>
-inline const T& LRUCache<T, cacheSize>::operator[](index_type index) const noexcept
+inline const T& LRUCache<T, cacheSize>::operator[](size_t index) const noexcept
 {
     return mData[index];
 }
@@ -210,8 +223,7 @@ inline const T& LRUCache<T, cacheSize>::operator[](index_type index) const noexc
  * Element indexing
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-template <typename index_type>
-inline T& LRUCache<T, cacheSize>::operator[](index_type index) noexcept
+inline T& LRUCache<T, cacheSize>::operator[](size_t index) noexcept
 {
     return mData[index];
 }
@@ -224,14 +236,16 @@ inline T& LRUCache<T, cacheSize>::operator[](index_type index) noexcept
 template <typename T, size_t cacheSize>
 inline void LRUCache<T, cacheSize>::clear() noexcept
 {
+    mLruId = 0;
+
+    for (size_t i = 0; i < cacheSize; ++i)
+    {
+        mCacheCounts[i] = i;
+    }
+
     for (size_t& index : mCacheIds)
     {
         index = CACHE_MISS;
-    }
-
-    for (size_t& count : mCacheCounts)
-    {
-        count = CACHE_MISS;
     }
 }
 

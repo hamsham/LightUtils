@@ -56,14 +56,17 @@ class LRU8WayCache
     T* query(uint32_t key) noexcept;
 
     template <class UpdateFunc>
-    T& update(uint32_t key, const UpdateFunc& updater) noexcept;
+    T& update(uint32_t key, UpdateFunc&& updater) noexcept;
 
     template <class UpdateFunc>
-    T* query_or_update(uint32_t key, T** out, const UpdateFunc& updater) noexcept;
+    T& query_or_update(uint32_t key, UpdateFunc&& updater) noexcept;
 
-    void insert(uint32_t key, const T& val) noexcept;
+    T& insert(uint32_t key, const T& val) noexcept;
 
-    void emplace(uint32_t key, T&& val) noexcept;
+    T& insert(uint32_t key, T&& val) noexcept;
+
+    template <typename... Args>
+    T& emplace(uint32_t key, Args&&... args) noexcept;
 
     const T& operator[](uint32_t index) const noexcept;
 

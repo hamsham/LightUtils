@@ -17,7 +17,8 @@ namespace utils
 template <typename T, size_t cacheSize>
 constexpr size_t IndexedCache<T, cacheSize>::hash_id(size_t key) noexcept
 {
-    return (cacheSize && !(cacheSize & (cacheSize - 1u))) ? (key & (cacheSize - 1)) : (key % cacheSize);
+    // Optimize key lookup for containers sized with powers-of-two
+    return !(cacheSize & (cacheSize - 1u)) ? (key & (cacheSize - 1)) : (key % cacheSize);
 }
 
 
@@ -58,20 +59,20 @@ inline T* IndexedCache<T, cacheSize>::query(size_t key) noexcept
 
 
 /*--------------------------------------
- * Query the cache or update with new data
+ * Query the cache and update with new data
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T& IndexedCache<T, cacheSize>::update(size_t key, const UpdateFunc& updater) noexcept
+inline T& IndexedCache<T, cacheSize>::update(size_t key, UpdateFunc&& updater) noexcept
 {
     const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
 
     if (mCacheIds[i] != key)
     {
         mCacheIds[i] = key;
-        mData[i] = std::move(updater(key));
     }
 
+    updater(key, mData[i]);
     return mData[i];
 }
 
@@ -82,20 +83,17 @@ inline T& IndexedCache<T, cacheSize>::update(size_t key, const UpdateFunc& updat
 --------------------------------------*/
 template <typename T, size_t cacheSize>
 template <class UpdateFunc>
-inline T* IndexedCache<T, cacheSize>::query_or_update(size_t key, T** out, const UpdateFunc& updater) noexcept
+inline T& IndexedCache<T, cacheSize>::query_or_update(size_t key, UpdateFunc&& updater) noexcept
 {
     const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
-    T* ret = (mCacheIds[i] != key) ? nullptr : &mData[i];
 
     if (mCacheIds[i] != key)
     {
         mCacheIds[i] = key;
-        mData[i] = std::move(updater(key));
+        updater(key, mData[i]);
     }
 
-    *out = mData + i;
-
-    return ret;
+    return mData[i];
 }
 
 
@@ -104,11 +102,26 @@ inline T* IndexedCache<T, cacheSize>::query_or_update(size_t key, T** out, const
  * Insert an object
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-inline void IndexedCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
+inline T& IndexedCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
 {
     const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
     mCacheIds[i] = key;
     mData[i] = val;
+    return mData[i];
+}
+
+
+
+/*--------------------------------------
+ * Insert an object (r-value)
+--------------------------------------*/
+template <typename T, size_t cacheSize>
+inline T& IndexedCache<T, cacheSize>::insert(size_t key, T&& val) noexcept
+{
+    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    mCacheIds[i] = key;
+    mData[i] = std::move(val);
+    return mData[i];
 }
 
 
@@ -117,11 +130,13 @@ inline void IndexedCache<T, cacheSize>::insert(size_t key, const T& val) noexcep
  * Emplace an object
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-inline void IndexedCache<T, cacheSize>::emplace(size_t key, T&& val) noexcept
+template <typename... Args>
+inline T& IndexedCache<T, cacheSize>::emplace(size_t key,  Args&&... args) noexcept
 {
     const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
     mCacheIds[i] = key;
-    mData[i] = std::move(val);
+    mData[i] = T{std::forward<Args>(args)...};
+    return mData[i];
 }
 
 
@@ -130,8 +145,7 @@ inline void IndexedCache<T, cacheSize>::emplace(size_t key, T&& val) noexcept
  * Element indexing (const)
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-template <typename index_type>
-inline const T& IndexedCache<T, cacheSize>::operator[](index_type index) const noexcept
+inline const T& IndexedCache<T, cacheSize>::operator[](size_t index) const noexcept
 {
     return mData[index];
 }
@@ -142,8 +156,7 @@ inline const T& IndexedCache<T, cacheSize>::operator[](index_type index) const n
  * Element indexing
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-template <typename index_type>
-inline T& IndexedCache<T, cacheSize>::operator[](index_type index) noexcept
+inline T& IndexedCache<T, cacheSize>::operator[](size_t index) noexcept
 {
     return mData[index];
 }
