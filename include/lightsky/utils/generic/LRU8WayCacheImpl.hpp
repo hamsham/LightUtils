@@ -137,7 +137,7 @@ inline LS_INLINE unsigned LRU8WayCache<T>::_count_trailing_zero_bits(uint64_t n)
 template <typename T>
 inline LS_INLINE void LRU8WayCache<T>::_update_lru_index(uint64_t key0To8) noexcept
 {
-    LS_DEBUG_ASSERT(key0To8 < 8);
+    //LS_DEBUG_ASSERT(key0To8 < 8);
     mRows[key0To8] = 0xFF;
     mCols &= ~(0x0101010101010101ull << key0To8);
 }
@@ -334,12 +334,12 @@ inline T& LRU8WayCache<T>::operator[](uint32_t index) noexcept
 template <typename T>
 inline void LRU8WayCache<T>::clear() noexcept
 {
-    mCols = 0;
-
     for (uint32_t i = 0; i < CACHE_SIZE; ++i)
     {
         mKeys[i] = (uint32_t)CACHE_MISS;
     }
+
+    mCols = 0;
 }
 
 

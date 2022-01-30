@@ -9,7 +9,7 @@
 #include "lightsky/utils/Time.hpp"
 
 // Explicit template instantiation to help catch compiler errors.
-constexpr size_t CACHE_SIZE = 16;
+constexpr size_t CACHE_SIZE = 8;
 constexpr bool TEST_LRU_CACHE = true;
 constexpr bool TEST_LRU8_CACHE = true;
 constexpr bool TEST_INDEXED_CACHE = true;

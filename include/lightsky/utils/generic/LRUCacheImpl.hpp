@@ -30,7 +30,7 @@ inline size_t LRUCache<T, cacheSize>::_search_index(size_t key) const noexcept
 {
     for (size_t i = 0; i < cacheSize; ++i)
     {
-        if (key == mCacheIds[i])
+        if (key == mKeys[i])
         {
             return i;
         }
@@ -47,41 +47,35 @@ inline size_t LRUCache<T, cacheSize>::_search_index(size_t key) const noexcept
 template <typename T, size_t cacheSize>
 size_t LRUCache<T, cacheSize>::_update_index(size_t key) noexcept
 {
+    constexpr size_t lastIndex = cacheSize-1;
+
+    if (key == mKeys[0])
+    {
+        // already the most-used element, no need to update anything
+        return 0;
+    }
+
     size_t keyIndex = _search_index(key);
     if (keyIndex == CACHE_MISS)
     {
-        keyIndex = mLruId;
+        keyIndex = lastIndex;
+        mKeys[lastIndex] = CACHE_MISS;
     }
-    else if (mCacheCounts[keyIndex] == (cacheSize-1))
+
+    // rotate elements from most-recently used to least used with the least-
+    // used element at the end of our arrays
+    const size_t tempKey = mKeys[keyIndex];
+    const size_t tempIndex = mIndices[keyIndex];
+    for (size_t i = keyIndex; i > 0; --i) // O(log(n)) best case, O(n) worst
     {
-        // already the most-used element, no need to update anything
-        return keyIndex;
+        mKeys[i] = mKeys[i-1];
+        mIndices[i] = mIndices[i-1];
     }
 
-    size_t oldCount = mCacheCounts[keyIndex];
-    mCacheCounts[keyIndex] = cacheSize;
+    mKeys[0] = tempKey;
+    mIndices[0] = tempIndex;
 
-    for (size_t i = 0; i < cacheSize; ++i)
-    {
-        if (oldCount < mCacheCounts[i])
-        {
-            --mCacheCounts[i];
-        }
-    }
-
-    // scan for LRU element
-    size_t lruId = 0;
-    for (size_t i = 0; i < cacheSize; ++i)
-    {
-        if (mCacheCounts[lruId] > mCacheCounts[i])
-        {
-            lruId = i;
-        }
-    }
-
-    mLruId = lruId;
-
-    return keyIndex;
+    return 0;
 }
 
 
@@ -93,7 +87,7 @@ template <typename T, size_t cacheSize>
 inline const T* LRUCache<T, cacheSize>::query(size_t key) const noexcept
 {
     size_t i = _search_index(key);
-    return i != CACHE_MISS ? &mData[i] : nullptr;
+    return i != CACHE_MISS ? &mData[mIndices[i]] : nullptr;
 }
 
 
@@ -105,7 +99,7 @@ template <typename T, size_t cacheSize>
 inline T* LRUCache<T, cacheSize>::query(size_t key) noexcept
 {
     size_t i = _search_index(key);
-    return i != CACHE_MISS ? &mData[i] : nullptr;
+    return i != CACHE_MISS ? &mData[mIndices[i]] : nullptr;
 }
 
 
@@ -119,13 +113,13 @@ inline T& LRUCache<T, cacheSize>::update(size_t key, UpdateFunc&& updater) noexc
 {
     size_t i = _update_index(key);
 
-    if (mCacheIds[i] != key)
+    if (mKeys[i] != key)
     {
-        mCacheIds[i] = key;
+        mKeys[i] = key;
     }
 
-    updater(key, mData[i]);
-    return mData[i];
+    updater(key, mData[mIndices[i]]);
+    return mData[mIndices[i]];
 }
 
 
@@ -139,13 +133,13 @@ inline T& LRUCache<T, cacheSize>::query_or_update(size_t key, UpdateFunc&& updat
 {
     size_t i = _update_index(key);
 
-    if (mCacheIds[i] != key)
+    if (mKeys[i] != key)
     {
-        mCacheIds[i] = key;
-        updater(key, mData[i]);
+        mKeys[i] = key;
+        updater(key, mData[mIndices[i]]);
     }
 
-    return mData[i];
+    return mData[mIndices[i]];
 }
 
 
@@ -158,13 +152,13 @@ inline T& LRUCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
 {
     size_t i = _update_index(key);
 
-    if (mCacheIds[i] != key)
+    if (mKeys[i] != key)
     {
-        mCacheIds[i] = key;
+        mKeys[i] = key;
     }
 
-    mData[i] = val;
-    return mData[i];
+    mData[mIndices[i]] = val;
+    return mData[mIndices[i]];
 }
 
 
@@ -177,13 +171,13 @@ inline T& LRUCache<T, cacheSize>::insert(size_t key, T&& val) noexcept
 {
     size_t i = _update_index(key);
 
-    if (mCacheIds[i] != key)
+    if (mKeys[i] != key)
     {
-        mCacheIds[i] = key;
+        mKeys[i] = key;
     }
 
-    mData[i] = std::move(val);
-    return mData[i];
+    mData[mIndices[i]] = std::move(val);
+    return mData[mIndices[i]];
 }
 
 
@@ -197,13 +191,13 @@ inline T& LRUCache<T, cacheSize>::emplace(size_t key, Args&&... args) noexcept
 {
     size_t i = _update_index(key);
 
-    if (mCacheIds[i] != key)
+    if (mKeys[i] != key)
     {
-        mCacheIds[i] = key;
+        mKeys[i] = key;
     }
 
-    mData[i] = T{std::forward<Args>(args)...};
-    return mData[i];
+    mData[mIndices[i]] = T{std::forward<Args>(args)...};
+    return mData[mIndices[i]];
 }
 
 
@@ -236,16 +230,10 @@ inline T& LRUCache<T, cacheSize>::operator[](size_t index) noexcept
 template <typename T, size_t cacheSize>
 inline void LRUCache<T, cacheSize>::clear() noexcept
 {
-    mLruId = 0;
-
     for (size_t i = 0; i < cacheSize; ++i)
     {
-        mCacheCounts[i] = i;
-    }
-
-    for (size_t& index : mCacheIds)
-    {
-        index = CACHE_MISS;
+        mKeys[i] = CACHE_MISS;
+        mIndices[i] = i;
     }
 }
 

@@ -38,13 +38,13 @@ class LRU8WayCache
     unsigned _get_lru_index() noexcept;
 
   private: // instance data
+    uint32_t mKeys[CACHE_SIZE];
+
     union
     {
         uint8_t mRows[CACHE_SIZE];
         uint64_t mCols;
     };
-
-    uint32_t mKeys[CACHE_SIZE];
 
     T mData[CACHE_SIZE];
 

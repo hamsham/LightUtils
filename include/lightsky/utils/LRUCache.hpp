@@ -29,11 +29,9 @@ class LRUCache
     static constexpr size_t CACHE_MISS = ~(size_t)0;
 
   private:
-    size_t mLruId;
+    size_t mKeys[CACHE_SIZE];
 
-    size_t mCacheCounts[CACHE_SIZE];
-
-    size_t mCacheIds[CACHE_SIZE];
+    size_t mIndices[CACHE_SIZE];
 
     T mData[CACHE_SIZE];
 
