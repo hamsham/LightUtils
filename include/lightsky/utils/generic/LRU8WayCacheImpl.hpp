@@ -47,7 +47,7 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
         constexpr uint32_t indexArray[8] = {1, 2, 3, 4, 5, 6, 7, 8};
         __m128i loIndices = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&indexArray[0]));
         __m128i hiIndices = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&indexArray[4]));
-        __m128i val       = _mm_set1_epi32(key);
+        __m128i val       = _mm_set1_epi32((int)key);
         __m128i lo        = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map));
         __m128i hi        = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map+4));
         __m128i loMask    = _mm_and_si128(loIndices, _mm_cmpeq_epi32(val, lo));
@@ -91,7 +91,7 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
         const int32_t k3 = -(key == map[3]) & 4;
         const int32_t k4 = -(key == map[4]) & 5;
         const int32_t k5 = -(key == map[5]) & 6;
-        const int32_t k6 = -(key =std::forward= map[6]) & 7;
+        const int32_t k6 = -(key == map[6]) & 7;
         const int32_t k7 = -(key == map[7]) & 8;
         return (k0|k1|k2|k3|k4|k5|k6|k7) - 1;
 
@@ -161,8 +161,8 @@ inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() noexcept
 --------------------------------------*/
 template <typename T>
 LRU8WayCache<T>::LRU8WayCache() noexcept :
-    mCols{},
     mKeys{CACHE_MISS, CACHE_MISS, CACHE_MISS, CACHE_MISS, CACHE_MISS, CACHE_MISS, CACHE_MISS, CACHE_MISS},
+    mCols{0},
     mData{}
 {}
 
