@@ -73,7 +73,7 @@ inline void aligned_free(void* const p) noexcept
 template <typename data_t>
 struct PointerDeleter
 {
-    inline void operator() (data_t* p) const noexcept
+    inline void operator() (data_t* p) const
     {
         delete p;
     }
@@ -84,7 +84,7 @@ struct PointerDeleter
 template <typename data_t>
 struct PointerDeleter<data_t[]>
 {
-    inline void operator() (data_t* p) const noexcept
+    inline void operator() (data_t* p) const
     {
         delete [] p;
     }
@@ -122,8 +122,7 @@ class Pointer
     /**
      * @brief Clear *this of any data/resources.
      */
-    inline
-    void clear()
+    inline void clear()
     {
         Deleter d;
         d(pData);
@@ -135,8 +134,7 @@ class Pointer
      *
      * Clear *this of any data/resources.
      */
-    inline
-    ~Pointer()
+    inline ~Pointer()
     {
         clear();
     }
@@ -147,11 +145,9 @@ class Pointer
      * Creates an empty Pointer type. Which should not be dereferenced
      * under any circumstances.
      */
-    constexpr
-    Pointer() :
+    constexpr Pointer() noexcept :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * @brief Pointer Constructor
@@ -159,22 +155,18 @@ class Pointer
      * @param p
      * A Pointer to dynamically-allocated data.
      */
-    explicit
-    Pointer(data_t* const p) :
+    explicit Pointer(data_t* const p) noexcept :
         pData{p}
-    {
-    }
+    {}
 
     /**
      * @brief NULL Constructor
      *
      * Constructs *this with no data assigned.
      */
-    constexpr
-    Pointer(std::nullptr_t) :
+    constexpr Pointer(std::nullptr_t) noexcept :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * Copy Constructor -- DELETED
@@ -189,8 +181,7 @@ class Pointer
      * @param p
      * A Pointer type containing dynamically-allocated data.
      */
-    inline
-    Pointer(Pointer&& p) :
+    inline Pointer(Pointer&& p) noexcept :
         pData{p.pData}
     {
         p.pData = nullptr;
@@ -212,8 +203,7 @@ class Pointer
      * @return
      * A reference to *this.
      */
-    inline
-    Pointer& operator=(Pointer&& p)
+    inline Pointer& operator=(Pointer&& p) noexcept
     {
         clear();
 
@@ -228,8 +218,7 @@ class Pointer
      *
      * @return TRUE if *this object points to any data, FALSE if not.
      */
-    constexpr
-    bool operator!() const
+    constexpr bool operator!() const noexcept
     {
         return nullptr == pData;
     }
@@ -239,8 +228,7 @@ class Pointer
      *
      * @return TRUE if *this points to data, FALSE if not.
      */
-    explicit constexpr
-    operator bool() const
+    explicit constexpr operator bool() const noexcept
     {
         return nullptr != pData;
     }
@@ -254,8 +242,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as *this, FALSE if not.
      */
-    constexpr
-    bool operator==(const Pointer& p) const
+    constexpr bool operator==(const Pointer& p) const noexcept
     {
         return pData == p.pData;
     }
@@ -269,8 +256,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to different
      * data than *this, FALSE if so.
      */
-    constexpr
-    bool operator!=(const Pointer& p) const
+    constexpr bool operator!=(const Pointer& p) const noexcept
     {
         return pData != p.pData;
     }
@@ -284,8 +270,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or less than, or equal to, *this, FALSE if not.
      */
-    constexpr
-    bool operator>=(const Pointer& p) const
+    constexpr bool operator>=(const Pointer& p) const noexcept
     {
         return pData >= p.pData;
     }
@@ -299,8 +284,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer of less
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator>(const Pointer& p) const
+    constexpr bool operator>(const Pointer& p) const noexcept
     {
         return pData > p.pData;
     }
@@ -314,8 +298,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or greater than *this, FALSE if not.
      */
-    constexpr
-    bool operator<=(const Pointer& p) const
+    constexpr bool operator<=(const Pointer& p) const noexcept
     {
         return pData <= p.pData;
     }
@@ -329,8 +312,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer of greater
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator<(const Pointer& p) const
+    constexpr bool operator<(const Pointer& p) const noexcept
     {
         return pData < p.pData;
     }
@@ -345,8 +327,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as *this, FALSE if not.
      */
-    constexpr
-    bool operator==(const data_t* const p) const
+    constexpr bool operator==(const data_t* const p) const noexcept
     {
         return pData == p;
     }
@@ -361,8 +342,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to different
      * data than *this, FALSE if so.
      */
-    constexpr
-    bool operator!=(const data_t* const p) const
+    constexpr bool operator!=(const data_t* const p) const noexcept
     {
         return pData != p;
     }
@@ -377,8 +357,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or less than, or equal to, *this, FALSE if not.
      */
-    constexpr
-    bool operator>=(const data_t* const p) const
+    constexpr bool operator>=(const data_t* const p) const noexcept
     {
         return pData >= p;
     }
@@ -393,8 +372,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer of less
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator>(const data_t* const p) const
+    constexpr bool operator>(const data_t* const p) const noexcept
     {
         return pData > p;
     }
@@ -409,8 +387,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or greater than *this, FALSE if not.
      */
-    constexpr
-    bool operator<=(const data_t* const p) const
+    constexpr bool operator<=(const data_t* const p) const noexcept
     {
         return pData <= p;
     }
@@ -425,8 +402,7 @@ class Pointer
      * @return TRUE if the input parameter contains a Pointer of greater
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator<(const data_t* const p) const
+    constexpr bool operator<(const data_t* const p) const noexcept
     {
         return pData < p;
     }
@@ -436,8 +412,7 @@ class Pointer
      *
      * @return A Pointer to a set of dynamically-allocated data.
      */
-    constexpr
-    const data_t* get() const
+    constexpr const data_t* get() const noexcept
     {
         return pData;
     }
@@ -447,8 +422,7 @@ class Pointer
      *
      * @return A Pointer to a set of dynamically-allocated data.
      */
-    inline
-    data_t* get()
+    inline data_t* get() noexcept
     {
         return pData;
     }
@@ -460,8 +434,7 @@ class Pointer
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
-    inline
-    void swap(Pointer& other)
+    inline void swap(Pointer& other) noexcept
     {
         data_t* temp = other.pData;
         other.pData = this->pData;
@@ -473,8 +446,7 @@ class Pointer
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    inline
-    const data_t& operator*() const
+    inline const data_t& operator*() const noexcept
     {
         return *pData;
     }
@@ -484,8 +456,7 @@ class Pointer
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    inline
-    data_t& operator*()
+    inline data_t& operator*() noexcept
     {
         return *pData;
     }
@@ -497,8 +468,7 @@ class Pointer
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
-    inline
-    const data_t* operator->() const
+    inline const data_t* operator->() const noexcept
     {
         return pData;
     }
@@ -509,8 +479,7 @@ class Pointer
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
-    inline
-    data_t* operator->()
+    inline data_t* operator->() noexcept
     {
         return pData;
     }
@@ -522,8 +491,7 @@ class Pointer
      * @return A Pointer to a constant object Pointer such as the one
      * contained within *this.
      */
-    constexpr
-    operator const data_t*() const
+    constexpr operator const data_t*() const noexcept
     {
         return pData;
     }
@@ -535,8 +503,7 @@ class Pointer
      * @return A Pointer to an object Pointer such as the one contained
      * within *this.
      */
-    inline
-    operator data_t*()
+    inline operator data_t*() noexcept
     {
         return pData;
     }
@@ -549,8 +516,7 @@ class Pointer
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
-    inline
-    void reset(data_t* pNewData = nullptr)
+    inline void reset(data_t* pNewData = nullptr)
     {
         clear();
         pData = pNewData;
@@ -566,8 +532,7 @@ class Pointer
      * @return A pointer to the currently held data store after it has been
      * relieved of all internal references.
      */
-    inline
-    data_t* release()
+    inline data_t* release() noexcept
     {
         data_t* const pRet = pData;
         pData = nullptr;
@@ -598,8 +563,7 @@ class Pointer<data_t[], Deleter>
     /**
      * Clear *this of any data/resources.
      */
-    inline
-    void clear()
+    inline void clear()
     {
         Deleter d;
         d(pData);
@@ -612,8 +576,7 @@ class Pointer<data_t[], Deleter>
      *
      * Clear *this of any data/resources.
      */
-    inline
-    ~Pointer()
+    inline ~Pointer()
     {
         clear();
     }
@@ -624,11 +587,9 @@ class Pointer<data_t[], Deleter>
      * Creates an empty Pointer type. Which should not be dereferenced
      * under any circumstances.
      */
-    constexpr
-    Pointer() :
+    constexpr Pointer() noexcept :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * @brief Pointer Constructor
@@ -636,22 +597,18 @@ class Pointer<data_t[], Deleter>
      * @param p
      * A Pointer to dynamically-allocated data.
      */
-    explicit
-    Pointer(data_t* const p) :
+    explicit Pointer(data_t* const p) noexcept :
         pData{p}
-    {
-    }
+    {}
 
     /**
      * @brief NULL Constructor
      *
      * Constructs *this with no data assigned.
      */
-    constexpr
-    Pointer(std::nullptr_t) :
+    constexpr Pointer(std::nullptr_t) noexcept :
         pData{nullptr}
-    {
-    }
+    {}
 
     /**
      * Copy Constructor -- DELETED
@@ -666,8 +623,7 @@ class Pointer<data_t[], Deleter>
      * @param p
      * A Pointer type containing dynamically-allocated data.
      */
-    inline
-    Pointer(Pointer&& p) :
+    inline Pointer(Pointer&& p) noexcept :
         pData{p.pData}
     {
         p.pData = nullptr;
@@ -689,8 +645,7 @@ class Pointer<data_t[], Deleter>
      * @return
      * A reference to *this.
      */
-    inline
-    Pointer& operator=(Pointer&& p)
+    inline Pointer& operator=(Pointer&& p) noexcept
     {
         clear();
         pData = p.pData;
@@ -703,8 +658,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return TRUE if *this object points to any data, FALSE if not.
      */
-    constexpr
-    bool operator!() const
+    constexpr bool operator!() const noexcept
     {
         return nullptr == pData;
     }
@@ -714,8 +668,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return TRUE if *this points to data, FALSE if not.
      */
-    explicit constexpr
-    operator bool() const
+    explicit constexpr operator bool() const noexcept
     {
         return nullptr != pData;
     }
@@ -729,8 +682,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as *this, FALSE if not.
      */
-    constexpr
-    bool operator==(const Pointer& p) const
+    constexpr bool operator==(const Pointer& p) const noexcept
     {
         return pData == p.pData;
     }
@@ -744,8 +696,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to different
      * data than *this, FALSE if so.
      */
-    constexpr
-    bool operator!=(const Pointer& p) const
+    constexpr bool operator!=(const Pointer& p) const noexcept
     {
         return pData != p.pData;
     }
@@ -759,8 +710,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or less than, or equal to, *this, FALSE if not.
      */
-    constexpr
-    bool operator>=(const Pointer& p) const
+    constexpr bool operator>=(const Pointer& p) const noexcept
     {
         return pData >= p.pData;
     }
@@ -774,8 +724,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer of less
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator>(const Pointer& p) const
+    constexpr bool operator>(const Pointer& p) const noexcept
     {
         return pData > p.pData;
     }
@@ -789,8 +738,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or greater than *this, FALSE if not.
      */
-    constexpr
-    bool operator<=(const Pointer& p) const
+    constexpr bool operator<=(const Pointer& p) const noexcept
     {
         return pData <= p.pData;
     }
@@ -804,8 +752,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer of greater
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator<(const Pointer& p) const
+    constexpr bool operator<(const Pointer& p) const noexcept
     {
         return pData < p.pData;
     }
@@ -820,8 +767,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as *this, FALSE if not.
      */
-    constexpr
-    bool operator==(const data_t* const p) const
+    constexpr bool operator==(const data_t* const p) const noexcept
     {
         return pData == p;
     }
@@ -836,8 +782,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to different
      * data than *this, FALSE if so.
      */
-    constexpr
-    bool operator!=(const data_t* const p) const
+    constexpr bool operator!=(const data_t* const p) const noexcept
     {
         return pData != p;
     }
@@ -852,8 +797,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or less than, or equal to, *this, FALSE if not.
      */
-    constexpr
-    bool operator>=(const data_t* const p) const
+    constexpr bool operator>=(const data_t* const p) const noexcept
     {
         return pData >= p;
     }
@@ -868,8 +812,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer of less
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator>(const data_t* const p) const
+    constexpr bool operator>(const data_t* const p) const noexcept
     {
         return pData > p;
     }
@@ -884,8 +827,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer to the same
      * data as or greater than *this, FALSE if not.
      */
-    constexpr
-    bool operator<=(const data_t* const p) const
+    constexpr bool operator<=(const data_t* const p) const noexcept
     {
         return pData <= p;
     }
@@ -900,8 +842,7 @@ class Pointer<data_t[], Deleter>
      * @return TRUE if the input parameter contains a Pointer of greater
      * value than *this, FALSE if not.
      */
-    constexpr
-    bool operator<(const data_t* const p) const
+    constexpr bool operator<(const data_t* const p) const noexcept
     {
         return pData < p;
     }
@@ -917,8 +858,7 @@ class Pointer<data_t[], Deleter>
      * heap-allocated array managed by *this.
      */
     template <typename index_t>
-    constexpr
-    data_t& operator[](const index_t i) const
+    constexpr data_t& operator[](const index_t i) const noexcept
     {
         return pData[i];
     }
@@ -934,8 +874,7 @@ class Pointer<data_t[], Deleter>
      * managed by *this.
      */
     template <typename index_t>
-    inline
-    data_t& operator[](const index_t i)
+    inline data_t& operator[](const index_t i) noexcept
     {
         return pData[i];
     }
@@ -945,8 +884,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return A Pointer to a set of dynamically-allocated data.
      */
-    constexpr
-    const data_t* get() const
+    constexpr const data_t* get() const noexcept
     {
         return pData;
     }
@@ -956,8 +894,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return A Pointer to a set of dynamically-allocated data.
      */
-    inline
-    data_t* get()
+    inline data_t* get() noexcept
     {
         return pData;
     }
@@ -969,8 +906,7 @@ class Pointer<data_t[], Deleter>
      * @param other
      * A Pointer object who's data should be swapped with *this.
      */
-    inline
-    void swap(Pointer& other)
+    inline void swap(Pointer& other) noexcept
     {
         data_t* temp = other.pData;
         other.pData = this->pData;
@@ -982,8 +918,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    inline
-    const data_t& operator*() const
+    inline const data_t& operator*() const noexcept
     {
         return *pData;
     }
@@ -993,8 +928,7 @@ class Pointer<data_t[], Deleter>
      *
      * @return A reference to the dynamically-allocated data within *this.
      */
-    inline
-    data_t& operator*()
+    inline data_t& operator*() noexcept
     {
         return *pData;
     }
@@ -1006,8 +940,7 @@ class Pointer<data_t[], Deleter>
      * @return A constant Pointer to a member of the dynamically-allocated
      * data within *this.
      */
-    inline
-    const data_t* operator->() const
+    inline const data_t* operator->() const noexcept
     {
         return pData;
     }
@@ -1018,8 +951,7 @@ class Pointer<data_t[], Deleter>
      * @return A Pointer to a member of the dynamically-allocated data
      * within *this.
      */
-    inline
-    data_t* operator->()
+    inline data_t* operator->() noexcept
     {
         return pData;
     }
@@ -1031,8 +963,7 @@ class Pointer<data_t[], Deleter>
      * @return A Pointer to a constant object Pointer such as the one
      * contained within *this.
      */
-    constexpr
-    operator const data_t*() const
+    constexpr operator const data_t*() const noexcept
     {
         return pData;
     }
@@ -1044,8 +975,7 @@ class Pointer<data_t[], Deleter>
      * @return A Pointer to an object Pointer such as the one contained
      * within *this.
      */
-    inline
-    operator data_t*()
+    inline operator data_t*() noexcept
     {
         return pData;
     }
@@ -1058,8 +988,7 @@ class Pointer<data_t[], Deleter>
      * A Pointer to a set of dynamically-allocated memory of the same type
      * as *this.
      */
-    inline
-    void reset(data_t* pNewData = nullptr)
+    inline void reset(data_t* pNewData = nullptr)
     {
         clear();
         pData = pNewData;
@@ -1075,8 +1004,7 @@ class Pointer<data_t[], Deleter>
      * @return A pointer to the currently held data store after it has been
      * relieved of all internal references.
      */
-    inline
-    data_t* release()
+    inline data_t* release() noexcept
     {
         data_t* const pRet = pData;
         pData = nullptr;
