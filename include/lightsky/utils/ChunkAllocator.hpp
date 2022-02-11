@@ -40,6 +40,14 @@ class ChunkAllocator
     static_assert(block_size < total_size,         "Block size must be less than the total byte size.");
 
   private:
+    union AllocationEntry
+    {
+        AllocationEntry* pNext;
+        char padding[block_size];
+    };
+
+    static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
+
     /**
      * @brief Pointer to memory given by the OS.
      */
@@ -51,7 +59,7 @@ class ChunkAllocator
      * first available chunk of memory contained within "mAllocTable." Through
      * this, all other chunks in the allocation table can be accessed.
      */
-    uintptr_t mHead;
+    AllocationEntry* mHead;
 
   public:
     /**

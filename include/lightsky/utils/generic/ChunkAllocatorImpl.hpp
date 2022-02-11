@@ -26,15 +26,15 @@ ChunkAllocator<block_size, total_size>::~ChunkAllocator() noexcept
 template <uintptr_t block_size, uintptr_t total_size>
 ChunkAllocator<block_size, total_size>::ChunkAllocator() noexcept :
     mAllocTable{new char[total_size]},
-    mHead{reinterpret_cast<uintptr_t>(mAllocTable)}
+    mHead{reinterpret_cast<AllocationEntry*>(mAllocTable)}
 {
     // setup all links in the allocation list
-    for (uintptr_t i = 0; i < total_size; i += block_size)
+    for (uintptr_t i = 0; i < (total_size/block_size); ++i)
     {
-        *reinterpret_cast<uintptr_t*>(mAllocTable+i) = reinterpret_cast<uintptr_t>(mAllocTable+i+block_size);
+        mHead[i].pNext = mHead+i+1;
     }
 
-    *reinterpret_cast<uintptr_t*>((mAllocTable+total_size)-block_size) = UINTPTR_MAX;
+    mHead[(total_size/block_size) - 1].pNext = nullptr;
 }
 
 
@@ -48,7 +48,7 @@ ChunkAllocator<block_size, total_size>::ChunkAllocator(ChunkAllocator&& a) noexc
     mHead{a.mHead}
 {
     a.mAllocTable = nullptr;
-    a.mHead = 0;
+    a.mHead = nullptr;
 }
 
 
@@ -59,13 +59,13 @@ ChunkAllocator<block_size, total_size>::ChunkAllocator(ChunkAllocator&& a) noexc
 template <uintptr_t block_size, uintptr_t total_size>
 inline void* ChunkAllocator<block_size, total_size>::allocate() noexcept
 {
-    if (mHead == UINTPTR_MAX)
+    if (!mHead)
     {
         return nullptr;
     }
 
-    uintptr_t head = mHead;
-    mHead = *reinterpret_cast<uintptr_t*>(mHead);
+    AllocationEntry* head = mHead;
+    mHead = mHead->pNext;
 
     return reinterpret_cast<void*>(head);
 }
@@ -100,10 +100,10 @@ inline void ChunkAllocator<block_size, total_size>::free(void* p) noexcept
     }
 
     // Setup the header in p
-    uintptr_t prev = reinterpret_cast<uintptr_t>(p);
+    AllocationEntry* prev = reinterpret_cast<AllocationEntry*>(p);
 
     // ensure the header from p points to the current "next" pointer
-    *reinterpret_cast<uintptr_t*>(prev) = mHead;
+    prev->pNext = mHead;
     mHead = prev;
 }
 
@@ -123,10 +123,10 @@ inline void ChunkAllocator<block_size, total_size>::free(void* p, size_t n) noex
     }
 
     // Setup the header in p
-    uintptr_t prev = reinterpret_cast<uintptr_t>(p);
+    AllocationEntry* prev = reinterpret_cast<AllocationEntry*>(p);
 
     // ensure the header from p points to the current "next" pointer
-    *reinterpret_cast<uintptr_t*>(prev) = reinterpret_cast<uintptr_t>(mHead);
+    prev->pNext = mHead;
     mHead = prev;
 }
 
