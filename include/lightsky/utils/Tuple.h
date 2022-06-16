@@ -156,6 +156,7 @@ struct TupleIndexer
 template<typename... data_t>
 class Tuple
 {
+  private:
     /**
      *  @brief Construct an object at a preallocated space within a buffer
      *
@@ -165,8 +166,7 @@ class Tuple
      *  anything.
      */
     template<typename arg_t>
-    static constexpr
-    bool construct_objs(char* buffer, unsigned offset, arg_t*);
+    static void construct_objs(char* buffer, unsigned offset, const arg_t*);
 
     /**
      *  @brief Construct an object at a preallocated space within a buffer
@@ -177,22 +177,41 @@ class Tuple
      *  anything.
      */
     template<typename arg_t, typename... args_t>
-    static constexpr
-    bool construct_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args);
+    static void construct_objs(char* buffer, unsigned offset, const arg_t*, const args_t*... args);
+
+    /**
+     *  @brief Copy construct an object at a preallocated space within a buffer
+     *
+     *  @note
+     *  The buffer must be preallocated. The pointer passed into the function
+     *  is a sentinel value (for the sake of recursion) and is not used for
+     *  anything.
+     */
+    template<typename arg_t>
+    static void construct_objs(char* buffer, unsigned offset, arg_t&& arg);
+
+    /**
+     *  @brief Copy construct an object at a preallocated space within a buffer
+     *
+     *  @note
+     *  The buffer must be preallocated. The pointers passed into the function
+     *  are sentinel values (for the sake of recursion) and are not used for
+     *  anything.
+     */
+    template<typename arg_t, typename... args_t>
+    static void construct_objs(char* buffer, unsigned offset, arg_t&& arg, args_t&&... args);
 
     /**
      *  @brief Destroy an object at a preallocated space within a buffer.
      */
     template<typename arg_t>
-    static constexpr
-    bool destroy_objs(char* buffer, unsigned offset, arg_t*);
+    static void destroy_objs(char* buffer, unsigned offset, arg_t*);
 
     /**
      *  @brief Destroy an object at a preallocated space within a buffer.
      */
     template<typename arg_t, typename... args_t>
-    static inline
-    bool destroy_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args);
+    static void destroy_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args);
 
     /*-------------------------------------------------------------------------
      * Movements and copies
@@ -206,8 +225,7 @@ class Tuple
      *  anything.
      */
     template<unsigned index, typename arg_t>
-    static inline
-    void copy_objs(const Tuple<data_t...>&, char* buffer, unsigned offset, arg_t*);
+    static void copy_objs(const Tuple<data_t...>&, char* buffer, unsigned offset, arg_t*);
 
     /**
      *  @brief Construct an object at a preallocated space within a buffer
@@ -218,22 +236,19 @@ class Tuple
      *  anything.
      */
     template<unsigned index, typename arg_t, typename... args_t>
-    static inline
-    void copy_objs(const Tuple<data_t...>&, char* buffer, unsigned offset, arg_t*, args_t* ... args);
+    static void copy_objs(const Tuple<data_t...>&, char* buffer, unsigned offset, arg_t*, args_t* ... args);
 
     /**
      *  @brief Move an object at a preallocated space within a buffer.
      */
     template<unsigned index, typename arg_t>
-    static inline
-    void move_objs(Tuple<data_t...>&&, char* buffer, unsigned offset, arg_t*);
+    static void move_objs(Tuple<data_t...>&&, char* buffer, unsigned offset, arg_t*);
 
     /**
      *  @brief Move an object at a preallocated space within a buffer.
      */
     template<unsigned index, typename arg_t, typename... args_t>
-    static inline
-    void move_objs(Tuple<data_t...>&&, char* buffer, unsigned offset, arg_t*, args_t* ... args);
+    static void move_objs(Tuple<data_t...>&&, char* buffer, unsigned offset, arg_t*, args_t* ... args);
 
   private:
     /**
@@ -247,18 +262,18 @@ class Tuple
 
   public:
     /**
-     *  @brief Private Constructor
-     *
-     *  Assists in constructing an tuple at compile-time
-     */
-    constexpr Tuple(bool) noexcept;
-
-    /**
      *  @brief Constructor
      *
      *  Initialize all parameterized data types within a byte array.
      */
-    constexpr Tuple() noexcept;
+    Tuple() noexcept;
+
+    /**
+     *  @brief Copy Constructor
+     *
+     *  Uses each object's copy operator to copy data into *this.
+     */
+    Tuple(data_t&&...) noexcept;
 
     /**
      *  @brief Copy Constructor
@@ -306,7 +321,7 @@ class Tuple
      *  @return A constant reference to the first object of a specific type.
      */
     template<typename request_t>
-    constexpr const request_t& first_of() const noexcept;
+    const request_t& first_of() const noexcept;
 
     /*---------------------------------------------------------------------
      * Non-Constant versions of methods
@@ -318,7 +333,7 @@ class Tuple
      *  @return A reference to the first object of a specific type.
      */
     template<typename request_t>
-    inline request_t& first_of() noexcept;
+    request_t& first_of() noexcept;
 
     /**
      *  @brief Get an object contained within *this. This object is
@@ -327,7 +342,7 @@ class Tuple
      *  @return A constant reference to an object contained within *this.
      */
     template<unsigned index>
-    constexpr const typename TupleElement<index, data_t...>::type& const_element() const noexcept;
+    const typename TupleElement<index, data_t...>::type& const_element() const noexcept;
 
     /**
      *  @brief Get an object contained within *this. This object is
@@ -336,7 +351,7 @@ class Tuple
      *  @return A constant reference to an object contained within *this.
      */
     template<unsigned index>
-    inline typename TupleElement<index, data_t...>::type& element() noexcept;
+    typename TupleElement<index, data_t...>::type& element() noexcept;
 
     /**
      *  @brief Get a constant object contained within *this. This object is
@@ -349,7 +364,7 @@ class Tuple
      *  A constant pointer to a tuple object if it exists. Returns
      *  otherwise.
      */
-    constexpr const void* get(unsigned index) const noexcept;
+    const void* get(unsigned index) const noexcept;
 
     /**
      *  @brief Get an object contained within *this. This object is
@@ -361,7 +376,7 @@ class Tuple
      *  @return
      *  A pointer to a tuple object if it exists. Returns NULL otherwise.
      */
-    inline void* get(unsigned index) noexcept;
+    void* get(unsigned index) noexcept;
 
     /**
      *  @brief Retrieve the number of objects contained within a tuple.
@@ -370,7 +385,7 @@ class Tuple
      *  An unsigned integral type representing the number of objects that
      *  are stored in *this.
      */
-    constexpr unsigned size() const noexcept;
+    unsigned size() const noexcept;
 };
 
 
@@ -379,55 +394,76 @@ class Tuple
  * Static Tuple Methods
  * --------------------------------------------------------------------------*/
 /*-------------------------------------
- * tuple_t<data_t...>::constructObjects (Sentinel)
+ * tuple_t<data_t...>::construct (Sentinel)
  * ----------------------------------*/
 template<typename... data_t>
 template<typename arg_t>
-constexpr
-bool Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t*)
+inline void Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, const arg_t*)
 {
-    return new(buffer + offset) arg_t{} != nullptr;
+    new(buffer + offset) arg_t{};
 }
 
 
 
 /*-------------------------------------
- * tuple_t<data_t...>::constructObjects
+ * tuple_t<data_t...>::construct
  * ----------------------------------*/
 template<typename... data_t>
 template<typename arg_t, typename... args_t>
-constexpr
-bool Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args)
+inline void Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, const arg_t*, const args_t*... args)
 {
-    return new(buffer + offset) arg_t{} != nullptr
-           ? construct_objs<args_t...>(buffer, offset + sizeof(arg_t), args...)
-           : false;
+    new(buffer + offset) arg_t{};
+    construct_objs<args_t...>(buffer, offset + sizeof(arg_t), args...);
 }
 
 
 
 /*-------------------------------------
- * tuple_t<data_t...>::destroyObjects
+ * tuple_t<data_t...>::construct (Sentinel)
  * ----------------------------------*/
 template<typename... data_t>
 template<typename arg_t>
-constexpr
-bool Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*)
+inline void Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t&& arg)
 {
-    return std::is_destructible<arg_t>()
-           ? reinterpret_cast<arg_t*> (buffer + offset)->~arg_t(), true
-           : throw;
+    new(buffer + offset) arg_t{std::forward<arg_t>(arg)};
 }
 
 
 
 /*-------------------------------------
- * tuple_t<data_t...>::destroyObjects
+ * tuple_t<data_t...>::construct
  * ----------------------------------*/
 template<typename... data_t>
 template<typename arg_t, typename... args_t>
-inline
-bool Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args)
+inline void Tuple<data_t...>::construct_objs(char* buffer, unsigned offset, arg_t&& arg, args_t&&... args)
+{
+    new(buffer + offset) arg_t{std::forward<arg_t>(arg)};
+    construct_objs<args_t...>(buffer, offset + sizeof(arg_t), std::forward<args_t>(args)...);
+}
+
+
+
+/*-------------------------------------
+ * tuple_t<data_t...>::destroy
+ * ----------------------------------*/
+template<typename... data_t>
+template<typename arg_t>
+inline void Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*)
+{
+    if (std::is_destructible<arg_t>())
+    {
+        reinterpret_cast<arg_t*> (buffer + offset)->~arg_t();
+    }
+}
+
+
+
+/*-------------------------------------
+ * tuple_t<data_t...>::destroy
+ * ----------------------------------*/
+template<typename... data_t>
+template<typename arg_t, typename... args_t>
+inline void Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*, args_t* ... args)
 {
     if (std::is_destructible<arg_t>())
     {
@@ -435,8 +471,6 @@ bool Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*, args_
     }
 
     destroy_objs<args_t...>(buffer, offset + sizeof(arg_t), args...);
-
-    return true;
 }
 
 
@@ -449,8 +483,7 @@ bool Tuple<data_t...>::destroy_objs(char* buffer, unsigned offset, arg_t*, args_
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index, typename arg_t>
-inline
-void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer, unsigned offset, arg_t*)
+inline void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer, unsigned offset, arg_t*)
 {
     static_assert(std::is_copy_assignable<arg_t>(), "Aggregated objects must have a copy operator available.");
 
@@ -465,8 +498,7 @@ void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index, typename arg_t, typename... args_t>
-inline
-void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer, unsigned offset, arg_t*, args_t* ... args)
+inline void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer, unsigned offset, arg_t*, args_t* ... args)
 {
     static_assert(std::is_copy_assignable<arg_t>(), "Aggregated objects must have a copy operator available.");
 
@@ -483,8 +515,7 @@ void Tuple<data_t...>::copy_objs(const Tuple<data_t...>& aggregate, char* buffer
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index, typename arg_t>
-inline
-void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, unsigned offset, arg_t*)
+inline void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, unsigned offset, arg_t*)
 {
     static_assert(std::is_copy_assignable<arg_t>(), "Aggregated objects must have a move operator available.");
 
@@ -500,8 +531,7 @@ void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, uns
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index, typename arg_t, typename... args_t>
-inline
-void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, unsigned offset, arg_t*, args_t* ... args)
+inline void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, unsigned offset, arg_t*, args_t* ... args)
 {
     static_assert(std::is_copy_assignable<arg_t>(), "Aggregated objects must have a move operator available.");
 
@@ -517,21 +547,13 @@ void Tuple<data_t...>::move_objs(Tuple<data_t...>&& aggregate, char* buffer, uns
  * Non-Static Tuple Methods
  * --------------------------------------------------------------------------*/
 /*-------------------------------------
- * Private Constructor
- * ----------------------------------*/
-template<typename... data_t>
-constexpr Tuple<data_t...>::Tuple(bool) noexcept
-{}
-
-
-
-/*-------------------------------------
  * Constructor
  * ----------------------------------*/
 template<typename... data_t>
-constexpr Tuple<data_t...>::Tuple() noexcept :
-    Tuple(construct_objs(mBuffer, 0, ((data_t*)nullptr)...))
-{}
+inline Tuple<data_t...>::Tuple() noexcept
+{
+    construct_objs<data_t...>(mBuffer, 0, ((data_t*)nullptr)...);
+}
 
 
 
@@ -539,7 +561,18 @@ constexpr Tuple<data_t...>::Tuple() noexcept :
  * Copy Constructor
  * ----------------------------------*/
 template<typename... data_t>
-Tuple<data_t...>::Tuple(const Tuple& a) noexcept :
+inline Tuple<data_t...>::Tuple(data_t&&... data) noexcept
+{
+    construct_objs<data_t...>(mBuffer, 0, std::forward<data_t>(data)...);
+}
+
+
+
+/*-------------------------------------
+ * Copy Constructor
+ * ----------------------------------*/
+template<typename... data_t>
+inline Tuple<data_t...>::Tuple(const Tuple& a) noexcept :
     Tuple{}
 {
     copy_objs<0, data_t...>(a, mBuffer, 0, ((data_t*)nullptr)...);
@@ -551,7 +584,7 @@ Tuple<data_t...>::Tuple(const Tuple& a) noexcept :
  * Move Constructor
  * ----------------------------------*/
 template<typename... data_t>
-Tuple<data_t...>::Tuple(Tuple&& a) noexcept :
+inline Tuple<data_t...>::Tuple(Tuple&& a) noexcept :
     Tuple{}
 {
     move_objs<0, data_t...>(std::forward<Tuple < data_t...>>(a), mBuffer, 0, ((data_t*)nullptr)...);
@@ -563,7 +596,7 @@ Tuple<data_t...>::Tuple(Tuple&& a) noexcept :
  * Destructor
  * ----------------------------------*/
 template<typename... data_t>
-Tuple<data_t...>::~Tuple() noexcept
+inline Tuple<data_t...>::~Tuple() noexcept
 {
     destroy_objs(mBuffer, 0, ((data_t*)nullptr)...);
 }
@@ -574,7 +607,7 @@ Tuple<data_t...>::~Tuple() noexcept
  * Copy Operator
  * ----------------------------------*/
 template<typename... data_t>
-Tuple<data_t...>& Tuple<data_t...>::operator=(const Tuple& a) noexcept
+inline Tuple<data_t...>& Tuple<data_t...>::operator=(const Tuple& a) noexcept
 {
     copy_objs<0, data_t...>(a, mBuffer, 0, ((data_t*)nullptr)...);
     return *this;
@@ -586,7 +619,7 @@ Tuple<data_t...>& Tuple<data_t...>::operator=(const Tuple& a) noexcept
  * Move Operator
  * ----------------------------------*/
 template<typename... data_t>
-Tuple<data_t...>& Tuple<data_t...>::operator=(Tuple&& a) noexcept
+inline Tuple<data_t...>& Tuple<data_t...>::operator=(Tuple&& a) noexcept
 {
     move_objs<0, data_t...>(std::forward<Tuple < data_t...>>(a), mBuffer, 0, ((data_t*)nullptr)...);
     return *this;
@@ -603,8 +636,7 @@ Tuple<data_t...>& Tuple<data_t...>::operator=(Tuple&& a) noexcept
  * ----------------------------------*/
 template<typename... data_t>
 template<typename request_t>
-constexpr
-const request_t& Tuple<data_t...>::first_of() const noexcept
+inline LS_INLINE const request_t& Tuple<data_t...>::first_of() const noexcept
 {
     return *reinterpret_cast<const typename TupleMatcher<request_t, data_t...>::type*>((unsigned long long)mBuffer + TupleMatcher<request_t, data_t...>::offset());
 }
@@ -617,8 +649,7 @@ const request_t& Tuple<data_t...>::first_of() const noexcept
  * ----------------------------------*/
 template<typename... data_t>
 template<typename request_t>
-inline
-request_t& Tuple<data_t...>::first_of() noexcept
+inline request_t& Tuple<data_t...>::first_of() noexcept
 {
     return *reinterpret_cast<typename TupleMatcher<request_t, data_t...>::type*>((unsigned long long)mBuffer + TupleMatcher<request_t, data_t...>::offset());
 }
@@ -630,8 +661,7 @@ request_t& Tuple<data_t...>::first_of() noexcept
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index>
-constexpr
-const typename TupleElement<index, data_t...>::type& Tuple<data_t...>::const_element() const noexcept
+inline LS_INLINE const typename TupleElement<index, data_t...>::type& Tuple<data_t...>::const_element() const noexcept
 {
     return *reinterpret_cast<const typename TupleElement<index, data_t...>::type*>((unsigned long long)mBuffer + TupleElement<index, data_t...>::offset());
 }
@@ -643,8 +673,7 @@ const typename TupleElement<index, data_t...>::type& Tuple<data_t...>::const_ele
  * ----------------------------------*/
 template<typename... data_t>
 template<unsigned index>
-inline
-typename TupleElement<index, data_t...>::type& Tuple<data_t...>::element() noexcept
+inline typename TupleElement<index, data_t...>::type& Tuple<data_t...>::element() noexcept
 {
     return *reinterpret_cast<typename TupleElement<index, data_t...>::type*>((unsigned long long)mBuffer + TupleElement<index, data_t...>::offset());
 }
@@ -659,8 +688,7 @@ typename TupleElement<index, data_t...>::type& Tuple<data_t...>::element() noexc
  * an array-like index.
  * ----------------------------------*/
 template<typename... data_t>
-constexpr const
-void* Tuple<data_t...>::get(unsigned index) const noexcept
+inline LS_INLINE const void* Tuple<data_t...>::get(unsigned index) const noexcept
 {
     return reinterpret_cast<const void*>(mBuffer + TupleIndexer<data_t...>::offset(index));
 }
@@ -672,8 +700,7 @@ void* Tuple<data_t...>::get(unsigned index) const noexcept
  * an array-like index.
  * ----------------------------------*/
 template<typename... data_t>
-inline
-void* Tuple<data_t...>::get(unsigned index) noexcept
+inline void* Tuple<data_t...>::get(unsigned index) noexcept
 {
     return reinterpret_cast<void*>(mBuffer + TupleIndexer<data_t...>::offset(index));
 }
@@ -687,8 +714,7 @@ void* Tuple<data_t...>::get(unsigned index) noexcept
  * Retrieve the number of objects contained within an tuple_t.
  * ----------------------------------*/
 template<typename... data_t>
-constexpr
-unsigned Tuple<data_t...>::size() const noexcept
+inline LS_INLINE unsigned Tuple<data_t...>::size() const noexcept
 {
     return sizeof...(data_t);
 }

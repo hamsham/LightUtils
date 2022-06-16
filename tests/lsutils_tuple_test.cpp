@@ -80,7 +80,7 @@ void print_soa(const ls::utils::Tuple<ArgsType...>& tuple) noexcept
 
 void test_soa()
 {
-    Tuple<std::vector<int>, std::vector<float>, std::vector<std::string>> soa;
+    Tuple<std::vector<int>, std::vector<float>, std::vector<std::string>> soa{};
     soa.element<0>().push_back(1);
     soa.element<0>().push_back(2);
     soa.element<0>().push_back(3);
