@@ -172,7 +172,7 @@ class GeneralAllocator
 
 
 
-extern template class ls::utils::GeneralAllocator<sizeof(int)>;
+extern template class ls::utils::GeneralAllocator<sizeof(unsigned long long)*4>;
 
 
 

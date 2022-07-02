@@ -1,5 +1,4 @@
 
-#include <cstdio>
 #include <iostream>
 
 #include "lightsky/utils/GeneralAllocator.hpp"
@@ -93,7 +92,7 @@ int test_single_allocations()
 int test_array_allocations()
 {
     constexpr unsigned alloc_table_size = 1024*1024;
-    constexpr unsigned block_size = 16;
+    constexpr unsigned block_size = 512;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
