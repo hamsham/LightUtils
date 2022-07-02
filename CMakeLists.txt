@@ -29,6 +29,7 @@ set(LS_UTILS_SOURCES
     src/DataResource.cpp
     src/DynamicLib.cpp
     src/Futex.cpp
+    src/GeneralAllocator.cpp
     src/RandomNum.cpp
     src/NetClient.cpp
     src/NetConnection.cpp

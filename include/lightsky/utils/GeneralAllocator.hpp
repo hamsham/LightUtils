@@ -2,9 +2,6 @@
 #ifndef LS_UTILS_GENERAL_ALLOCATOR_HPP
 #define LS_UTILS_GENERAL_ALLOCATOR_HPP
 
-#include <cstdint> // uintptr_t, UINTPTR_MAX
-#include <cmath>
-
 namespace ls
 {
 namespace utils
@@ -27,18 +24,26 @@ namespace utils
  *
  * @tparam block_size
  * The number of bytes to be allocated per chunk.
- *
- * @tparam total_size
- * The total amount of bytes contained required by this allocator.
 -----------------------------------------------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size>
 class GeneralAllocator
 {
+  public:
+    typedef unsigned long long size_type;
+
+  private:
+
+    typedef unsigned long long header_type;
+
+    enum : size_type
+    {
+        header_size = sizeof(header_type),
+        null_value = ~(size_type)0
+    };
+
     // insurance
-    static_assert(block_size >= sizeof(uintptr_t), "Allocation sizes must be less than sizeof(uintptr_t).");
-    static_assert(total_size >= sizeof(uintptr_t), "Allocated memory table cannot be less than sizeof(uintptr_t).");
-    static_assert(total_size % block_size == 0,    "Cannot fit the current block size within an allocation table.");
-    static_assert(block_size < total_size,         "Block size must be less than the total byte size.");
+    static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
+    static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
 
   private:
     /**
@@ -52,7 +57,7 @@ class GeneralAllocator
      * first available chunk of memory contained within "mAllocTable." Through
      * this, all other chunks in the allocation table can be accessed.
      */
-    uintptr_t mHead;
+    size_type mHead;
 
   public:
     /**
@@ -63,12 +68,19 @@ class GeneralAllocator
     ~GeneralAllocator() noexcept;
 
     /**
+     * @brief Default Constructor
+     *
+     * Deleted so we force a total allocation size at construction time.
+     */
+    GeneralAllocator() noexcept = delete;
+
+    /**
      * @brief Constructor
      *
      * Retrieves "total_size" bytes from the OS and sets up a linked list of
      * pointers within the allocated memory.
      */
-    GeneralAllocator() noexcept;
+    GeneralAllocator(size_type totalSize) noexcept;
 
     /**
      * @brief Copy Constructor
@@ -122,7 +134,7 @@ class GeneralAllocator
      * block. NULL is returned if not enough more blocks exist within the
      * allocator to fufill the request for memory.
      */
-    void* allocate(size_t n) noexcept;
+    void* allocate(size_type n) noexcept;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
@@ -146,9 +158,9 @@ class GeneralAllocator
      *
      * @param n
      * The number of bytes which were freed. This parameter must match exactly
-     * the "n" parameter to allocate(size_t n).
+     * the "n" parameter to allocate(size_type n).
      */
-    void free(void* p, size_t n) noexcept;
+    void free(void* p, size_type n) noexcept;
 };
 
 
@@ -158,6 +170,9 @@ class GeneralAllocator
 
 #include "lightsky/utils/generic/GeneralAllocatorImpl.hpp"
 
+
+
+extern template class ls::utils::GeneralAllocator<sizeof(int)>;
 
 
 

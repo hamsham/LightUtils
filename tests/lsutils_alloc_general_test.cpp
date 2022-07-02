@@ -1,5 +1,4 @@
 
-#include <cassert>
 #include <cstdio>
 #include <iostream>
 
@@ -14,7 +13,7 @@ int test_single_allocations()
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
-    ls::utils::GeneralAllocator<block_size, alloc_table_size> testAllocator;
+    ls::utils::GeneralAllocator<block_size> testAllocator{alloc_table_size};
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
     void* last = nullptr;
@@ -36,7 +35,7 @@ int test_single_allocations()
                 return -1;
             }
 
-            assert(p == nullptr || last < p);
+            LS_ASSERT(p == nullptr || last < p);
             last = p;
 
             std::cout << "Allocated chunk " << i << ": " << p << std::endl;
@@ -94,11 +93,11 @@ int test_single_allocations()
 int test_array_allocations()
 {
     constexpr unsigned alloc_table_size = 1024*1024;
-    constexpr unsigned block_size = 512;
+    constexpr unsigned block_size = 16;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
-    ls::utils::GeneralAllocator<block_size, alloc_table_size> testAllocator;
+    ls::utils::GeneralAllocator<block_size> testAllocator{alloc_table_size};
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
 
