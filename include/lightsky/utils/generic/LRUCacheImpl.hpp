@@ -208,7 +208,7 @@ inline T& LRUCache<T, cacheSize>::emplace(size_t key, Args&&... args) noexcept
 template <typename T, size_t cacheSize>
 inline const T& LRUCache<T, cacheSize>::operator[](size_t index) const noexcept
 {
-    return mData[index];
+    return mData[_search_index(index)];
 }
 
 
@@ -219,7 +219,7 @@ inline const T& LRUCache<T, cacheSize>::operator[](size_t index) const noexcept
 template <typename T, size_t cacheSize>
 inline T& LRUCache<T, cacheSize>::operator[](size_t index) noexcept
 {
-    return mData[index];
+    return mData[_search_index(index)];
 }
 
 

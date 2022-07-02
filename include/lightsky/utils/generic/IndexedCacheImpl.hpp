@@ -147,7 +147,7 @@ inline T& IndexedCache<T, cacheSize>::emplace(size_t key,  Args&&... args) noexc
 template <typename T, size_t cacheSize>
 inline const T& IndexedCache<T, cacheSize>::operator[](size_t index) const noexcept
 {
-    return mData[index];
+    return mData[IndexedCache<T, cacheSize>::hash_id(index)];
 }
 
 
@@ -158,7 +158,7 @@ inline const T& IndexedCache<T, cacheSize>::operator[](size_t index) const noexc
 template <typename T, size_t cacheSize>
 inline T& IndexedCache<T, cacheSize>::operator[](size_t index) noexcept
 {
-    return mData[index];
+    return mData[IndexedCache<T, cacheSize>::hash_id(index)];
 }
 
 

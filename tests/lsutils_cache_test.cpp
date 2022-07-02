@@ -50,8 +50,8 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 15)
         const std::string* cachedVal = cache.query(val);
         hits += nullptr != cachedVal;
 
-        cache.update(val, [&](size_t key, std::string& result)->void {
-            result = ls::utils::to_str(key);
+        cache.update(val, [&](size_t key, std::string& result) noexcept->void {
+            result = std::move(ls::utils::to_str(key));
         });
 
         if (VERBOSE_LOGGING)

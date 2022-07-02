@@ -30,18 +30,17 @@ namespace utils
  * Determine if there's a key within the container
 --------------------------------------*/
 template <typename T>
-inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* map, uint32_t key) noexcept
+inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* LS_RESTRICT_PTR map, uint32_t key) noexcept
 {
     #if defined(LS_X86_SSE4_1)
-        const __m128i lo       = _mm_loadu_si128((const __m128i*)map);
-        const __m128i hi       = _mm_loadu_si128((const __m128i*)map + 1);
+        const __m128i lo       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map));
+        const __m128i hi       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map+4));
         const __m128i val      = _mm_set1_epi32((int)key);
-        const __m128i loMask   = _mm_cmpeq_epi32(val, lo);
-        const __m128i hiMask   = _mm_cmpeq_epi32(val, hi);
-        const __m128i shortMax = _mm_cmpeq_epi32(val, val);
+        const __m128i loMask   = _mm_andnot_si128(_mm_cmpeq_epi32(val, lo), _mm_set1_epi32(0xFFFFFFFF));
+        const __m128i hiMask   = _mm_andnot_si128(_mm_cmpeq_epi32(val, hi), _mm_set1_epi32(0xFFFFFFFF));
         const __m128i mask16   = _mm_packs_epi32(loMask, hiMask);
-        const __m128i mask     = _mm_minpos_epu16(_mm_sub_epi16(shortMax, mask16));
-        return -_mm_test_all_zeros(mask16, mask16) | _mm_extract_epi16(mask, 1);
+        const __m128i mask     = _mm_minpos_epu16(mask16);
+        return -_mm_test_all_ones(mask16) | _mm_extract_epi16(mask, 1);
 
     #elif defined(LS_X86_SSE2)
         constexpr uint32_t indexArray[8] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -106,7 +105,10 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
 template <typename T>
 inline LS_INLINE unsigned LRU8WayCache<T>::_count_trailing_zero_bits(uint64_t n) noexcept
 {
-    #if defined(LS_COMPILER_GNU)
+    #if defined(LX_X86_BMI1)
+        return (unsigned)_tzcnt_u64(n);
+
+    #elif defined(LS_COMPILER_GNU)
         return (unsigned)__builtin_ctzll(n);
 
     #elif defined(LS_COMPILER_MSC)
@@ -148,9 +150,10 @@ inline LS_INLINE void LRU8WayCache<T>::_update_lru_index(uint64_t key0To8) noexc
  * Find the least-recently used value
 --------------------------------------*/
 template <typename T>
-inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() noexcept
+inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() const noexcept
 {
-    const uint64_t n = (mCols-0x0101010101010101ull) & ~mCols & 0x8080808080808080ull;
+    const uint64_t cols = mCols;
+    const uint64_t n = (cols-0x0101010101010101ull) & ~cols & 0x8080808080808080ull;
     return _count_trailing_zero_bits(n) >> 3;
 }
 
@@ -310,8 +313,7 @@ inline T& LRU8WayCache<T>::emplace(uint32_t key, Args&&... args) noexcept
 template <typename T>
 inline const T& LRU8WayCache<T>::operator[](uint32_t index) const noexcept
 {
-    LS_DEBUG_ASSERT(index < 8);
-    return mData[index];
+    return mData[_lookup_index_for_key(mKeys, index)];
 }
 
 
@@ -322,8 +324,7 @@ inline const T& LRU8WayCache<T>::operator[](uint32_t index) const noexcept
 template <typename T>
 inline T& LRU8WayCache<T>::operator[](uint32_t index) noexcept
 {
-    LS_DEBUG_ASSERT(index < 8);
-    return mData[index];
+    return mData[_lookup_index_for_key(mKeys, index)];
 }
 
 
