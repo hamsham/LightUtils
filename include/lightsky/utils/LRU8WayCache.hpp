@@ -31,11 +31,11 @@ class LRU8WayCache
 
     static int32_t _lookup_index_for_key(const uint32_t* map, uint32_t key) noexcept;
 
-    static unsigned _count_trailing_zero_bits(uint64_t x) noexcept;
+    static unsigned _count_trailing_zero_bits(uint64_t n) noexcept;
 
     void _update_lru_index(uint64_t key0To8) noexcept;
 
-    unsigned _get_lru_index() noexcept;
+    unsigned _get_lru_index() const noexcept;
 
   private: // instance data
     uint32_t mKeys[CACHE_SIZE];
