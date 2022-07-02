@@ -871,7 +871,7 @@ void utils::sort_radix(data_type* const items, data_type* const indices, long lo
 
     const auto&& ctz = [](unsigned long long e)->unsigned long long
     {
-        #ifdef LS_X86_BMI
+        #ifdef LS_X86_BMI1
             return (unsigned long long)_tzcnt_u64((unsigned long long)e);
         #elif defined(LS_COMPILER_GNU) && !defined(LS_COMPILER_MSC)
             return (unsigned long long)__builtin_ctzll(e);
