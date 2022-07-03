@@ -32,18 +32,26 @@ class GeneralAllocator
     typedef unsigned long long size_type;
 
   private:
-
     typedef unsigned long long header_type;
+
+    // Use the header type for alignment. If needed we can change this to align
+    // to a SIMD-sized block.
+    union alignas(alignof(header_type)) AllocationEntry
+    {
+        AllocationEntry* pNext;
+        header_type header;
+        char memBlock[block_size];
+    };
 
     enum : size_type
     {
-        header_size = sizeof(header_type),
-        null_value = ~(size_type)0
+        header_size = sizeof(header_type)
     };
 
     // insurance
     static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
+    static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
 
   private:
     /**
@@ -57,7 +65,7 @@ class GeneralAllocator
      * first available chunk of memory contained within "mAllocTable." Through
      * this, all other chunks in the allocation table can be accessed.
      */
-    size_type mHead;
+    AllocationEntry* mHead;
 
   public:
     /**

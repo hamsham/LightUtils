@@ -23,7 +23,7 @@ int test_single_allocations()
         allocations[i] = nullptr;
     }
 
-    for (unsigned testRuns = 0; testRuns < 3; ++testRuns)
+    for (unsigned testRuns = 0; testRuns < 8; ++testRuns)
     {
         for (unsigned i = 0; i <= max_allocations+1; ++i)
         {
@@ -92,7 +92,7 @@ int test_single_allocations()
 int test_array_allocations()
 {
     constexpr unsigned alloc_table_size = 1024*1024;
-    constexpr unsigned block_size = 512;
+    constexpr unsigned block_size = 16;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
@@ -105,7 +105,7 @@ int test_array_allocations()
         allocations[i] = nullptr;
     }
 
-    for (unsigned testRuns = 0; testRuns < 3; ++testRuns)
+    for (unsigned testRuns = 0; testRuns < 5; ++testRuns)
     {
         for (unsigned i = 0; i < max_allocations/3; ++i)
         {
@@ -170,8 +170,19 @@ int test_array_allocations()
 
 int main()
 {
-    test_single_allocations();
-    test_array_allocations();
+    int ret = 0;
+
+    ret = test_single_allocations();
+    if (ret != 0)
+    {
+        return ret;
+    }
+
+    ret = test_array_allocations();
+    if (ret != 0)
+    {
+        return ret;
+    }
 
     return 0;
 }

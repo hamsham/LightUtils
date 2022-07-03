@@ -33,15 +33,17 @@ GeneralAllocator<block_size>::GeneralAllocator(size_type totalSize) noexcept
     LS_ASSERT(block_size < totalSize);         // "Block size must be less than the total byte size.");
 
     mAllocTable = new char[totalSize];
-    mHead = reinterpret_cast<size_type>(mAllocTable);
+    mHead = reinterpret_cast<AllocationEntry*>(mAllocTable);
 
     // setup all links in the allocation list
-    for (size_type i = 0; i < totalSize; i += block_size)
+    const size_type numBlocks = totalSize / block_size;
+
+    for (size_type i = 0; i < numBlocks; ++i)
     {
-        *reinterpret_cast<size_type*>(mAllocTable+i) = reinterpret_cast<size_type>(mAllocTable+i+block_size);
+        mHead[i].pNext = mHead+i+1;
     }
 
-    *reinterpret_cast<size_type*>((mAllocTable+totalSize)-block_size) = GeneralAllocator<block_size>::null_value;
+    mHead[numBlocks - 1].pNext = nullptr;
 }
 
 
@@ -55,7 +57,7 @@ GeneralAllocator<block_size>::GeneralAllocator(GeneralAllocator&& a) noexcept :
     mHead{a.mHead}
 {
     a.mAllocTable = nullptr;
-    a.mHead = GeneralAllocator<block_size>::null_value;
+    a.mHead = nullptr;
 }
 
 
@@ -66,13 +68,13 @@ GeneralAllocator<block_size>::GeneralAllocator(GeneralAllocator&& a) noexcept :
 template <unsigned long long block_size>
 void* GeneralAllocator<block_size>::allocate() noexcept
 {
-    if (mHead == GeneralAllocator<block_size>::null_value)
+    if (mHead == nullptr)
     {
         return nullptr;
     }
 
-    size_type head = mHead;
-    mHead = *reinterpret_cast<size_type*>(mHead);
+    AllocationEntry* head = mHead;
+    mHead = mHead->pNext;
 
     return reinterpret_cast<void*>(head);
 }
@@ -86,7 +88,7 @@ template <unsigned long long block_size>
 void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
 {
     // TODO: Array allocations
-    if (!n || mHead == GeneralAllocator<block_size>::null_value)
+    if (!n || mHead == nullptr)
     {
         return nullptr;
     }
@@ -96,14 +98,14 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
 
     // we're going to actually allocate "n+sizeof(size_type)" and place a header
     // in the first 4/8 bytes to keep track of the allocation size.
-    size_type first = mHead;
-    size_type prev = mHead;
-    size_type iter = mHead;
+    AllocationEntry* first = mHead;
+    AllocationEntry* prev = mHead;
+    AllocationEntry* iter = mHead;
     size_type count = 1;
 
     while (true)
     {
-        size_type next = *reinterpret_cast<size_type*>(iter);
+        AllocationEntry* next = iter->pNext;
 
         if (count >= blocksNeeded)
         {
@@ -113,17 +115,17 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
             }
             else
             {
-                *reinterpret_cast<size_type*>(prev) = *reinterpret_cast<size_type*>(iter);
+                prev->pNext = iter->pNext;
             }
             break;
         }
 
-        if (next == GeneralAllocator<block_size>::null_value)
+        if (next == nullptr)
         {
             return nullptr;
         }
 
-        if (next != iter + block_size)
+        if (next != iter + 1)
         {
             prev = iter;
             first = next;
@@ -138,12 +140,10 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
     }
 
     // Add the allocation size to the result pointer
-    header_type* ret = reinterpret_cast<header_type*>(first);
-    *ret = blocksNeeded;
+    first->header = blocksNeeded;
 
     // offset the result by the allocation header size
-    char* pRet = reinterpret_cast<char*>(ret) + GeneralAllocator<block_size>::header_size;
-    return reinterpret_cast<void*>(pRet);
+    return reinterpret_cast<void*>(&first->memBlock[header_size]);
 }
 
 
@@ -160,34 +160,44 @@ void GeneralAllocator<block_size>::free(void* p) noexcept
     }
 
     // reset the head pointer if we're out of memory
-    if (mHead == GeneralAllocator<block_size>::null_value)
+    if (mHead == nullptr)
     {
         // p is now the new head
-        mHead = reinterpret_cast<size_type>(p);
-        *reinterpret_cast<size_type*>(mHead) = GeneralAllocator<block_size>::null_value;
+        mHead = reinterpret_cast<AllocationEntry*>(p);
+        mHead->pNext = nullptr;
     }
     else
     {
         // Setup the header in p
-        size_type next = reinterpret_cast<size_type>(p);
+        AllocationEntry* next = reinterpret_cast<AllocationEntry*>(p);
 
         // ensure the header from p points to the current "next" pointer
         if (next < mHead)
         {
-            *reinterpret_cast<size_type*>(next) = mHead;
+            next->pNext = mHead;
             mHead = next;
         }
         else
         {
-            size_type iter = mHead;
+            AllocationEntry* iter = mHead;
+            AllocationEntry* prev = mHead;
 
-            while (next > *reinterpret_cast<size_type*>(iter))
+            while (iter && next > iter->pNext)
             {
-                iter = *reinterpret_cast<size_type*>(iter);
+                prev = iter;
+                iter = iter->pNext;
             }
 
-            *reinterpret_cast<size_type*>(next) = *reinterpret_cast<size_type*>(iter);
-            *reinterpret_cast<size_type*>(iter) = next;
+            if (iter != nullptr)
+            {
+                next->pNext = iter->pNext;
+                iter->pNext = next;
+            }
+            else
+            {
+                next->pNext = nullptr;
+                prev->pNext = next;
+            }
         }
     }
 }
@@ -205,51 +215,55 @@ void GeneralAllocator<block_size>::free(void* p, size_type n) noexcept
         return;
     }
 
+    // Offset to the start of the allocation (minus the header).
+    char* pData = reinterpret_cast<char*>(p) - GeneralAllocator<block_size>::header_size;
+
     // retrieve the allocation size from header, make sure it matches what is
     // expected
     n += GeneralAllocator<block_size>::header_size;
-    size_type blocksFreed = (n / block_size) + ((n % block_size) ? 1 : 0);
-    header_type* header = reinterpret_cast<header_type*>(p)-1;
-    size_type allocSize = *header;
+    const size_type blocksFreed = (n / block_size) + ((n % block_size) ? 1 : 0);
+
+    AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(pData);
+    const size_type allocSize = reclaimed->header;
 
     LS_ASSERT(allocSize == blocksFreed);
 
-    char* reclaimed = reinterpret_cast<char*>(header);
-    size_type first = reinterpret_cast<size_type>(header);
-    size_type last = reinterpret_cast<size_type>(reclaimed + block_size * (allocSize-1));
+    // Pointers to the free'd allocation's first and last blocks
+    AllocationEntry* first = reclaimed;
+    AllocationEntry* last = reclaimed + allocSize - 1;
 
     for (size_type i = 1; i < (allocSize-1); ++i)
     {
-        *reinterpret_cast<size_type*>(reclaimed) = first+i*block_size;
-        reclaimed += block_size;
+        reclaimed->pNext = first + i;
+        reclaimed += 1;
     }
 
     // reset the head pointer if we're out of memory
-    if (mHead == GeneralAllocator<block_size>::null_value)
+    if (mHead == nullptr)
     {
         // reset the head pointer
         mHead = first;
-        *reinterpret_cast<size_type*>(last) = GeneralAllocator<block_size>::null_value;
+        last->pNext = nullptr;
     }
     else
     {
         // ensure the header-pointer from p points to the current "next" chunk.
         if (last < mHead)
         {
-            *reinterpret_cast<size_type*>(last) = mHead;
+            last->pNext = mHead;
             mHead = first;
         }
         else
         {
-            size_type iter = mHead;
+            AllocationEntry* iter = mHead;
 
-            while (first > *reinterpret_cast<size_type*>(iter))
+            while (first > iter->pNext)
             {
-                iter = *reinterpret_cast<size_type*>(iter);
+                iter = iter->pNext;
             }
 
-            *reinterpret_cast<size_type*>(last) = *reinterpret_cast<size_type*>(iter);
-            *reinterpret_cast<size_type*>(iter) = first;
+            last->pNext = iter->pNext;
+            iter->pNext = first;
         }
     }
 }
