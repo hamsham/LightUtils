@@ -12,7 +12,7 @@ namespace utils
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 ChunkAllocator<block_size, total_size>::~ChunkAllocator() noexcept
 {
     delete [] mAllocTable;
@@ -23,13 +23,13 @@ ChunkAllocator<block_size, total_size>::~ChunkAllocator() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 ChunkAllocator<block_size, total_size>::ChunkAllocator() noexcept :
     mAllocTable{new char[total_size]},
     mHead{reinterpret_cast<AllocationEntry*>(mAllocTable)}
 {
     // setup all links in the allocation list
-    for (uintptr_t i = 0; i < (total_size/block_size); ++i)
+    for (size_type i = 0; i < (total_size/block_size); ++i)
     {
         mHead[i].pNext = mHead+i+1;
     }
@@ -42,7 +42,7 @@ ChunkAllocator<block_size, total_size>::ChunkAllocator() noexcept :
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 ChunkAllocator<block_size, total_size>::ChunkAllocator(ChunkAllocator&& a) noexcept :
     mAllocTable{a.mAllocTable},
     mHead{a.mHead}
@@ -56,7 +56,7 @@ ChunkAllocator<block_size, total_size>::ChunkAllocator(ChunkAllocator&& a) noexc
 /*-------------------------------------
  * General Allocations
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 inline void* ChunkAllocator<block_size, total_size>::allocate() noexcept
 {
     if (!mHead)
@@ -75,8 +75,8 @@ inline void* ChunkAllocator<block_size, total_size>::allocate() noexcept
 /*-------------------------------------
  * Array Allocations
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
-inline void* ChunkAllocator<block_size, total_size>::allocate(size_t n) noexcept
+template <unsigned long long block_size, unsigned long long total_size>
+inline void* ChunkAllocator<block_size, total_size>::allocate(size_type n) noexcept
 {
     if (n <= 0 || n > block_size)
     {
@@ -91,7 +91,7 @@ inline void* ChunkAllocator<block_size, total_size>::allocate(size_t n) noexcept
 /*-------------------------------------
  * Free Memory
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 inline void ChunkAllocator<block_size, total_size>::free(void* p) noexcept
 {
     if (!p)
@@ -112,8 +112,8 @@ inline void ChunkAllocator<block_size, total_size>::free(void* p) noexcept
 /*-------------------------------------
  * Free Memory
 -------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
-inline void ChunkAllocator<block_size, total_size>::free(void* p, size_t n) noexcept
+template <unsigned long long block_size, unsigned long long total_size>
+inline void ChunkAllocator<block_size, total_size>::free(void* p, size_type n) noexcept
 {
     (void)n;
 

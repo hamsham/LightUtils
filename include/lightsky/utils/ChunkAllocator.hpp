@@ -2,9 +2,6 @@
 #ifndef LS_UTILS_CHUNK_ALLOCATOR_HPP
 #define LS_UTILS_CHUNK_ALLOCATOR_HPP
 
-#include <cstdint> // uintptr_t, UINTPTR_MAX
-#include <cmath>
-
 namespace ls
 {
 namespace utils
@@ -30,20 +27,25 @@ namespace utils
  * @tparam total_size
  * The total amount of bytes contained required by this allocator.
 -----------------------------------------------------------------------------*/
-template <uintptr_t block_size, uintptr_t total_size>
+template <unsigned long long block_size, unsigned long long total_size>
 class ChunkAllocator
 {
+  public:
+    typedef unsigned long long size_type;
+
     // insurance
-    static_assert(block_size >= sizeof(uintptr_t), "Allocation sizes must not be less than sizeof(uintptr_t).");
-    static_assert(total_size >= sizeof(uintptr_t), "Allocated memory table cannot be less than sizeof(uintptr_t).");
+    static_assert(block_size >= sizeof(size_type), "Allocation sizes must not be less than sizeof(unsigned long long).");
+    static_assert(total_size >= sizeof(size_type), "Allocated memory table cannot be less than sizeof(unsigned long long).");
     static_assert(total_size % block_size == 0,    "Cannot fit the current block size within an allocation table.");
     static_assert(block_size < total_size,         "Block size must be less than the total byte size.");
 
   private:
-    union AllocationEntry
+    // Use size_type for alignment. If needed we can change this to align to a
+    // SIMD-sized block.
+    union alignas(alignof(size_type)) AllocationEntry
     {
         AllocationEntry* pNext;
-        char padding[block_size];
+        char memBlock[block_size];
     };
 
     static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
@@ -129,7 +131,7 @@ class ChunkAllocator
      * block. NULL is returned if not enough more blocks exist within the
      * allocator to fufill the request for memory.
      */
-    void* allocate(size_t n) noexcept;
+    void* allocate(size_type n) noexcept;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
@@ -153,9 +155,9 @@ class ChunkAllocator
      *
      * @param n
      * The number of bytes which were freed. This parameter must match exactly
-     * the "n" parameter to allocate(size_t n).
+     * the "n" parameter to allocate(size_type n).
      */
-    void free(void* p, size_t n) noexcept;
+    void free(void* p, size_type n) noexcept;
 };
 
 

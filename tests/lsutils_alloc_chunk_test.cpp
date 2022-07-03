@@ -1,6 +1,4 @@
 
-#include <cassert>
-#include <cstdio>
 #include <iostream>
 
 #include "lightsky/utils/ChunkAllocator.hpp"
