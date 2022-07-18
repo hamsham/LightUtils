@@ -9,55 +9,88 @@
 
 
 
-int main()
+void init_data(char* const pDst, unsigned long long numBytes) noexcept
 {
-    constexpr unsigned int numBytes = 512*1024*1024*sizeof(char)-1; // 1 gigabyte
-    constexpr long double numGigs = (long double)numBytes * 0.000001l;
-    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
-    ls::utils::UniqueAlignedArray<char> pTest = ls::utils::make_unique_aligned_array<char>(numBytes);
-    ls::utils::UniqueAlignedArray<char> pDst  = ls::utils::make_unique_aligned_array<char>(numBytes);
-
     std::cout << "Initializing Memset Benchmark..." << std::endl;
 
     for (unsigned i = numBytes; i--;)
     {
-        pTest[i] = (char)'\xFF';
         pDst[i] = '\0';
     }
 
     std::cout << "\tDone." << std::endl;
+}
 
-    std::cout << "Running memset() benchmark..." << std::endl;
+
+
+void validate_data(const char* const pDst, unsigned long long numBytes) noexcept
+{
+    for (unsigned i = numBytes; i--;)
+    {
+        if (pDst[i] != (char)'\xFF')
+        {
+            std::cerr << "Mismatch at element " << i << ". " << pDst[i] << " != 0xFF" << std::endl;
+            LS_ASSERT(pDst[i] == (char)'\xFF');
+        }
+    }
+}
+
+
+
+template <typename MemsetFunc>
+unsigned long long benchmark_memset(
+    const char* testName,
+    char* const pDst,
+    unsigned long long numBytes,
+    MemsetFunc&& pMemset
+) noexcept
+{
+    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
+    init_data(pDst, numBytes);
+
+    std::cout << "Running " << testName << " benchmark..." << std::endl;
+
     ticks.start();
-    memset(pDst.get(), '\xFF', numBytes);
+    pMemset();
     ticks.tick();
+
     const unsigned long long memsetTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
+
+    validate_data(pDst, numBytes);
+
     std::cout << "\tDone." << std::endl;
 
-    std::cout << "Running std::fill() benchmark..." << std::endl;
-    ticks.start();
-    std::fill(pDst.get(), pDst.get()+numBytes, '\xFF');
-    ticks.tick();
-    const unsigned long long stdFillTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
+    return memsetTime;
+}
 
-    std::cout << "Running ls::utils::fast_memset() benchmark..." << std::endl;
-    ticks.start();
-    ls::utils::fast_memset(pDst.get(), '\xFF', numBytes);
-    ticks.tick();
-    const unsigned long long lsMemsetTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
 
-    std::cout << "Running ls::utils::fast_fill() benchmark..." << std::endl;
-    ticks.start();
-    ls::utils::fast_fill<char, char>(pDst.get(), '\xFF', numBytes);
-    ticks.tick();
-    const unsigned long long lsFillTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pTest.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
+
+int main()
+{
+    constexpr unsigned int numBytes = 1024*1024*1024*sizeof(char)-1; // 1 gigabyte
+    constexpr long double numGigs = (long double)numBytes * 0.000001l;
+    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
+    ls::utils::UniqueAlignedArray<char> pDst  = ls::utils::make_unique_aligned_array<char>(numBytes);
+
+    const unsigned long long memsetTime = benchmark_memset("memset()", pDst.get(), numBytes, [&]() noexcept->void
+    {
+        std::memset(pDst.get(), '\xFF', numBytes);
+    });
+
+    const unsigned long long stdFillTime = benchmark_memset("std::fill()", pDst.get(), numBytes, [&]() noexcept->void
+    {
+        std::fill(pDst.get(), pDst.get()+numBytes, '\xFF');
+    });
+
+    const unsigned long long lsMemsetTime = benchmark_memset("ls::utils::fast_memset()", pDst.get(), numBytes, [&]() noexcept->void
+    {
+        ls::utils::fast_memset(pDst.get(), '\xFF', numBytes);
+    });
+
+    const unsigned long long lsFillTime = benchmark_memset("ls::utils::fast_fill()", pDst.get(), numBytes, [&]() noexcept->void
+    {
+        ls::utils::fast_fill<char, char>(pDst.get(), '\xFF', numBytes);
+    });
 
     std::cout << "Copy Time:"
         << "\n\tMemset:    " << numGigs/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"

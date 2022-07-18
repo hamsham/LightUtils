@@ -10,58 +10,93 @@
 
 
 
-int main()
+void init_data(char* const pSrc, char* const pDst, unsigned long long numBytes) noexcept
 {
-    constexpr unsigned int numBytes = 256*1024*1024*sizeof(char)-1; // 500 Megabytes
-    constexpr long double numGigs = (long double)numBytes * 0.000001l;
-    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
-    ls::utils::RandomNum randGen;
-    ls::utils::UniqueAlignedArray<char> pSrc = ls::utils::make_unique_aligned_array<char>(numBytes);
-    ls::utils::UniqueAlignedArray<char> pDst = ls::utils::make_unique_aligned_array<char>(numBytes);
-
     std::cout << "Initializing Copy Benchmark..." << std::endl;
 
+    ls::utils::RandomNum randGen;
     randGen.seed();
 
     for (unsigned i = numBytes; i--;)
     {
-        pSrc[i] = randGen();
+        pSrc[i] = (char)randGen();
         pDst[i] = '\0';
     }
 
     std::cout << "\tDone." << std::endl;
+}
 
-    std::cout << "Running memset() benchmark..." << std::endl;
+
+
+void validate_data(const char* const pSrc, const char* const pDst, unsigned long long numBytes) noexcept
+{
+    for (unsigned i = numBytes; i--;)
+    {
+        if (pDst[i] != pSrc[i])
+        {
+            std::cerr << "Mismatch at element " << i << ". " << pDst[i] << " != " << pSrc[i] << '.' << std::endl;
+            LS_ASSERT(pDst[i] == pSrc[i]);
+        }
+    }
+}
+
+
+
+template <typename MemcpyFunc>
+unsigned long long benchmark_memcpy(
+    const char* testName,
+    char* const pSrc,
+    char* const pDst,
+    unsigned long long numBytes,
+    MemcpyFunc&& pMemcpy
+) noexcept
+{
+    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
+    init_data(pSrc, pDst, numBytes);
+
+    std::cout << "Running " << testName << " benchmark..." << std::endl;
+
     ticks.start();
-    memcpy(pDst.get(), pSrc.get(), numBytes);
+    pMemcpy();
     ticks.tick();
+
     const unsigned long long memsetTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pSrc.get(), pDst.get(), numBytes) == 0);
+
+    validate_data(pSrc, pDst, numBytes);
+
     std::cout << "\tDone." << std::endl;
 
-    std::cout << "Running std::copy() benchmark..." << std::endl;
-    ticks.start();
-    std::copy(pSrc.get(), pSrc.get()+numBytes, pDst.get());
-    ticks.tick();
-    const unsigned long long stdCopyTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pSrc.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
+    return memsetTime;
+}
 
-    std::cout << "Running ls::utils::fast_memcpy() benchmark..." << std::endl;
-    ticks.start();
-    ls::utils::fast_memcpy(pDst.get(), pSrc.get(), numBytes);
-    ticks.tick();
-    const unsigned long long lsMemcpyTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pSrc.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
 
-    std::cout << "Running ls::utils::fast_copy() benchmark..." << std::endl;
-    ticks.start();
-    ls::utils::fast_copy(pDst.get(), pSrc.get(), numBytes);
-    ticks.tick();
-    const unsigned long long lsCopyTime = ticks.tick_time().count();
-    LS_ASSERT(std::memcmp(pSrc.get(), pDst.get(), numBytes) == 0);
-    std::cout << "\tDone." << std::endl;
+
+int main()
+{
+    constexpr unsigned int numBytes = 256*1024*1024*sizeof(char)-1; // 500 Megabytes
+    constexpr long double numGigs = (long double)numBytes * 0.000001l;
+    ls::utils::UniqueAlignedArray<char> pSrc = ls::utils::make_unique_aligned_array<char>(numBytes);
+    ls::utils::UniqueAlignedArray<char> pDst = ls::utils::make_unique_aligned_array<char>(numBytes);
+
+    const unsigned long long memsetTime = benchmark_memcpy("memcpy()", pSrc.get(), pDst.get(), numBytes, [&]() noexcept->void
+    {
+        std::memcpy(pDst.get(), pSrc.get(), numBytes);
+    });
+
+    const unsigned long long stdCopyTime = benchmark_memcpy("std::copy()", pSrc.get(), pDst.get(), numBytes, [&]() noexcept->void
+    {
+        std::copy(pSrc.get(), pSrc.get()+numBytes, pDst.get());
+    });
+
+    const unsigned long long lsMemcpyTime = benchmark_memcpy("ls::utils::fast_memcpy()", pSrc.get(), pDst.get(), numBytes, [&]() noexcept->void
+    {
+        ls::utils::fast_memcpy(pDst.get(), pSrc.get(), numBytes);
+    });
+
+    const unsigned long long lsCopyTime = benchmark_memcpy("ls::utils::fast_copy()", pSrc.get(), pDst.get(), numBytes, [&]() noexcept->void
+    {
+        ls::utils::fast_copy(pDst.get(), pSrc.get(), numBytes);
+    });
 
     std::cout << "Copy Time:"
         << "\n\tMemcpy:    " << numGigs/(long double)memsetTime   << " Gb/s @ " << memsetTime   << "ms"

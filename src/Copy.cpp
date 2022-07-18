@@ -3,7 +3,6 @@
 #include "lightsky/setup/Compiler.h"
 #include "lightsky/setup/Macros.h"
 
-#include "lightsky/utils/Bits.h"
 #include "lightsky/utils/Copy.h"
 
 #ifdef LS_ARCH_X86
@@ -23,48 +22,64 @@ namespace ls {
 -------------------------------------*/
 void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const uint_fast64_t count)
 {
-    #if defined(LS_X86_AVX)
-        const __m256i* simdSrc    = reinterpret_cast<const __m256i*>(src);
-        __m256i*       simdDst    = reinterpret_cast<__m256i*>(dst);
-        uint_fast64_t  simdCount  = count;
+    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+        const uint64_t* simdSrc    = reinterpret_cast<const uint64_t*>(src);
+        long long*      simdDst    = reinterpret_cast<long long*>(dst);
+        uint_fast64_t   simdCount  = count % sizeof(uint64_t);
+        uint_fast64_t   iterations = count / sizeof(uint64_t);
 
-        if ((uintptr_t)simdDst % sizeof(__m256i))
+        __asm__ volatile(
+            "MOV %[count], %%rcx;"
+            "MOV %[in], %%rsi;"
+            "MOV %[out], %%rdi;"
+            "REP movsq;"
+            "MOV %%rsi, %[in];"
+            "MOV %%rdi, %[out];"
+            : [out]"+r"(simdDst), [in]"+r"(simdSrc)
+            : [count]"r"(iterations)
+            : "rcx", "rdx", "rsi", "memory"
+        );
+
+    #elif defined(LS_X86_SSE2)
+        const uint64_t* simdSrc    = reinterpret_cast<const uint64_t*>(src);
+        long long*      simdDst    = reinterpret_cast<long long*>(dst);
+        uint_fast64_t   simdCount  = count;
+
+        while (simdCount >= sizeof(uint64_t)*4)
         {
-            while (simdCount >= sizeof(__m256i))
-            {
-                _mm256_storeu_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
-                simdCount -= sizeof(__m256i);
-            }
-        }
-        else
-        {
-            while (simdCount >= sizeof(__m256i))
-            {
-                _mm256_stream_si256(simdDst++, _mm256_lddqu_si256(simdSrc++));
-                simdCount -= sizeof(__m256i);
-            }
+            LS_PREFETCH(simdSrc+32, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
+
+            _mm_stream_si64(simdDst+0, simdSrc[0]);
+            _mm_stream_si64(simdDst+1, simdSrc[1]);
+            _mm_stream_si64(simdDst+2, simdSrc[2]);
+            _mm_stream_si64(simdDst+3, simdSrc[3]);
+
+            simdSrc += 4;
+            simdDst += 4;
+            simdCount -= sizeof(uint64_t)*4;
         }
 
-    #elif defined(LS_X86_SSE3)
-        const __m128i* simdSrc    = reinterpret_cast<const __m128i*>(src);
-        __m128i*       simdDst    = reinterpret_cast<__m128i*>(dst);
-        uint_fast64_t  simdCount  = count;
+    #elif defined(LS_ARCH_AARCH64)
+        const uint64_t* simdSrc   = reinterpret_cast<const uint64_t*>(src);
+        uint64_t*       simdDst   = reinterpret_cast<uint64_t*>(dst);
+        uint_fast64_t   simdCount = count;
 
-        if ((uintptr_t)simdDst % sizeof(__m128i))
+        while (simdCount >= sizeof(uint64_t)*4)
         {
-            while (simdCount >= sizeof(__m128i))
-            {
-                _mm_storeu_si128(simdDst++, _mm_lddqu_si128(simdSrc++));
-                simdCount -= sizeof(__m128i);
-            }
-        }
-        else
-        {
-            while (simdCount >= sizeof(__m128i))
-            {
-                _mm_stream_si128(simdDst++, _mm_lddqu_si128(simdSrc++));
-                simdCount -= sizeof(__m128i);
-            }
+            LS_PREFETCH(simdSrc+32, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
+
+            __asm__ volatile(
+                "LDNP x0, x1, [%[in]]\n"
+                "STNP x0, x1, [%[out]]\n"
+                "LDNP x0, x1, [%[in], #16]\n"
+                "STNP x0, x1, [%[out], #16]\n"
+                "ADD %[in], %[in], #32\n"
+                "ADD %[out], %[out], #32\n"
+                "SUB %[count], %[count], #32"
+                : [out]"+r"(simdDst), [in]"+r"(simdSrc), [count]"+r"(simdCount)
+                :
+                : "x0", "x1", "memory"
+            );
         }
 
     #elif defined(LS_ARM_NEON)
@@ -82,14 +97,19 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
     #else
         const uint_fast64_t* simdSrc    = reinterpret_cast<const uint_fast64_t*>(src);
         uint_fast64_t*       simdDst    = reinterpret_cast<uint_fast64_t*>(dst);
-        uint_fast64_t        simdCount  = count;
+        uint_fast64_t        iterations = count / (sizeof(uint64_t)*4);
+        uint_fast64_t        simdCount  = count % (sizeof(uint64_t)*4);
 
         // Using stream intrinsics here is NOT OK because we need the cache for
         // reading "simdSrc."
-        while (simdCount >= sizeof(uint_fast64_t))
+        while (iterations--)
         {
-            *simdDst++ = *simdSrc++;
-            simdCount -= sizeof(uint_fast64_t);
+            simdDst[0] = simdSrc[0];
+            simdDst[1] = simdSrc[1];
+            simdDst[2] = simdSrc[2];
+            simdDst[3] = simdSrc[3];
+            simdSrc += 4;
+            simdDst += 4;
         }
 
     #endif
@@ -97,10 +117,57 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
     const uint8_t* s = reinterpret_cast<const uint8_t*>(simdSrc);
     uint8_t*       d = reinterpret_cast<uint8_t*>(simdDst);
 
-    while (simdCount--)
-    {
-        *d++ = *s++;
-    }
+    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+        __asm__ volatile(
+            "MOV %[count], %%rcx;"
+            "MOV %[in], %%rsi;"
+            "MOV %[out], %%rdi;"
+            "REP movsb;"
+            :
+            : [out]"r"(d), [in]"r"(s), [count]"r"(simdCount)
+            : "rcx", "rdi", "rsi", "memory"
+        );
+
+    #elif defined(LS_ARCH_AARCH64)
+        __asm__ volatile(
+            ".MemcpyStart:\n"
+            "CMP %[count], #0\n"
+            "B.EQ .MemcpyEnd\n"
+            "LDRB w0, [%[in]]\n"
+            "STRB w0, [%[out]]\n"
+            "ADD %[in], %[in], #1\n"
+            "ADD %[out], %[out], #1\n"
+            "SUB %[count], %[count], #1\n"
+            "B .MemcpyStart\n"
+            ".MemcpyEnd:"
+            : [out]"+r"(d), [in]"+r"(s), [count]"+r"(simdCount)
+            :
+            : "w0", "memory"
+        );
+
+    #elif defined(LS_ARCH_ARM)
+        __asm__ volatile(
+            ".MemcpyStart:\n"
+            "CMP %[count], #0\n"
+            "BEQ .MemcpyEnd\n"
+            "LDRB r0, [%[in]]\n"
+            "STRB r0, [%[out]]\n"
+            "ADD %[in], %[in], #1\n"
+            "ADD %[out], %[out], #1\n"
+            "SUB %[count], %[count], #1\n"
+            "B .MemcpyStart\n"
+            ".MemcpyEnd:"
+            : [out]"+r"(d), [in]"+r"(s), [count]"+r"(simdCount)
+            :
+            : "r0", "memory"
+        );
+
+    #else
+        while (simdCount--)
+        {
+            *d++ = *s++;
+        }
+    #endif
 
     return dst;
 }
@@ -108,91 +175,163 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 
 
 /*-------------------------------------
- * fast_memset of 4-bytes at a time
+ * fast_memset of 8-bytes at a time
 -------------------------------------*/
 void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t count)
 {
-    #if defined(LS_X86_AVX)
-        const __m256i simdFillByte = _mm256_set1_epi64x(fillBytes);
-        __m256i*      simdTo       = reinterpret_cast<__m256i*>(dst);
-        uint_fast64_t simdCount    = count >> 5;
-        uint_fast64_t stragglers   = count - (count & ~31);
+    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+        uint_fast64_t stragglers = count % sizeof(uint64_t);
+        uint_fast64_t simdCount  = count / sizeof(uint64_t);
+        long long*    simdTo     = reinterpret_cast<long long*>(dst);
 
-        // Using stream intrinsics here is OK because we're not reading data
-        // from memory
-        if ((uintptr_t)simdTo % sizeof(__m256i))
-        {
-            while (simdCount--)
-            {
-                _mm256_storeu_si256(simdTo++, simdFillByte);
-            }
-        }
-        else
-        {
-            while (simdCount--)
-            {
-                _mm256_stream_si256(simdTo++, simdFillByte);
-            }
-        }
+        __asm__ volatile(
+            "MOV %[count], %%rcx;"
+            "MOV %[in], %%rax;"
+            "MOV %[out], %%rdi;"
+            "REP stosq;"
+            "MOV %%rsi, %[in];"
+            "MOV %%rdi, %[out];"
+            : [out]"+r"(simdTo)
+            : [in]"r"(fillBytes), [count]"r"(simdCount)
+            : "rax", "rcx", "rdi", "memory"
+        );
 
-    #elif defined(LS_X86_SSE3)
-        const __m128i simdFillByte = _mm_set1_epi64x(fillBytes);
-        __m128i*      simdTo       = reinterpret_cast<__m128i*>(dst);
-        uint_fast64_t simdCount    = count >> 4;
-        uint_fast64_t stragglers   = count - (count & ~15);
+    #elif defined(LS_X86_SSE2)
+        const uint_fast64_t simdCount    = count >> 5;
+        const uint_fast64_t stragglers   = count - (count & ~31);
+        const int64_t       simdFillByte = (int64_t)(fillBytes);
+        long long*          simdTo       = reinterpret_cast<long long*>(dst);
+        const long long*    simdEnd      = reinterpret_cast<const long long*>(dst) + simdCount * 4;
 
-        // Using stream intrinsics here is OK because we're not reading data
-        // from memory
-        if ((uintptr_t)simdTo % sizeof(__m128i))
+        _mm_sfence();
+
+        while (LS_LIKELY(simdTo != simdEnd))
         {
-            while (simdCount--)
-            {
-                _mm_storeu_si128(simdTo++, simdFillByte);
-            }
-        }
-        else
-        {
-            while (simdCount--)
-            {
-                _mm_stream_si128(simdTo++, simdFillByte);
-            }
+            _mm_stream_si64(simdTo+0, simdFillByte);
+            _mm_stream_si64(simdTo+1, simdFillByte);
+            _mm_stream_si64(simdTo+2, simdFillByte);
+            _mm_stream_si64(simdTo+3, simdFillByte);
+            simdTo += 4;
         }
 
-    #elif defined(LS_ARM_NEON)
-        const uint64x2_t fillByteSimd = vdupq_n_u64(fillBytes);
-        uint64x2_t*      simdTo       = reinterpret_cast<uint64x2_t*>(dst);
-        uint_fast64_t    simdCount    = count >> 5;
-        uint_fast64_t    stragglers   = count - (count & ~15);
+    #elif defined(LS_ARCH_AARCH64)
+        const uint_fast64_t simdCount    = count >> 5;
+        const uint_fast64_t stragglers   = count - (count & ~31);
+        const uint64_t      fillByteSimd = fillBytes;
+        uint64_t*           simdTo       = reinterpret_cast<uint64_t*>(dst);
+        const uint64_t*     simdEnd      = reinterpret_cast<const uint64_t*>(dst) + simdCount * 4;
 
-        while (simdCount--)
-        {
-            vst1q_u64(reinterpret_cast<uint64_t*>(simdTo+0), fillByteSimd);
-            vst1q_u64(reinterpret_cast<uint64_t*>(simdTo+1), fillByteSimd);
-            simdTo += 2;
-        }
+        __asm__ volatile(
+            ".LoopStart:\n"
+            "CMP %[out], %[end]\n"
+            "B.EQ .LoopEnd\n"
+            "STNP %[in], %[in], [%[out]]\n"
+            "STNP %[in], %[in], [%[out], #16]\n"
+            "ADD %[out], %[out], #32\n"
+            "B .LoopStart\n"
+            ".LoopEnd:"
+            : [out]"+r"(simdTo)
+            : [in]"r"(fillByteSimd), [end]"r"(simdEnd)
+            : "memory"
+        );
+
+    #elif defined(LS_ARCH_ARM)
+        const uint_fast64_t simdCount    = count >> 5;
+        const uint_fast64_t stragglers   = count - (count & ~31);
+        const uint64_t      fillByteSimd = fillBytes;
+        uint64_t*           simdTo       = reinterpret_cast<uint64_t*>(dst);
+        const uint64_t*     simdEnd      = reinterpret_cast<const uint64_t*>(dst) + simdCount * 4;
+
+        __asm__ volatile(
+            ".LoopStart:\n"
+            "CMP %[out], %[end]\n"
+            "BEQ .LoopEnd\n"
+            "STR %[in], [%[out]]\n"
+            "STR %[in], [%[out], #8]\n"
+            "STR %[in], [%[out], #16]\n"
+            "STR %[in], [%[out], #24]\n"
+            "ADD %[out], %[out], #32\n"
+            "B .LoopStart\n"
+            ".LoopEnd:"
+            : [out]"+r"(simdTo)
+            : [in]"r"(fillByteSimd), [end]"r"(simdEnd)
+            : "memory"
+        );
 
     #else
-        const uint_fast64_t fillByteSimd = (uint_fast64_t)fillBytes;
-        uint_fast64_t*      simdTo       = reinterpret_cast<uint_fast64_t*>(dst);
-        uint_fast64_t       simdCount    = count >> 3;
-        uint_fast64_t       stragglers   = count - (count & ~7);
+        const uint_fast64_t simdCount    = count >> 5;
+        const uint_fast64_t stragglers   = count - (count & ~31);
+        const uint64_t      simdFillByte = (uint64_t)(fillBytes);
+        uint64_t*           simdTo       = reinterpret_cast<uint64_t*>(dst);
+        const uint64_t*     simdEnd      = reinterpret_cast<uint64_t*>(dst) + simdCount * 4;
 
-        // Using stream intrinsics here is OK because we're not reading data
-        // from memory
-        while (simdCount--)
+        while (LS_LIKELY(simdTo != simdEnd))
         {
-            *simdTo++ = fillByteSimd;
+            simdTo[0] = simdFillByte;
+            simdTo[1] = simdFillByte;
+            simdTo[2] = simdFillByte;
+            simdTo[3] = simdFillByte;
+            simdTo += 4;
         }
 
     #endif
 
-    uint8_t*      to = reinterpret_cast<uint8_t*>(simdTo);
-    const uint8_t fillByte = (uint8_t)fillBytes;
+    const uint64_t fillArray[8] = {fillBytes, fillBytes, fillBytes, fillBytes, fillBytes, fillBytes, fillBytes, fillBytes};
+    uint8_t*       from         = reinterpret_cast<uint8_t*>(simdTo);
+    const uint8_t* to           = reinterpret_cast<uint8_t*>(simdTo) + stragglers;
+    const uint8_t* fillByte     = reinterpret_cast<const uint8_t*>(fillArray);
 
-    while (stragglers--)
-    {
-        *to++ = fillByte;
-    }
+    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+        (void)to;
+
+        __asm__ volatile(
+            "MOV %[count], %%rcx;"
+            "MOV %[in], %%rsi;"
+            "MOV %[out], %%rdi;"
+            "REP movsb;"
+            :
+            : [out]"r"(from), [in]"r"(fillByte), [count]"r"(stragglers)
+            : "rcx", "rdi", "rsi", "memory"
+        );
+
+    #elif defined(LS_ARCH_AARCH64)
+        __asm__ volatile(
+            ".LoopStart1:\n"
+            "CMP %[out], %[end]\n"
+            "B.EQ .LoopEnd1\n"
+            "LDR w0, [%[in]]\n"
+            "STRB w0, [%[out]]\n"
+            "ADD %[in], %[in], #1\n"
+            "ADD %[out], %[out], #1\n"
+            "B .LoopStart1\n"
+            ".LoopEnd1:"
+            : [out]"+r"(from), [in]"+r"(fillByte)
+            : [end]"r"(to)
+            : "w0", "memory"
+        );
+
+    #elif defined(LS_ARCH_ARM)
+        __asm__ volatile(
+            ".LoopStart1:\n"
+            "CMP %[out], %[end]\n"
+            "BEQ .LoopEnd1\n"
+            "LDRB r0, [%[in]]\n"
+            "STRB r0, [%[out]]\n"
+            "ADD %[in], %[in], #1\n"
+            "ADD %[out], %[out], #1\n"
+            "B .LoopStart1\n"
+            ".LoopEnd1:"
+            : [out]"+r"(from), [in]"+r"(fillByte)
+            : [end]"r"(to)
+            : "r0", "memory"
+        );
+
+    #else
+        while (LS_LIKELY(from != to))
+        {
+            *from++ = *fillByte++;
+        }
+    #endif
 
     return dst;
 }

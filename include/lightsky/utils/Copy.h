@@ -108,7 +108,7 @@ inline void fast_move(dest_t* dest, src_t* src, uint_fast64_t count)
 /**
  * Implementation of std::memset using loop unrolling.
  *
- * This version is for setting data which is padded to 4-bytes.
+ * This version is for setting data which is padded to 8-bytes.
  *
  * @param dest
  * A pointer to the object to fill.
@@ -229,18 +229,19 @@ inline LS_INLINE void* fast_memset(void* const dest, const uint8_t fillByte, con
  * Specifies the number of items which will be filled.
  */
 template <typename dest_t, typename fill_t>
-inline LS_INLINE void fast_fill(dest_t* dest, const fill_t& fillType, uint_fast64_t count)
+inline LS_INLINE void fast_fill(dest_t* LS_RESTRICT_PTR dest, const fill_t& fillType, uint_fast64_t count)
 {
     #if 0
-    if (count)
-    {
-        LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = fillType))
-    }
+        if (count)
+        {
+            LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = fillType))
+        }
+
     #else
-    while (count--)
-    {
-        *dest++ = fillType;
-    }
+        while (count--)
+        {
+            *dest++ = fillType;
+        }
     #endif
 }
 
