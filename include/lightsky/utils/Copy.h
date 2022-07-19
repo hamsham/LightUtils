@@ -5,7 +5,8 @@
 #include <cstdint> // fixed-width data types
 #include <utility> // std::move
 
-#include "lightsky/setup/Api.h"
+#include "lightsky/setup/Api.h" // LS_INLINE, LS_RESTRICT_PTR
+#include "lightsky/setup/Macros.h" // LS_LIKELY
 
 #include "lightsky/utils/Loops.h"
 
@@ -231,14 +232,16 @@ inline LS_INLINE void* fast_memset(void* const dest, const uint8_t fillByte, con
 template <typename dest_t, typename fill_t>
 inline LS_INLINE void fast_fill(dest_t* LS_RESTRICT_PTR dest, const fill_t& fillType, uint_fast64_t count)
 {
+    const dest_t* LS_RESTRICT_PTR const end = dest + count;
+
     #if 0
-        if (count)
+        while (dest != end)
         {
             LS_UTILS_LOOP_UNROLL_32(count, (*dest++ = fillType))
         }
 
     #else
-        while (count--)
+        while (LS_LIKELY(dest != end))
         {
             *dest++ = fillType;
         }

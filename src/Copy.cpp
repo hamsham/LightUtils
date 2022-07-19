@@ -37,7 +37,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
             "MOV %%rdi, %[out];"
             : [out]"+r"(simdDst), [in]"+r"(simdSrc)
             : [count]"r"(iterations)
-            : "rcx", "rdx", "rsi", "memory"
+            : "rcx", "rdi", "rsi", "memory"
         );
 
     #elif defined(LS_X86_SSE2)
@@ -189,7 +189,6 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
             "MOV %[in], %%rax;"
             "MOV %[out], %%rdi;"
             "REP stosq;"
-            "MOV %%rsi, %[in];"
             "MOV %%rdi, %[out];"
             : [out]"+r"(simdTo)
             : [in]"r"(fillBytes), [count]"r"(simdCount)
@@ -203,8 +202,6 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
         long long*          simdTo       = reinterpret_cast<long long*>(dst);
         const long long*    simdEnd      = reinterpret_cast<const long long*>(dst) + simdCount * 4;
 
-        _mm_sfence();
-
         while (LS_LIKELY(simdTo != simdEnd))
         {
             _mm_stream_si64(simdTo+0, simdFillByte);
@@ -213,6 +210,10 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
             _mm_stream_si64(simdTo+3, simdFillByte);
             simdTo += 4;
         }
+
+        // fencing input data is the job of the caller. Fencing output data
+        // due to NT stores here is our job.
+        _mm_sfence();
 
     #elif defined(LS_ARCH_AARCH64)
         const uint_fast64_t simdCount    = count >> 5;
