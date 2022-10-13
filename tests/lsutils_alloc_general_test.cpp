@@ -7,7 +7,7 @@
 
 int test_single_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024*1024;
+    constexpr unsigned alloc_table_size = 1024*1024*1024;
     constexpr unsigned block_size = 512;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
@@ -30,14 +30,14 @@ int test_single_allocations()
             p = testAllocator.allocate();
             if (!p && i < max_allocations)
             {
-                std::cerr << "Error: ran out of memory at block " << i << std::endl;
+                std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
                 return -1;
             }
 
             LS_ASSERT(p == nullptr || last < p);
             last = p;
 
-            std::cout << "Allocated chunk " << i << ": " << p << std::endl;
+            //std::cout << "Allocated chunk " << i << ": " << p << std::endl;
 
             if (i >= max_allocations)
             {
@@ -91,7 +91,7 @@ int test_single_allocations()
 
 int test_array_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024*1024;
+    constexpr unsigned alloc_table_size = 1024*1024*1024;
     constexpr unsigned block_size = 16;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
@@ -116,7 +116,7 @@ int test_array_allocations()
                 return -1;
             }
 
-            std::cout << "Allocated chunk " << i << ": " << p << std::endl;
+            //std::cout << "Allocated chunk " << i << ": " << p << std::endl;
 
             if (i >= max_allocations)
             {

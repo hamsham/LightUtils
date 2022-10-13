@@ -36,14 +36,8 @@ GeneralAllocator<block_size>::GeneralAllocator(size_type totalSize) noexcept
     mHead = reinterpret_cast<AllocationEntry*>(mAllocTable);
 
     // setup all links in the allocation list
-    const size_type numBlocks = totalSize / block_size;
-
-    for (size_type i = 0; i < numBlocks; ++i)
-    {
-        mHead[i].pNext = mHead+i+1;
-    }
-
-    mHead[numBlocks - 1].pNext = nullptr;
+    mHead->header.pNext = nullptr;
+    mHead->header.numBlocks = totalSize / block_size;
 }
 
 
@@ -73,8 +67,27 @@ void* GeneralAllocator<block_size>::allocate() noexcept
         return nullptr;
     }
 
+    // Single allocation of "block_size". This should be matched to a non-sized
+    // deallocation to avoid memory corruption.
     AllocationEntry* head = mHead;
-    mHead = mHead->pNext;
+
+    if (mHead->header.numBlocks == 1)
+    {
+        mHead = nullptr;
+
+        head->header.numBlocks = 0;
+        head->header.pNext = nullptr;
+    }
+    else
+    {
+        mHead = reinterpret_cast<AllocationEntry*>(reinterpret_cast<char*>(mHead) + block_size);
+
+        mHead->header.numBlocks = head->header.numBlocks - 1;
+        head->header.numBlocks = 0;
+
+        mHead->header.pNext = head->header.pNext;
+        head->header.pNext = nullptr;
+    }
 
     return reinterpret_cast<void*>(head);
 }
@@ -87,7 +100,6 @@ void* GeneralAllocator<block_size>::allocate() noexcept
 template <unsigned long long block_size>
 void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
 {
-    // TODO: Array allocations
     if (!n || mHead == nullptr)
     {
         return nullptr;
@@ -97,53 +109,44 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
     size_type blocksNeeded = (n / block_size) + ((n % block_size) ? 1 : 0);
 
     // we're going to actually allocate "n+sizeof(size_type)" and place a header
-    // in the first 4/8 bytes to keep track of the allocation size.
-    AllocationEntry* first = mHead;
+    // in the first few bytes to keep track of the allocation size.
     AllocationEntry* prev = mHead;
     AllocationEntry* iter = mHead;
-    size_type count = 1;
+    size_type count = mHead->header.numBlocks;
 
-    while (true)
+    while (count < blocksNeeded)
     {
-        AllocationEntry* next = iter->pNext;
+        prev = iter;
+        iter = iter->header.pNext;
 
-        if (count >= blocksNeeded)
-        {
-            if (prev == mHead)
-            {
-                mHead = next;
-            }
-            else
-            {
-                prev->pNext = iter->pNext;
-            }
-            break;
-        }
-
-        if (next == nullptr)
+        if (!iter)
         {
             return nullptr;
         }
 
-        if (next != iter + 1)
-        {
-            prev = iter;
-            first = next;
-            count = 1;
-        }
-        else
-        {
-            ++count;
-        }
+        count = iter->header.numBlocks;
+    }
 
-        iter = next;
+    if (count != blocksNeeded)
+    {
+        AllocationEntry* next = reinterpret_cast<AllocationEntry*>(iter + blocksNeeded);
+        next->header.numBlocks = iter->header.numBlocks - blocksNeeded;
+        next->header.pNext = iter->header.pNext;
+        prev->header.pNext = next;
+    }
+
+    if (mHead == prev)
+    {
+        mHead = prev->header.pNext;
     }
 
     // Add the allocation size to the result pointer
-    first->header = blocksNeeded;
+    iter->header.numBlocks = blocksNeeded;
+    iter->header.pNext = nullptr;
 
-    // offset the result by the allocation header size
-    return reinterpret_cast<void*>(&first->memBlock[header_size]);
+    // Offset the result pointer to ensure we track the memory allocation
+    char* result = reinterpret_cast<char*>(iter) + GeneralAllocator<block_size>::header_size;
+    return reinterpret_cast<void*>(result);
 }
 
 
@@ -154,52 +157,12 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
 template <unsigned long long block_size>
 void GeneralAllocator<block_size>::free(void* p) noexcept
 {
-    if (!p)
-    {
-        return;
-    }
+    AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(p);
+    reclaimed->header.numBlocks = 1;
 
-    // reset the head pointer if we're out of memory
-    if (mHead == nullptr)
-    {
-        // p is now the new head
-        mHead = reinterpret_cast<AllocationEntry*>(p);
-        mHead->pNext = nullptr;
-    }
-    else
-    {
-        // Setup the header in p
-        AllocationEntry* next = reinterpret_cast<AllocationEntry*>(p);
+    char* offset = reinterpret_cast<char*>(reclaimed)+GeneralAllocator<block_size>::header_size;
 
-        // ensure the header from p points to the current "next" pointer
-        if (next < mHead)
-        {
-            next->pNext = mHead;
-            mHead = next;
-        }
-        else
-        {
-            AllocationEntry* iter = mHead;
-            AllocationEntry* prev = mHead;
-
-            while (iter && next > iter->pNext)
-            {
-                prev = iter;
-                iter = iter->pNext;
-            }
-
-            if (iter != nullptr)
-            {
-                next->pNext = iter->pNext;
-                iter->pNext = next;
-            }
-            else
-            {
-                next->pNext = nullptr;
-                prev->pNext = next;
-            }
-        }
-    }
+    this->free(reinterpret_cast<void*>(offset), block_size - GeneralAllocator<block_size>::header_size);
 }
 
 
@@ -210,7 +173,7 @@ void GeneralAllocator<block_size>::free(void* p) noexcept
 template <unsigned long long block_size>
 void GeneralAllocator<block_size>::free(void* p, size_type n) noexcept
 {
-    if (!p)
+    if (!p || !n)
     {
         return;
     }
@@ -224,46 +187,87 @@ void GeneralAllocator<block_size>::free(void* p, size_type n) noexcept
     const size_type blocksFreed = (n / block_size) + ((n % block_size) ? 1 : 0);
 
     AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(pData);
-    const size_type allocSize = reclaimed->header;
+    const size_type allocSize = reclaimed->header.numBlocks;
 
     LS_ASSERT(allocSize == blocksFreed);
+    LS_ASSERT(reclaimed != mHead); // possible double-free
+    // TODO: Add double-free checking
 
-    // Pointers to the free'd allocation's first and last blocks
-    AllocationEntry* first = reclaimed;
-    AllocationEntry* last = reclaimed + allocSize - 1;
-
-    for (size_type i = 1; i < (allocSize-1); ++i)
-    {
-        reclaimed->pNext = first + i;
-        reclaimed += 1;
-    }
+    reclaimed->header.numBlocks = allocSize;
+    reclaimed->header.pNext = nullptr;
 
     // reset the head pointer if we're out of memory
     if (mHead == nullptr)
     {
         // reset the head pointer
-        mHead = first;
-        last->pNext = nullptr;
+        mHead = reclaimed;
     }
-    else
+    else if (reclaimed < mHead)
     {
         // ensure the header-pointer from p points to the current "next" chunk.
-        if (last < mHead)
+        // increase the block count if possible
+        if (mHead == (reclaimed + allocSize))
         {
-            last->pNext = mHead;
-            mHead = first;
+            reclaimed->header.numBlocks += mHead->header.numBlocks;
+            mHead->header.numBlocks = 0;
+
+            reclaimed->header.pNext = mHead->header.pNext;
+            mHead->header.pNext = nullptr;
         }
         else
         {
-            AllocationEntry* iter = mHead;
+            reclaimed->header.pNext = mHead;
+        }
 
-            while (first > iter->pNext)
+        mHead = reclaimed;
+    }
+    else
+    {
+        AllocationEntry* iter = mHead;
+        AllocationEntry* prev = nullptr;
+
+        while (iter && reclaimed > iter)
+        {
+            prev = iter;
+            iter = iter->header.pNext;
+        }
+
+        if (!prev)
+        {
+            prev = iter;
+            iter = nullptr;
+        }
+
+        // expand the previous allocation if possible
+        if (reclaimed == (prev + prev->header.numBlocks))
+        {
+            prev->header.numBlocks += allocSize;
+
+            while (true)
             {
-                iter = iter->pNext;
-            }
+                if (!iter)
+                {
+                    prev->header.pNext = nullptr;
+                }
+                else if (iter == (prev + prev->header.numBlocks))
+                {
+                    prev->header.numBlocks += iter->header.numBlocks;
 
-            last->pNext = iter->pNext;
-            iter->pNext = first;
+                    AllocationEntry* temp = iter;
+                    iter = iter->header.pNext;
+
+                    temp->header.numBlocks = 0;
+                    temp->header.pNext = nullptr;
+                    continue;
+                }
+
+                break;
+            }
+        }
+        else
+        {
+            reclaimed->header.pNext = iter;
+            prev->header.pNext = reclaimed;
         }
     }
 }

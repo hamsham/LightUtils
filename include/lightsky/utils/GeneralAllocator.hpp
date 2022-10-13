@@ -32,13 +32,19 @@ class GeneralAllocator
     typedef unsigned long long size_type;
 
   private:
-    typedef unsigned long long header_type;
+    //typedef unsigned long long header_type;
+    union alignas(alignof(size_type)) AllocationEntry;
+
+    struct header_type
+    {
+        size_type numBlocks;
+        AllocationEntry* pNext;
+    };
 
     // Use the header type for alignment. If needed we can change this to align
     // to a SIMD-sized block.
     union alignas(alignof(header_type)) AllocationEntry
     {
-        AllocationEntry* pNext;
         header_type header;
         char memBlock[block_size];
     };
