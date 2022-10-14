@@ -157,6 +157,11 @@ void* GeneralAllocator<block_size>::allocate(size_type n) noexcept
 template <unsigned long long block_size>
 void GeneralAllocator<block_size>::free(void* p) noexcept
 {
+    if (!p)
+    {
+        return;
+    }
+
     AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(p);
     reclaimed->header.numBlocks = 1;
 
