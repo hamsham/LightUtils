@@ -246,7 +246,9 @@ void GeneralAllocator<block_size>::free(void* p, size_type n) noexcept
         // expand the previous allocation if possible
         if (reclaimed == (prev + prev->header.numBlocks))
         {
-            prev->header.numBlocks += allocSize;
+            prev->header.numBlocks += reclaimed->header.numBlocks;
+            reclaimed->header.numBlocks = 0;
+            reclaimed->header.pNext = nullptr;
 
             while (true)
             {
