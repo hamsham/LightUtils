@@ -73,6 +73,35 @@ class GeneralAllocator
      */
     AllocationEntry* mHead;
 
+    /**
+     * @brief Helper function to merge two contiguous memory blocks.
+     *
+     * @note This function assumes incoming memory is nonnull.
+     *
+     * @param pHead
+     * Pointer the the base memory block.
+     *
+     * @param pBlock
+     * Pointer to memory block coming from the client API.
+     *
+     * @return A pointer to the head block.
+     */
+    void _merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) noexcept;
+
+    /**
+     * @brief Return an allocated block of memory back to *this allocator.
+     *
+     * @note This function assumes incoming memory is nonnull and blockCount is
+     * nonzero.
+     *
+     * @param reclaimed
+     * A pointer to a valid AllocationEntry struct.
+     *
+     * @param blockCount
+     * The number of blocks which were freed (not number of bytes).
+     */
+    void _free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept;
+
   public:
     /**
      * @brief Destructor

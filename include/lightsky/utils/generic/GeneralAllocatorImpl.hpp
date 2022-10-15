@@ -28,9 +28,9 @@ GeneralAllocator<block_size>::~GeneralAllocator() noexcept
 template <unsigned long long block_size>
 GeneralAllocator<block_size>::GeneralAllocator(size_type totalSize) noexcept
 {
-    LS_ASSERT(totalSize >= sizeof(size_type)); // "Allocated memory table cannot be less than sizeof(size_type).");
-    LS_ASSERT(totalSize % block_size == 0);    // "Cannot fit the current block size within an allocation table.");
-    LS_ASSERT(block_size < totalSize);         // "Block size must be less than the total byte size.");
+    ls::utils::runtime_assert(totalSize >= sizeof(size_type), ls::utils::ErrorLevel::LS_ERROR, "Allocated memory table cannot be less than sizeof(size_type).");
+    ls::utils::runtime_assert(totalSize % block_size == 0, ls::utils::ErrorLevel::LS_ERROR, "Cannot fit the current block size within an allocation table.");
+    ls::utils::runtime_assert(block_size < totalSize, ls::utils::ErrorLevel::LS_ERROR, "Allocation block size must be less than the total byte size.");
 
     mAllocTable = new char[totalSize];
     mHead = reinterpret_cast<AllocationEntry*>(mAllocTable);
@@ -52,6 +52,95 @@ GeneralAllocator<block_size>::GeneralAllocator(GeneralAllocator&& a) noexcept :
 {
     a.mAllocTable = nullptr;
     a.mHead = nullptr;
+}
+
+
+
+/*-------------------------------------
+ * Allocation merging
+-------------------------------------*/
+template <unsigned long long block_size>
+inline void GeneralAllocator<block_size>::_merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) noexcept
+{
+    const size_type headSize = pHead->header.numBlocks;
+
+    // Double-free detection
+    if ((pHead >= pBlock) && (pBlock < (pHead + headSize)))
+    {
+        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
+    }
+
+    // Check if the head pointer can be expanded
+    AllocationEntry* iter = pHead->header.pNext;
+
+    if (pBlock == (pHead + pHead->header.numBlocks))
+    {
+        pHead->header.numBlocks += pBlock->header.numBlocks;
+        pBlock->header.numBlocks = 0;
+        pBlock->header.pNext = nullptr;
+
+        if (!iter)
+        {
+            pHead->header.pNext = nullptr;
+        }
+        else if (iter == (pHead + pHead->header.numBlocks))
+        {
+            pHead->header.numBlocks += iter->header.numBlocks;
+            pHead->header.pNext = iter->header.pNext;
+
+            iter->header.numBlocks = 0;
+            iter->header.pNext = nullptr;
+        }
+    }
+    else
+    {
+        pBlock->header.pNext = iter;
+        pHead->header.pNext = pBlock;
+    }
+}
+
+
+
+/*-------------------------------------
+ * Free Memory
+-------------------------------------*/
+template <unsigned long long block_size>
+inline void GeneralAllocator<block_size>::_free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept
+{
+    // Minor input validation. Non-sized allocations will not contain an
+    // valid block count.
+    reclaimed->header.numBlocks = blockCount;
+    reclaimed->header.pNext = nullptr;
+
+    // reset the head pointer if we're out of memory
+    if (mHead == nullptr)
+    {
+        // reset the head pointer
+        mHead = reclaimed;
+    }
+    else if (reclaimed < mHead)
+    {
+        // ensure the header-pointer from p points to the current "next" chunk.
+        // increase the block count if possible
+        AllocationEntry* const temp = reclaimed;
+        this->_merge_allocation_blocks(reclaimed, mHead);
+        mHead = temp;
+    }
+    else // mHead > reclaimed
+    {
+        AllocationEntry* prev = mHead;
+        AllocationEntry* iter = mHead->header.pNext;
+
+        while (iter && reclaimed > iter)
+        {
+            prev = iter;
+            iter = iter->header.pNext;
+        }
+
+        // "prev" does not need its "pNext" pointer updated, disable
+        // compile-time branch.
+        this->_merge_allocation_blocks(prev, reclaimed);
+    }
 }
 
 
@@ -162,12 +251,9 @@ void GeneralAllocator<block_size>::free(void* p) noexcept
         return;
     }
 
-    AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(p);
-    reclaimed->header.numBlocks = 1;
-
-    char* offset = reinterpret_cast<char*>(reclaimed)+GeneralAllocator<block_size>::header_size;
-
-    this->free(reinterpret_cast<void*>(offset), block_size - GeneralAllocator<block_size>::header_size);
+    // Non-sized allocations do not contain a header to ensure the maximum
+    // allocation size can be made available.
+    this->_free_impl(reinterpret_cast<AllocationEntry*>(p), 1);
 }
 
 
@@ -183,100 +269,28 @@ void GeneralAllocator<block_size>::free(void* p, size_type n) noexcept
         return;
     }
 
-    // Offset to the start of the allocation (minus the header).
-    char* pData = reinterpret_cast<char*>(p) - GeneralAllocator<block_size>::header_size;
-
     // retrieve the allocation size from header, make sure it matches what is
     // expected
     n += GeneralAllocator<block_size>::header_size;
     const size_type blocksFreed = (n / block_size) + ((n % block_size) ? 1 : 0);
 
-    AllocationEntry* reclaimed = reinterpret_cast<AllocationEntry*>(pData);
+    // Offset to the start of the allocation (a.k.a. the allocation header).
+    char* const pData = reinterpret_cast<char*>(p) - GeneralAllocator<block_size>::header_size;
+
+    AllocationEntry* const reclaimed = reinterpret_cast<AllocationEntry*>(pData);
+    if (reclaimed == mHead)
+    {
+        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
+    }
+
+    // Read the input allocation size for validation
     const size_type allocSize = reclaimed->header.numBlocks;
-
-    LS_ASSERT(allocSize == blocksFreed);
-    LS_ASSERT(reclaimed != mHead); // possible double-free
-    // TODO: Add double-free checking
-
-    reclaimed->header.numBlocks = allocSize;
-    reclaimed->header.pNext = nullptr;
-
-    // reset the head pointer if we're out of memory
-    if (mHead == nullptr)
+    if (allocSize != blocksFreed)
     {
-        // reset the head pointer
-        mHead = reclaimed;
+        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Invalid de-allocation size detected!");
     }
-    else if (reclaimed < mHead)
-    {
-        // ensure the header-pointer from p points to the current "next" chunk.
-        // increase the block count if possible
-        if (mHead == (reclaimed + allocSize))
-        {
-            reclaimed->header.numBlocks += mHead->header.numBlocks;
-            mHead->header.numBlocks = 0;
 
-            reclaimed->header.pNext = mHead->header.pNext;
-            mHead->header.pNext = nullptr;
-        }
-        else
-        {
-            reclaimed->header.pNext = mHead;
-        }
-
-        mHead = reclaimed;
-    }
-    else
-    {
-        AllocationEntry* iter = mHead;
-        AllocationEntry* prev = nullptr;
-
-        while (iter && reclaimed > iter)
-        {
-            prev = iter;
-            iter = iter->header.pNext;
-        }
-
-        if (!prev)
-        {
-            prev = iter;
-            iter = nullptr;
-        }
-
-        // expand the previous allocation if possible
-        if (reclaimed == (prev + prev->header.numBlocks))
-        {
-            prev->header.numBlocks += reclaimed->header.numBlocks;
-            reclaimed->header.numBlocks = 0;
-            reclaimed->header.pNext = nullptr;
-
-            while (true)
-            {
-                if (!iter)
-                {
-                    prev->header.pNext = nullptr;
-                }
-                else if (iter == (prev + prev->header.numBlocks))
-                {
-                    prev->header.numBlocks += iter->header.numBlocks;
-
-                    AllocationEntry* temp = iter;
-                    iter = iter->header.pNext;
-
-                    temp->header.numBlocks = 0;
-                    temp->header.pNext = nullptr;
-                    continue;
-                }
-
-                break;
-            }
-        }
-        else
-        {
-            reclaimed->header.pNext = iter;
-            prev->header.pNext = reclaimed;
-        }
-    }
+    this->_free_impl(reclaimed, allocSize);
 }
 
 

@@ -7,8 +7,8 @@
 
 int test_single_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024*1024*1024;
-    constexpr unsigned block_size = 512;
+    constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
+    constexpr unsigned block_size = 512u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
@@ -53,6 +53,14 @@ int test_single_allocations()
             }
         }
 
+        /*
+        p = allocations[max_allocations/2];
+        testAllocator.free(allocations[max_allocations/2]);
+        allocations[max_allocations/2] = testAllocator.allocate();
+        LS_ASSERT(allocations[max_allocations/2] != nullptr);
+        LS_ASSERT(allocations[max_allocations/2] == p);
+        */
+
         // we should be able to retrieve and reallocate
         testAllocator.free(allocations[2]);
         allocations[2] = nullptr;
@@ -91,9 +99,10 @@ int test_single_allocations()
 
 int test_array_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024*1024*1024;
-    constexpr unsigned block_size = 16;
+    constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
+    constexpr unsigned block_size = 16u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
+    //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
 
     // test allocator of 64 bytes in a 256-byte container
     ls::utils::GeneralAllocator<block_size> testAllocator{alloc_table_size};
@@ -132,7 +141,16 @@ int test_array_allocations()
             }
         }
 
+        /*
+        p = allocations[mid_allocation];
+        testAllocator.free(allocations[mid_allocation], block_size * 2);
+        allocations[mid_allocation] = testAllocator.allocate(block_size * 2);
+        LS_ASSERT(allocations[mid_allocation] != nullptr);
+        LS_ASSERT(allocations[mid_allocation] == p);
+        */
+
         // we should be able to retrieve and reallocate
+        //testAllocator.free(allocations[2], block_size * 2);
         testAllocator.free(allocations[2], block_size * 2);
         allocations[2] = nullptr;
 
