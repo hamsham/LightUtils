@@ -218,8 +218,23 @@ class ThreadedMemoryCache
   public:
     ~ThreadedMemoryCache() noexcept
     {
-        // All allocators should have been freed by now
-        LS_ASSERT(mAllocators == nullptr);
+        // Free all of the allocations using the per-allocator member
+        // functions. Each allocator is responsible for its own cache's memory
+        // AND the AllocatorList node associated with it.
+        AllocatorList* pIter = mAllocators;
+        AllocatorList* pNext = mAllocators ? mAllocators->pNext : nullptr;
+
+        while (pIter != nullptr)
+        {
+            // Each allocator must free its own cache entry
+            pIter->mAllocator->free(pIter, sizeof(AllocatorList));
+            pIter = pNext;
+
+            if (pNext)
+            {
+                pNext = pNext->pNext;
+            }
+        }
     }
 
     // When an allocator goes out of scope, we remove it from the allocator
@@ -251,20 +266,30 @@ class ThreadedMemoryCache
         }
     }
 
-    void* allocate(AtomicAllocator* allocator, size_t n) noexcept
+    inline void* allocate(AtomicAllocator* allocator, size_t n) noexcept
     {
         static_assert(ls::setup::IsBaseOf<IAllocator, ThreadedCacheType>::value, "Template allocator type does not implement the IAllocator interface.");
         LS_ASSERT(allocator != nullptr);
 
-        AllocatorList* iter = nullptr;
-        for (AllocatorList* pAllocators = mAllocators; pAllocators != nullptr; pAllocators = pAllocators->pNext)
+        AllocatorList* iter = mAllocators;
+        while (true)
         {
-            if (pAllocators->mAllocator == allocator)
+            if (!iter)
             {
-                return pAllocators->mMemCache.allocate(n);
+                break;
             }
 
-            iter = pAllocators;
+            if (iter->mAllocator == allocator)
+            {
+                return iter->mMemCache.allocate(n);
+            }
+
+            if (!iter->pNext)
+            {
+                break;
+            }
+
+            iter = iter->pNext;
         }
 
         // No local allocator exists which corresponds to the current thread,
@@ -297,7 +322,7 @@ class ThreadedMemoryCache
         return pListEntry->mMemCache.allocate(n);
     }
 
-    void free(AtomicAllocator* allocator, void* p, size_t n) noexcept
+    inline void free(AtomicAllocator* allocator, void* p, size_t n) noexcept
     {
         LS_ASSERT(allocator != nullptr);
 
@@ -680,7 +705,6 @@ int main()
         return ret;
     }
 
-    /*
     std::cout << std::endl;
     std::cout << "Testing a threaded malloc cache:" << std::endl;
     MallocMemorySource mallocSrc;
@@ -709,7 +733,6 @@ int main()
     t0.join();
     t1.join();
     t2.join();
-    */
 
     return 0;
 }
