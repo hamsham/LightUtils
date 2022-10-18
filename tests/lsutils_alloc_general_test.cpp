@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <memory> // std::nothrow
 #include <mutex>
 #include <thread>
 
@@ -199,6 +200,7 @@ class AtomicAllocator : public Allocator
 
 
 
+template <typename ThreadedCacheType>
 class ThreadedMemoryCache
 {
   private:
@@ -208,8 +210,7 @@ class ThreadedMemoryCache
     {
         AtomicAllocator* mAllocator;
         AllocatorList* pNext;
-        IAllocator* mMemCache;
-        size_t mCacheSize; // note: this is the size of the cache object's type
+        ThreadedCacheType mMemCache;
     };
 
     AllocatorList* mAllocators;
@@ -217,24 +218,8 @@ class ThreadedMemoryCache
   public:
     ~ThreadedMemoryCache() noexcept
     {
-        // Free all of the allocations using the per-allocator member
-        // functions. Each allocator is responsible for its own cache's memory
-        // AND the AllocatorList node associated with it.
-        AllocatorList* pIter = mAllocators;
-        AllocatorList* pNext = mAllocators ? mAllocators->pNext : nullptr;
-
-        while (pIter != nullptr)
-        {
-            // Each allocator must free its own cache entry
-            pIter->mAllocator->free(pIter->mMemCache, pIter->mCacheSize);
-            pIter->mAllocator->free(pIter, sizeof(AllocatorList));
-            pIter = pNext;
-
-            if (pNext)
-            {
-                pNext = pNext->pNext;
-            }
-        }
+        // All allocators should have been freed by now
+        LS_ASSERT(mAllocators == nullptr);
     }
 
     // When an allocator goes out of scope, we remove it from the allocator
@@ -257,7 +242,6 @@ class ThreadedMemoryCache
                     mAllocators = pIter->pNext;
                 }
 
-                pIter->mAllocator->free(pIter->mMemCache, pIter->mCacheSize);
                 pIter->mAllocator->free(pIter, sizeof(AllocatorList));
                 break;
             }
@@ -267,7 +251,6 @@ class ThreadedMemoryCache
         }
     }
 
-    template <typename ThreadedCacheType>
     void* allocate(AtomicAllocator* allocator, size_t n) noexcept
     {
         static_assert(ls::setup::IsBaseOf<IAllocator, ThreadedCacheType>::value, "Template allocator type does not implement the IAllocator interface.");
@@ -278,7 +261,7 @@ class ThreadedMemoryCache
         {
             if (pAllocators->mAllocator == allocator)
             {
-                return pAllocators->mMemCache->allocate(n);
+                return pAllocators->mMemCache.allocate(n);
             }
 
             iter = pAllocators;
@@ -286,7 +269,7 @@ class ThreadedMemoryCache
 
         // No local allocator exists which corresponds to the current thread,
         // create one using the primary allocator
-        void* const pCacheLocation = allocator->allocate(sizeof(ThreadedCacheType));
+        void* const pCacheLocation = allocator->allocate(sizeof(AllocatorList));
         if (!pCacheLocation)
         {
             return nullptr;
@@ -294,19 +277,13 @@ class ThreadedMemoryCache
 
         // The primary allocator will also need to allocate its own list node
         // for bookkeeping... nobody else will.
-        AllocatorList* const pListEntry = (AllocatorList*)allocator->allocate(sizeof(AllocatorList));
-        if (!pListEntry)
-        {
-            allocator->free(pCacheLocation, sizeof(ThreadedCacheType));
-            return nullptr;
-        }
+        MemorySource* const pMemSrc = static_cast<MemorySource*>(allocator);
 
-        MemorySource* pMemSrc = static_cast<MemorySource*>(allocator);
-        IAllocator* const pMemCache = new(pCacheLocation) ThreadedCacheType{*pMemSrc};
-        pListEntry->mAllocator = allocator;
-        pListEntry->pNext = nullptr;
-        pListEntry->mMemCache = pMemCache;
-        pListEntry->mCacheSize = sizeof(ThreadedCacheType);
+        AllocatorList* const pListEntry = new (pCacheLocation) AllocatorList{
+            allocator,
+            nullptr,
+            ThreadedCacheType{*pMemSrc}
+        };
 
         if (iter)
         {
@@ -317,18 +294,18 @@ class ThreadedMemoryCache
             mAllocators = pListEntry;
         }
 
-        return pMemCache->allocate(n);
+        return pListEntry->mMemCache.allocate(n);
     }
 
     void free(AtomicAllocator* allocator, void* p, size_t n) noexcept
     {
         LS_ASSERT(allocator != nullptr);
 
-        for (AllocatorList* pAllocators = mAllocators; pAllocators != nullptr; pAllocators = pAllocators->pNext)
+        for (AllocatorList* pIter = mAllocators; pIter != nullptr; pIter = pIter->pNext)
         {
-            if (pAllocators->mAllocator == allocator)
+            if (pIter->mAllocator == allocator)
             {
-                pAllocators->mMemCache->free(p, n);
+                pIter->mMemCache.free(p, n);
                 return;
             }
         }
@@ -343,7 +320,7 @@ class ThreadedAllocator final : public Allocator
     static_assert(ls::setup::IsBaseOf<IAllocator, ThreadedCacheType>::value, "Template allocator type does not implement the IAllocator interface.");
 
   private:
-    static thread_local ThreadedMemoryCache sThreadCache;
+    static thread_local ThreadedMemoryCache<ThreadedCacheType> sThreadCache;
 
   public:
     virtual ~ThreadedAllocator() noexcept override
@@ -381,7 +358,7 @@ class ThreadedAllocator final : public Allocator
     virtual void* allocate(size_t n) noexcept override
     {
         AtomicAllocator& memSrc = static_cast<AtomicAllocator&>(this->memory_source());
-        return sThreadCache.allocate<ThreadedCacheType>(&memSrc, n);
+        return sThreadCache.allocate(&memSrc, n);
     }
 
     virtual void free(void* p, size_t n) noexcept override
@@ -392,7 +369,7 @@ class ThreadedAllocator final : public Allocator
 };
 
 template <typename ThreadedCacheType>
-thread_local ThreadedMemoryCache ThreadedAllocator<ThreadedCacheType>::sThreadCache;
+thread_local ThreadedMemoryCache<ThreadedCacheType> ThreadedAllocator<ThreadedCacheType>::sThreadCache;
 
 
 
@@ -470,7 +447,7 @@ int test_single_allocations()
         p = testAllocator.allocate();
         if (p)
         {
-            std::cerr << "Error: Allocated too many chunks!" << std::endl;
+            std::cerr << "Error: Allocated too many blocks!" << std::endl;
             return -4;
         }
 
@@ -535,7 +512,7 @@ class MallocMemorySource2 final : public MemorySource
         }
 
         mBytesAllocated += n;
-        return std::malloc(n);
+        return new(std::nothrow) char[n];
     }
 
     virtual void free(void* pData, size_t numBytes) noexcept override
@@ -547,7 +524,7 @@ class MallocMemorySource2 final : public MemorySource
         if (pData)
         {
             mBytesAllocated -= n;
-            std::free(pData);
+            delete [] reinterpret_cast<char*>(pData);
         }
     }
 };
@@ -617,7 +594,7 @@ int test_array_allocations()
 
     for (unsigned testRuns = 0; testRuns < 5; ++testRuns)
     {
-        for (unsigned i = 0; i < max_allocations/3 - 2; ++i)
+        for (unsigned i = 0; i < max_allocations/3 - 1; ++i)
         {
             p = testAllocator.allocate(block_size * 2);
             if (!p && i < max_allocations)
