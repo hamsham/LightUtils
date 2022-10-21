@@ -88,6 +88,7 @@ set(LS_UTILS_HEADERS
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
     include/lightsky/utils/generic/AllocatorImpl.hpp
+    include/lightsky/utils/generic/BTreeImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
     include/lightsky/utils/generic/GeneralAllocatorImpl.hpp
