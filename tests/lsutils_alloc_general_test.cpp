@@ -3,398 +3,86 @@
 #include <memory> // std::nothrow
 #include <mutex>
 #include <thread>
-
-#include "lightsky/setup/Types.h"
+#include <vector>
 
 #include "lightsky/utils/GeneralAllocator.hpp"
 #include "lightsky/utils/SpinLock.hpp"
 
-
-
-class MemorySource
-{
-  public:
-    virtual ~MemorySource() noexcept = 0;
-
-    MemorySource() noexcept {}
-    MemorySource(const MemorySource&) noexcept {}
-    MemorySource(MemorySource&&) noexcept {}
-
-    MemorySource& operator=(const MemorySource&) noexcept = default;
-    MemorySource& operator=(MemorySource&&) noexcept = default;
-
-    virtual void* allocate(size_t numBytes) noexcept = 0;
-    virtual void free(void* pData, size_t numBytes) noexcept = 0;
-};
-
-MemorySource::~MemorySource() noexcept
-{
-}
+namespace utils = ls::utils;
 
 
 
-class MallocMemorySource final : public MemorySource
-{
-  public:
-    virtual ~MallocMemorySource() noexcept override {}
-
-    MallocMemorySource() noexcept :
-        MemorySource{}
-    {}
-
-    MallocMemorySource(const MallocMemorySource& src) noexcept :
-        MemorySource{src}
-    {}
-
-    MallocMemorySource(MallocMemorySource&& src) noexcept :
-        MemorySource{std::move(src)}
-    {}
-
-    MallocMemorySource& operator=(const MallocMemorySource&) noexcept = default;
-    MallocMemorySource& operator=(MallocMemorySource&&) noexcept = default;
-
-    virtual void* allocate(size_t numBytes) noexcept override
-    {
-        return std::malloc(numBytes);
-    }
-
-    virtual void free(void* pData, size_t numBytes) noexcept override
-    {
-        (void)numBytes;
-        std::free(pData);
-    }
-};
-
-
-
-class IAllocator : public MemorySource
-{
-  protected:
-    virtual const MemorySource& memory_source() const noexcept = 0;
-
-    virtual MemorySource& memory_source() noexcept = 0;
-
-  public:
-    virtual ~IAllocator() noexcept = 0;
-
-    virtual void* allocate(size_t n) noexcept
-    {
-        return this->memory_source().allocate(n);
-    }
-
-    virtual void free(void* p, size_t n) noexcept
-    {
-        this->memory_source().free(p, n);
-    }
-};
-
-IAllocator::~IAllocator() noexcept
-{
-}
-
-
-
-class Allocator : public IAllocator
+template <unsigned maxNumBytes>
+class LimitedMemoryAllocator final : public utils::ThreadSafeAllocator
 {
   private:
-    MemorySource* mMemSource;
-
-  protected:
-    const MemorySource& memory_source() const noexcept override
-    {
-        return *mMemSource;
-    }
-
-    MemorySource& memory_source() noexcept override
-    {
-        return *mMemSource;
-    }
+    size_type mMaxAllocSize;
+    size_type mBytesAllocated;
 
   public:
-    virtual ~Allocator() noexcept override {}
+    virtual ~LimitedMemoryAllocator() noexcept override {}
 
-    Allocator() noexcept = delete;
-
-    Allocator(MemorySource& src) noexcept :
-        mMemSource{&src}
+    LimitedMemoryAllocator(utils::MallocMemorySource& memorySource) noexcept :
+        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)},
+        mMaxAllocSize{maxNumBytes},
+        mBytesAllocated{0}
     {}
 
-    Allocator(const Allocator&) = delete;
-
-    Allocator(Allocator&& allocator) noexcept :
-        IAllocator{allocator},
-        mMemSource{allocator.mMemSource}
-    {
-        allocator.mMemSource = nullptr;
-    }
-
-    Allocator& operator=(const Allocator& allocator) noexcept = delete;
-
-    Allocator& operator=(Allocator&& allocator) noexcept
-    {
-        if (&allocator != this)
-        {
-            IAllocator::operator=(std::move(allocator));
-
-            mMemSource = allocator.mMemSource;
-            allocator.mMemSource = nullptr;
-        }
-
-        return *this;
-    }
-};
-
-
-
-class AtomicAllocator : public Allocator
-{
-  private:
-    ls::utils::SpinLock mLock;
-
-  public:
-    virtual ~AtomicAllocator() noexcept override {}
-
-    AtomicAllocator() noexcept = delete;
-
-    AtomicAllocator(MemorySource& src) noexcept :
-        Allocator{src},
-        mLock{}
+    LimitedMemoryAllocator(const LimitedMemoryAllocator& src) noexcept :
+        ThreadSafeAllocator{src},
+        mMaxAllocSize{src.mMaxAllocSize},
+        mBytesAllocated{src.mBytesAllocated}
     {}
 
-    AtomicAllocator(const AtomicAllocator&) = delete;
-
-    AtomicAllocator(AtomicAllocator&& allocator) noexcept :
-        Allocator{std::move(allocator)},
-        mLock{}
+    LimitedMemoryAllocator(LimitedMemoryAllocator&& src) noexcept :
+        ThreadSafeAllocator{std::move(src)},
+        mMaxAllocSize{src.mMaxAllocSize},
+        mBytesAllocated{src.mBytesAllocated}
     {
+        src.mMaxAllocSize = 0;
+        src.mBytesAllocated = 0;
     }
 
-    AtomicAllocator& operator=(const AtomicAllocator& allocator) noexcept = delete;
+    LimitedMemoryAllocator& operator=(const LimitedMemoryAllocator&) noexcept = default;
+    LimitedMemoryAllocator& operator=(LimitedMemoryAllocator&&) noexcept = default;
 
-    AtomicAllocator& operator=(AtomicAllocator&& allocator) noexcept
+    virtual void* allocate() noexcept override
     {
-        if (&allocator != this)
-        {
-            mLock.lock();
-            Allocator::operator=(std::move(allocator));
-            mLock.unlock();
-        }
-
-        return *this;
+        LS_ASSERT(false);
+        return nullptr;
     }
 
-    virtual void* allocate(size_t n) noexcept override
+    virtual void* allocate(size_type numBytes) noexcept override
     {
-        mLock.lock();
-        void* const pMem = Allocator::allocate(n);
-        mLock.unlock();
-
-        return pMem;
-    }
-
-    virtual void free(void* p, size_t n) noexcept override
-    {
-        Allocator::free(p, n);
-    }
-};
-
-
-
-template <typename ThreadedCacheType>
-class ThreadedMemoryCache
-{
-  private:
-    // There may be more than one allocator per-thread. Here we maintain a list
-    // of them, and their associated per-thread caches.
-    struct AllocatorList
-    {
-        AtomicAllocator* mAllocator;
-        AllocatorList* pNext;
-        ThreadedCacheType mMemCache;
-    };
-
-    AllocatorList* mAllocators;
-
-  public:
-    ~ThreadedMemoryCache() noexcept
-    {
-        // Free all of the allocations using the per-allocator member
-        // functions. Each allocator is responsible for its own cache's memory
-        // AND the AllocatorList node associated with it.
-        AllocatorList* pIter = mAllocators;
-        AllocatorList* pNext = mAllocators ? mAllocators->pNext : nullptr;
-
-        while (pIter != nullptr)
-        {
-            // Each allocator must free its own cache entry
-            pIter->mAllocator->free(pIter, sizeof(AllocatorList));
-            pIter = pNext;
-
-            if (pNext)
-            {
-                pNext = pNext->pNext;
-            }
-        }
-    }
-
-    // When an allocator goes out of scope, we remove it from the allocator
-    // list. There's absolutely no need to keep it's references around.
-    void remove_allocator(AtomicAllocator* allocator) noexcept
-    {
-        AllocatorList* pPrev = nullptr;
-        AllocatorList* pIter = mAllocators;
-
-        while (pIter != nullptr)
-        {
-            if (pIter->mAllocator == allocator)
-            {
-                if (pPrev)
-                {
-                    pPrev->pNext = pIter->pNext;
-                }
-                else
-                {
-                    mAllocators = pIter->pNext;
-                }
-
-                pIter->mAllocator->free(pIter, sizeof(AllocatorList));
-                break;
-            }
-
-            pPrev = pIter;
-            pIter = pIter->pNext;
-        }
-    }
-
-    inline void* allocate(AtomicAllocator* allocator, size_t n) noexcept
-    {
-        static_assert(ls::setup::IsBaseOf<IAllocator, ThreadedCacheType>::value, "Template allocator type does not implement the IAllocator interface.");
-        LS_ASSERT(allocator != nullptr);
-
-        AllocatorList* iter = mAllocators;
-        while (true)
-        {
-            if (!iter)
-            {
-                break;
-            }
-
-            if (iter->mAllocator == allocator)
-            {
-                return iter->mMemCache.allocate(n);
-            }
-
-            if (!iter->pNext)
-            {
-                break;
-            }
-
-            iter = iter->pNext;
-        }
-
-        // No local allocator exists which corresponds to the current thread,
-        // create one using the primary allocator
-        void* const pCacheLocation = allocator->allocate(sizeof(AllocatorList));
-        if (!pCacheLocation)
+        if (mBytesAllocated+numBytes > mMaxAllocSize)
         {
             return nullptr;
         }
 
-        // The primary allocator will also need to allocate its own list node
-        // for bookkeeping... nobody else will.
-        MemorySource* const pMemSrc = static_cast<MemorySource*>(allocator);
-
-        AllocatorList* const pListEntry = new (pCacheLocation) AllocatorList{
-            allocator,
-            nullptr,
-            ThreadedCacheType{*pMemSrc}
-        };
-
-        if (iter)
+        void* pData = this->memory_source().allocate(numBytes);
+        if (pData)
         {
-            iter->pNext = pListEntry;
-        }
-        else
-        {
-            mAllocators = pListEntry;
+            mBytesAllocated += numBytes;
         }
 
-        return pListEntry->mMemCache.allocate(n);
+        return  pData;
     }
 
-    inline void free(AtomicAllocator* allocator, void* p, size_t n) noexcept
+    virtual void free(void* pData) noexcept override
     {
-        LS_ASSERT(allocator != nullptr);
+        (void)pData;
+        LS_ASSERT(false);
+    }
 
-        for (AllocatorList* pIter = mAllocators; pIter != nullptr; pIter = pIter->pNext)
+    virtual void free(void* pData, size_type numBytes) noexcept override
+    {
+        if (pData && numBytes)
         {
-            if (pIter->mAllocator == allocator)
-            {
-                pIter->mMemCache.free(p, n);
-                return;
-            }
+            mBytesAllocated -= numBytes;
+            this->memory_source().free(pData, numBytes);
         }
     }
 };
-
-
-
-template <typename ThreadedCacheType>
-class ThreadedAllocator final : public Allocator
-{
-    static_assert(ls::setup::IsBaseOf<IAllocator, ThreadedCacheType>::value, "Template allocator type does not implement the IAllocator interface.");
-
-  private:
-    static thread_local ThreadedMemoryCache<ThreadedCacheType> sThreadCache;
-
-  public:
-    virtual ~ThreadedAllocator() noexcept override
-    {
-        AtomicAllocator& memSrc = static_cast<AtomicAllocator&>(this->memory_source());
-        sThreadCache.remove_allocator(&memSrc);
-    }
-
-    ThreadedAllocator() noexcept = delete;
-
-    ThreadedAllocator(AtomicAllocator& src) noexcept :
-        Allocator{static_cast<MemorySource&>(src)}
-    {
-    }
-
-    ThreadedAllocator(const ThreadedAllocator&) = delete;
-
-    ThreadedAllocator(ThreadedAllocator&& allocator) noexcept :
-        AtomicAllocator{std::move(allocator)}
-    {
-    }
-
-    ThreadedAllocator& operator=(const ThreadedAllocator&) = delete;
-
-    ThreadedAllocator& operator=(ThreadedAllocator&& allocator) noexcept
-    {
-        if (this != allocator)
-        {
-            Allocator::operator=(std::move(allocator));
-        }
-
-        return *this;
-    }
-
-    virtual void* allocate(size_t n) noexcept override
-    {
-        AtomicAllocator& memSrc = static_cast<AtomicAllocator&>(this->memory_source());
-        return sThreadCache.allocate(&memSrc, n);
-    }
-
-    virtual void free(void* p, size_t n) noexcept override
-    {
-        AtomicAllocator& memSrc = static_cast<AtomicAllocator&>(this->memory_source());
-        sThreadCache.free(&memSrc, p, n);
-    }
-};
-
-template <typename ThreadedCacheType>
-thread_local ThreadedMemoryCache<ThreadedCacheType> ThreadedAllocator<ThreadedCacheType>::sThreadCache;
 
 
 
@@ -405,7 +93,9 @@ int test_single_allocations()
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
-    ls::utils::GeneralAllocator<block_size> testAllocator{alloc_table_size};
+    utils::MallocMemorySource mallocSrc{};
+    LimitedMemoryAllocator<alloc_table_size> memLimiter{mallocSrc};
+    utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
     void* last = nullptr;
@@ -427,7 +117,7 @@ int test_single_allocations()
                 return -1;
             }
 
-            LS_ASSERT(p == nullptr || last < p);
+            LS_ASSERT(p == nullptr || last == nullptr || last > p);
             last = p;
 
             //std::cout << "Allocated chunk " << i << ": " << p << std::endl;
@@ -490,31 +180,31 @@ int test_single_allocations()
 
 
 
-class MallocMemorySource2 final : public MemorySource
+template <unsigned block_size, unsigned maxNumBytes>
+class MallocMemorySource2 final : public utils::ThreadSafeAllocator
 {
   private:
-    static constexpr size_t header_size = 16;
-    static constexpr size_t block_size = 16;
-    size_t mMaxAllocSize;
-    size_t mBytesAllocated;
+    static constexpr size_type header_size = block_size;
+    size_type mMaxAllocSize;
+    size_type mBytesAllocated;
 
   public:
     virtual ~MallocMemorySource2() noexcept override {}
 
-    MallocMemorySource2(size_t maxNumBytes) noexcept :
-        MemorySource{},
+    MallocMemorySource2(utils::MallocMemorySource& memorySource) noexcept :
+        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)},
         mMaxAllocSize{maxNumBytes},
         mBytesAllocated{0}
     {}
 
     MallocMemorySource2(const MallocMemorySource2& src) noexcept :
-        MemorySource{src},
+        ThreadSafeAllocator{src},
         mMaxAllocSize{src.mMaxAllocSize},
         mBytesAllocated{src.mBytesAllocated}
     {}
 
     MallocMemorySource2(MallocMemorySource2&& src) noexcept :
-        MemorySource{std::move(src)},
+        ThreadSafeAllocator{std::move(src)},
         mMaxAllocSize{src.mMaxAllocSize},
         mBytesAllocated{src.mBytesAllocated}
     {
@@ -525,11 +215,16 @@ class MallocMemorySource2 final : public MemorySource
     MallocMemorySource2& operator=(const MallocMemorySource2&) noexcept = default;
     MallocMemorySource2& operator=(MallocMemorySource2&&) noexcept = default;
 
-    virtual void* allocate(size_t numBytes) noexcept override
+    virtual void* allocate() noexcept override
+    {
+        return this->allocate(block_size);
+    }
+
+    virtual void* allocate(size_type numBytes) noexcept override
     {
         numBytes += header_size;
-        const size_t blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
-        const size_t n = blocksFreed * block_size;
+        const size_type blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
+        const size_type n = blocksFreed * block_size;
 
         if (mBytesAllocated+n > mMaxAllocSize)
         {
@@ -537,58 +232,25 @@ class MallocMemorySource2 final : public MemorySource
         }
 
         mBytesAllocated += n;
-        return new(std::nothrow) char[n];
+        return this->memory_source().allocate(n);
     }
 
-    virtual void free(void* pData, size_t numBytes) noexcept override
+    virtual void free(void* pData) noexcept override
+    {
+        this->free(pData, block_size);
+    }
+
+    virtual void free(void* pData, size_type numBytes) noexcept override
     {
         numBytes += header_size;
-        const size_t blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
-        const size_t n = blocksFreed * block_size;
+        const size_type blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
+        const size_type n = blocksFreed * block_size;
 
         if (pData)
         {
             mBytesAllocated -= n;
-            delete [] reinterpret_cast<char*>(pData);
+            this->memory_source().free(pData, numBytes);
         }
-    }
-};
-
-
-
-class LSUtilsMemorySource final : public MemorySource
-{
-  private:
-    static constexpr size_t block_size = 16u;
-    ls::utils::GeneralAllocator<block_size> mAllocator;
-
-  public:
-    virtual ~LSUtilsMemorySource() noexcept override {}
-
-    LSUtilsMemorySource(size_t maxNumBytes) noexcept :
-        MemorySource{},
-        mAllocator{maxNumBytes}
-    {}
-
-    LSUtilsMemorySource(const LSUtilsMemorySource& src) noexcept = delete;
-
-    LSUtilsMemorySource(LSUtilsMemorySource&& src) noexcept :
-        MemorySource{std::move(src)},
-        mAllocator{std::move(src.mAllocator)}
-    {
-    }
-
-    LSUtilsMemorySource& operator=(const LSUtilsMemorySource&) noexcept = delete;
-    LSUtilsMemorySource& operator=(LSUtilsMemorySource&& src) noexcept = delete;
-
-    virtual void* allocate(size_t numBytes) noexcept override
-    {
-        return mAllocator.allocate(numBytes);
-    }
-
-    virtual void free(void* pData, size_t numBytes) noexcept override
-    {
-        mAllocator.free(pData, numBytes);
     }
 };
 
@@ -600,14 +262,18 @@ int test_array_allocations()
     constexpr unsigned block_size = 16u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
     //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
+    utils::MallocMemorySource mallocSrc{};
+
+    //LimitedMemoryAllocator<alloc_table_size> memLimiter{mallocSrc};
+    //utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
 
     // test allocator of 64 bytes in a 256-byte container
-    //ls::utils::GeneralAllocator<block_size> testAllocator{alloc_table_size};
+    //utils::GeneralAllocator<block_size> internalAllocator{mallocSrc, alloc_table_size};
+    //utils::AtomicAllocator atomicAllocator{internalAllocator};
+    MallocMemorySource2<block_size, alloc_table_size+block_size*2> atomicAllocator{mallocSrc};
+    utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
 
-    LSUtilsMemorySource mallocSrc{alloc_table_size};
-    //MallocMemorySource2 mallocSrc{alloc_table_size};
-    AtomicAllocator atomicAllocator{mallocSrc};
-    ThreadedAllocator<Allocator> testAllocator{atomicAllocator};
+    //utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{memLimiter};
 
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -619,7 +285,7 @@ int test_array_allocations()
 
     for (unsigned testRuns = 0; testRuns < 5; ++testRuns)
     {
-        for (unsigned i = 0; i < max_allocations/3 - 1; ++i)
+        for (unsigned i = 0; i < max_allocations/3; ++i)
         {
             p = testAllocator.allocate(block_size * 2);
             if (!p && i < max_allocations)
@@ -705,6 +371,7 @@ int main()
         return ret;
     }
 
+    /*
     std::cout << std::endl;
     std::cout << "Testing a threaded malloc cache:" << std::endl;
     MallocMemorySource mallocSrc;
@@ -733,6 +400,7 @@ int main()
     t0.join();
     t1.join();
     t2.join();
+    */
 
     return 0;
 }

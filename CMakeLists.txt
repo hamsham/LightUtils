@@ -22,6 +22,7 @@ include(enetConfig.cmake)
 # Source Paths
 # -------------------------------------
 set(LS_UTILS_SOURCES
+    src/Allocator.cpp
     src/Argument.cpp
     src/ArgParser.cpp
     src/Assertions.cpp
@@ -30,11 +31,12 @@ set(LS_UTILS_SOURCES
     src/DynamicLib.cpp
     src/Futex.cpp
     src/GeneralAllocator.cpp
-    src/RandomNum.cpp
+    src/MemorySource.cpp
     src/NetClient.cpp
     src/NetConnection.cpp
     src/NetNode.cpp
     src/NetServer.cpp
+    src/RandomNum.cpp
     src/Resource.cpp
     src/SpinLock.cpp
     src/StringUtils.cpp
@@ -45,6 +47,7 @@ set(LS_UTILS_SOURCES
 
 set(LS_UTILS_HEADERS
     include/lightsky/utils/Algorithm.hpp
+    include/lightsky/utils/Allocator.hpp
     include/lightsky/utils/Argument.hpp
     include/lightsky/utils/ArgParser.hpp
     include/lightsky/utils/Assertions.h
@@ -64,6 +67,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Loops.h
     include/lightsky/utils/LRUCache.hpp
     include/lightsky/utils/LRU8WayCache.hpp
+    include/lightsky/utils/MemorySource.hpp
     include/lightsky/utils/NetClient.hpp
     include/lightsky/utils/NetConnection.hpp
     include/lightsky/utils/NetEvent.hpp
@@ -83,6 +87,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/WorkerThread.hpp
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
+    include/lightsky/utils/generic/AllocatorImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
     include/lightsky/utils/generic/GeneralAllocatorImpl.hpp

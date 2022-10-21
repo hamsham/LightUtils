@@ -2,6 +2,8 @@
 #ifndef LS_UTILS_GENERAL_ALLOCATOR_HPP
 #define LS_UTILS_GENERAL_ALLOCATOR_HPP
 
+#include "lightsky/utils/Allocator.hpp"
+
 namespace ls
 {
 namespace utils
@@ -25,8 +27,8 @@ namespace utils
  * @tparam block_size
  * The number of bytes to be allocated per chunk.
 -----------------------------------------------------------------------------*/
-template <unsigned long long block_size>
-class GeneralAllocator
+template <unsigned long long BlockSize = 16, unsigned long long CacheSize = 4096>
+class GeneralAllocator final : public Allocator
 {
   public:
     typedef unsigned long long size_type;
@@ -40,6 +42,13 @@ class GeneralAllocator
         AllocationEntry* pNext;
     };
 
+    enum : size_type
+    {
+        header_size = sizeof(AllocationHeader),
+        block_size = BlockSize,
+        cache_size = CacheSize
+    };
+
     // Use the header type for alignment. If needed we can change this to align
     // to a SIMD-sized block.
     union alignas(alignof(AllocationHeader)) AllocationEntry
@@ -48,22 +57,14 @@ class GeneralAllocator
         char memBlock[block_size];
     };
 
-    enum : size_type
-    {
-        header_size = sizeof(AllocationHeader)
-    };
-
     // insurance
+    static_assert(CacheSize % BlockSize == 0, "Cache Size must be a multiple of Block Size.");
+    static_assert(BlockSize >= 16, "Block size must be a minimum of 32 bytes.");
     static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
     static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
 
   private:
-    /**
-     * @brief Pointer to memory given by the OS.
-     */
-    char* mAllocTable;
-
     /**
      * @brief Each chunk of memory contains a reference to the next subsequent
      * chunk of memory in its first set of bytes. "mHead" is an offset to the
@@ -101,13 +102,18 @@ class GeneralAllocator
      */
     void _free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept;
 
+    /**
+     * @brief Refill the internal cache of memory.
+     */
+    AllocationEntry* _alloc_new_cache(size_type n) noexcept;
+
   public:
     /**
      * @brief Destructor
      *
      * Returns all memory back to the OS.
      */
-    ~GeneralAllocator() noexcept;
+    virtual ~GeneralAllocator() noexcept override;
 
     /**
      * @brief Default Constructor
@@ -122,7 +128,15 @@ class GeneralAllocator
      * Retrieves "total_size" bytes from the OS and sets up a linked list of
      * pointers within the allocated memory.
      */
-    GeneralAllocator(size_type totalSize) noexcept;
+    GeneralAllocator(MemorySource& memorySource) noexcept;
+
+    /**
+     * @brief Constructor
+     *
+     * Retrieves "initialSize" bytes from the OS and sets up a linked list of
+     * pointers within the allocated memory.
+     */
+    GeneralAllocator(MemorySource& memorySource, size_type initialSize) noexcept;
 
     /**
      * @brief Copy Constructor
@@ -150,7 +164,7 @@ class GeneralAllocator
      *
      * Deleted to prevent invalidation of memory currently allocated to others.
      */
-    GeneralAllocator& operator=(GeneralAllocator&&) = delete;
+    GeneralAllocator& operator=(GeneralAllocator&&) noexcept;
 
     /**
      * @brief Retrieve a contiguous block of memory from *this.
@@ -160,7 +174,7 @@ class GeneralAllocator
      * @return A pointer to the first element in the newly allocated memory
      * block. If no more blocks exist within the allocator, NULL is returned.
      */
-    void* allocate() noexcept;
+    virtual void* allocate() noexcept override;
 
     /**
      * @brief Allocate a contiguous block of memory which is at least "n" bytes
@@ -176,7 +190,7 @@ class GeneralAllocator
      * block. NULL is returned if not enough more blocks exist within the
      * allocator to fufill the request for memory.
      */
-    void* allocate(size_type n) noexcept;
+    virtual void* allocate(size_type n) noexcept override;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
@@ -187,7 +201,7 @@ class GeneralAllocator
      * A pointer to a block of memory which was returned from a call to
      * "allocate()."
      */
-    void free(void* p) noexcept;
+    virtual void free(void* p) noexcept override;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
@@ -202,7 +216,7 @@ class GeneralAllocator
      * The number of bytes which were freed. This parameter must match exactly
      * the "n" parameter to allocate(size_type n).
      */
-    void free(void* p, size_type n) noexcept;
+    virtual void free(void* p, size_type n) noexcept override;
 };
 
 
@@ -214,7 +228,7 @@ class GeneralAllocator
 
 
 
-extern template class ls::utils::GeneralAllocator<sizeof(unsigned long long)*4>;
+extern template class ls::utils::GeneralAllocator<16, 4096>;
 
 
 
