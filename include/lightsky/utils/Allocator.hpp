@@ -165,7 +165,6 @@ class ThreadedMemoryCache
   public:
     typedef unsigned long long size_type;
 
-  private:
     // There may be more than one allocator per-thread. Here we maintain a list
     // of them, and their associated per-thread caches.
     struct AllocatorList
@@ -175,6 +174,7 @@ class ThreadedMemoryCache
         IAllocatorType mMemCache;
     };
 
+  private:
     AllocatorList* mAllocators;
 
   public:

@@ -264,16 +264,17 @@ int test_array_allocations()
     //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
     utils::MallocMemorySource mallocSrc{};
 
-    //LimitedMemoryAllocator<alloc_table_size> memLimiter{mallocSrc};
+    constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
+    LimitedMemoryAllocator<alloc_table_size+allocSizeOffset> memLimiter{mallocSrc};
     //utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
 
     // test allocator of 64 bytes in a 256-byte container
     //utils::GeneralAllocator<block_size> internalAllocator{mallocSrc, alloc_table_size};
     //utils::AtomicAllocator atomicAllocator{internalAllocator};
-    MallocMemorySource2<block_size, alloc_table_size+block_size*2> atomicAllocator{mallocSrc};
-    utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
+    //MallocMemorySource2<block_size, alloc_table_size+block_size*2> atomicAllocator{mallocSrc};
+    //utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
 
-    //utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{memLimiter};
+    utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{memLimiter};
 
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -371,12 +372,11 @@ int main()
         return ret;
     }
 
-    /*
     std::cout << std::endl;
     std::cout << "Testing a threaded malloc cache:" << std::endl;
-    MallocMemorySource mallocSrc;
-    AtomicAllocator atomicAllocator{mallocSrc};
-    ThreadedAllocator<Allocator> threadedAllocator{atomicAllocator};
+    utils::MallocMemorySource mallocSrc;
+    utils::AtomicAllocator atomicAllocator{mallocSrc};
+    utils::ThreadedAllocator<utils::Allocator> threadedAllocator{atomicAllocator};
     std::mutex lock;
 
     const auto allocFunc = [&]()->void {
@@ -400,7 +400,6 @@ int main()
     t0.join();
     t1.join();
     t2.join();
-    */
 
     return 0;
 }
