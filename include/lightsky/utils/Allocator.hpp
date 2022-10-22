@@ -177,6 +177,8 @@ class ThreadedMemoryCache
   private:
     AllocatorList* mAllocators;
 
+    AllocatorList* _insert_sub_allocator(AllocatorList* iter, ThreadSafeAllocator* allocator) noexcept;
+
   public:
     ~ThreadedMemoryCache() noexcept;
 

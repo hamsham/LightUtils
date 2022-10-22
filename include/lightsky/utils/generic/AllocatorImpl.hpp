@@ -136,6 +136,43 @@ ThreadedMemoryCache<IAllocatorType>::ThreadedMemoryCache() noexcept :
 /*-------------------------------------
 -------------------------------------*/
 template <typename IAllocatorType>
+typename ThreadedMemoryCache<IAllocatorType>::AllocatorList*
+ThreadedMemoryCache<IAllocatorType>::_insert_sub_allocator(
+    typename ThreadedMemoryCache<IAllocatorType>::AllocatorList* iter, ThreadSafeAllocator* allocator) noexcept
+{
+    void* const pCacheLocation = allocator->allocate(sizeof(AllocatorList));
+    if (!pCacheLocation)
+    {
+        return nullptr;
+    }
+
+    // The primary allocator will also need to allocate its own list node
+    // for bookkeeping... nobody else will.
+    MemorySource* const pMemSrc = static_cast<MemorySource*>(allocator);
+
+    AllocatorList* const pListEntry = new (pCacheLocation) AllocatorList{
+        allocator,
+        nullptr,
+        IAllocatorType{*pMemSrc}
+    };
+
+    if (iter)
+    {
+        iter->pNext = pListEntry;
+    }
+    else
+    {
+        mAllocators = pListEntry;
+    }
+
+    return pListEntry;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <typename IAllocatorType>
 void ThreadedMemoryCache<IAllocatorType>::remove_allocator(ThreadSafeAllocator* allocator) noexcept
 {
     AllocatorList* pPrev = nullptr;
@@ -199,58 +236,31 @@ template <typename IAllocatorType>
 inline void* ThreadedMemoryCache<IAllocatorType>::allocate(ThreadSafeAllocator* allocator, size_type n) noexcept
 {
     static_assert(ls::setup::IsBaseOf<IAllocator, IAllocatorType>::value, "Template allocator type does not implement the IAllocator interface.");
-    LS_ASSERT(allocator != nullptr);
+    LS_DEBUG_ASSERT(allocator != nullptr);
 
     AllocatorList* iter = mAllocators;
+
     while (true)
     {
         if (!iter)
         {
-            break;
+            iter = _insert_sub_allocator(nullptr, allocator);
+            if (!iter)
+            {
+                return nullptr;
+            }
         }
 
-        if (iter->mAllocator == allocator)
+        if (iter->mAllocator != allocator)
         {
-            return iter->mMemCache.allocate(n);
+            iter = iter->pNext;
+            continue;
         }
 
-        AllocatorList* next = iter->pNext;
-        if (!next)
-        {
-            break;
-        }
-
-        iter = next;
+        break;
     }
 
-    // No local allocator exists which corresponds to the current thread,
-    // create one using the primary allocator
-    void* const pCacheLocation = allocator->allocate(sizeof(AllocatorList));
-    if (!pCacheLocation)
-    {
-        return nullptr;
-    }
-
-    // The primary allocator will also need to allocate its own list node
-    // for bookkeeping... nobody else will.
-    MemorySource* const pMemSrc = static_cast<MemorySource*>(allocator);
-
-    AllocatorList* const pListEntry = new (pCacheLocation) AllocatorList{
-        allocator,
-        nullptr,
-        IAllocatorType{*pMemSrc}
-    };
-
-    if (iter)
-    {
-        iter->pNext = pListEntry;
-    }
-    else
-    {
-        mAllocators = pListEntry;
-    }
-
-    return pListEntry->mMemCache.allocate(n);
+    return iter->mMemCache.allocate(n);
 }
 
 
@@ -261,25 +271,18 @@ template <typename IAllocatorType>
 inline void ThreadedMemoryCache<IAllocatorType>::free(ThreadSafeAllocator* allocator, void* p, size_type n) noexcept
 {
     static_assert(ls::setup::IsBaseOf<IAllocator, IAllocatorType>::value, "Template allocator type does not implement the IAllocator interface.");
-    LS_ASSERT(allocator != nullptr);
+    LS_DEBUG_ASSERT(allocator != nullptr);
 
+    // pIter must never be NULL in this function, otherwise our memory-source
+    // has mysteriously gone out of scope before its static member
     AllocatorList* pIter = mAllocators;
 
-    while (true)
+    while (pIter->mAllocator != allocator)
     {
-        if (pIter == nullptr)
-        {
-            break;
-        }
-
-        if (pIter->mAllocator == allocator)
-        {
-            pIter->mMemCache.free(p, n);
-            break;
-        }
-
         pIter = pIter->pNext;
     }
+
+    pIter->mMemCache.free(p, n);
 }
 
 
@@ -343,7 +346,7 @@ ThreadedAllocator<IAllocatorType>& ThreadedAllocator<IAllocatorType>::operator=(
 /*-------------------------------------
 -------------------------------------*/
 template <typename IAllocatorType>
-void* ThreadedAllocator<IAllocatorType>::allocate(size_type n) noexcept
+inline void* ThreadedAllocator<IAllocatorType>::allocate(size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     return sThreadCache.allocate(&memSrc, n);
@@ -354,7 +357,7 @@ void* ThreadedAllocator<IAllocatorType>::allocate(size_type n) noexcept
 /*-------------------------------------
 -------------------------------------*/
 template <typename IAllocatorType>
-void ThreadedAllocator<IAllocatorType>::free(void* p, size_type n) noexcept
+inline void ThreadedAllocator<IAllocatorType>::free(void* p, size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     sThreadCache.free(&memSrc, p, n);

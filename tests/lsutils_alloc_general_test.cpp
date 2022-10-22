@@ -117,7 +117,7 @@ int test_single_allocations()
                 return -1;
             }
 
-            LS_ASSERT(p == nullptr || last == nullptr || last > p);
+            LS_ASSERT(p == nullptr || last < p);
             last = p;
 
             //std::cout << "Allocated chunk " << i << ": " << p << std::endl;

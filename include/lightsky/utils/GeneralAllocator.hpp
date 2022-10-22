@@ -34,9 +34,9 @@ class GeneralAllocator final : public Allocator
     typedef unsigned long long size_type;
 
   private:
-    union alignas(alignof(size_type)) AllocationEntry;
+    union alignas(alignof(size_type)*2) AllocationEntry;
 
-    struct alignas(alignof(size_type)) AllocationHeader
+    struct alignas(alignof(size_type)*2) AllocationHeader
     {
         size_type numBlocks;
         AllocationEntry* pNext;

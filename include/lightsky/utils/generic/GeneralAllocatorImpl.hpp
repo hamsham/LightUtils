@@ -159,6 +159,8 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_merge_allocation_blocks(All
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept
 {
+    constexpr size_type BlocksPerCache = CacheSize / BlockSize;
+
     // Minor input validation. Non-sized allocations will not contain an
     // valid block count.
     reclaimed->header.numBlocks = blockCount;
@@ -169,8 +171,10 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
     {
         // reset the head pointer
         mHead = reclaimed;
+        return;
     }
-    else if (reclaimed < mHead)
+
+    if (reclaimed < mHead)
     {
         // ensure the header-pointer from p points to the current "next" chunk.
         // increase the block count if possible
@@ -178,40 +182,41 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
         this->_merge_allocation_blocks(reclaimed, mHead);
         mHead = temp;
 
-        if (CacheSize <= (mHead->header.numBlocks * BlockSize))
+        if (BlocksPerCache <= mHead->header.numBlocks)
         {
             mHead = mHead->header.pNext;
             this->memory_source().free(temp, temp->header.numBlocks * BlockSize);
         }
+
+        return;
     }
-    else // mHead > reclaimed
+
+    //else: mHead > reclaimed
+    AllocationEntry* prev = nullptr;
+    AllocationEntry* curr = mHead;
+    AllocationEntry* iter = mHead->header.pNext;
+
+    while (iter && reclaimed > iter)
     {
-        AllocationEntry* prev = nullptr;
-        AllocationEntry* curr = mHead;
-        AllocationEntry* iter = mHead->header.pNext;
+        prev = curr;
+        curr = iter;
+        iter = iter->header.pNext;
+    }
 
-        while (iter && reclaimed > iter)
-        {
-            prev = curr;
-            curr = iter;
-            iter = iter->header.pNext;
-        }
+    // "prev" does not need its "pNext" pointer updated, disable
+    // compile-time branch.
+    this->_merge_allocation_blocks(curr, reclaimed);
 
-        // "prev" does not need its "pNext" pointer updated, disable
-        // compile-time branch.
-        this->_merge_allocation_blocks(curr, reclaimed);
+    if (prev && BlocksPerCache <= curr->header.numBlocks)
+    {
+        prev->header.pNext = curr->header.pNext;
+        this->memory_source().free(curr, curr->header.numBlocks * BlockSize);
+    }
 
-        if (prev && CacheSize <= (curr->header.numBlocks * BlockSize))
-        {
-            prev->header.pNext = curr->header.pNext;
-            this->memory_source().free(curr, curr->header.numBlocks * BlockSize);
-        }
-
-        if (CacheSize <= (reclaimed->header.numBlocks * BlockSize))
-        {
-            curr->header.pNext = reclaimed->header.pNext;
-            this->memory_source().free(reclaimed, reclaimed->header.numBlocks * BlockSize);
-        }
+    if (BlocksPerCache <= reclaimed->header.numBlocks)
+    {
+        curr->header.pNext = reclaimed->header.pNext;
+        this->memory_source().free(reclaimed, reclaimed->header.numBlocks * BlockSize);
     }
 }
 
@@ -289,10 +294,11 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate() noexcept
     }
     else
     {
-        mHead->header.numBlocks -= 1;
-
-        iter = mHead + mHead->header.numBlocks;
+        mHead = mHead + 1;
+        mHead->header.numBlocks = iter->header.numBlocks - 1;
         iter->header.numBlocks = 0;
+
+        mHead->header.pNext = iter->header.pNext;
         iter->header.pNext = nullptr;
     }
 
@@ -356,10 +362,15 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate(size_type n) noexcept
         next->header.pNext = iter->header.pNext;
         prev->header.pNext = next;
     }
-
-    if (mHead == prev)
+    else // count == blocksNeeded
     {
-        mHead = prev->header.pNext;
+        AllocationEntry* next = iter->header.pNext;
+        prev->header.pNext = next;
+    }
+
+    if (mHead == iter)
+    {
+        mHead = iter->header.pNext;
     }
 
     // Add the allocation size to the result pointer
