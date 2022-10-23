@@ -112,7 +112,9 @@ ThreadedMemoryCache<IAllocatorType>::~ThreadedMemoryCache() noexcept
     while (pIter != nullptr)
     {
         // Each allocator must free its own cache entry
-        pIter->mAllocator->free(pIter, sizeof(AllocatorList));
+        ThreadSafeAllocator* pAllocator = pIter->mAllocator;
+        pIter->~AllocatorList();
+        pAllocator->free(pIter, sizeof(AllocatorList));
         pIter = pNext;
 
         if (pNext)
@@ -198,7 +200,9 @@ void ThreadedMemoryCache<IAllocatorType>::remove_allocator(ThreadSafeAllocator* 
                 mAllocators = pNext;
             }
 
-            pIter->mAllocator->free(pIter, sizeof(AllocatorList));
+            ThreadSafeAllocator* pAllocator = pIter->mAllocator;
+            pIter->~AllocatorList();
+            pAllocator->free(pIter, sizeof(AllocatorList));
             break;
         }
 
