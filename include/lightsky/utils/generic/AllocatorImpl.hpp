@@ -57,6 +57,158 @@ inline MemorySource& Allocator::memory_source() noexcept
 
 
 /*-----------------------------------------------------------------------------
+ * Constrained Allocator
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+ConstrainedAllocator<maxNumBytes>::~ConstrainedAllocator() noexcept
+{
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(MemorySource& src) noexcept :
+    Allocator{src},
+    mBytesAllocated{0}
+{}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(ConstrainedAllocator&& allocator) noexcept :
+    Allocator{std::move(allocator)},
+    mBytesAllocated{allocator.mBytesAllocated}
+{
+    allocator.mBytesAllocated = 0;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+ConstrainedAllocator<maxNumBytes>& ConstrainedAllocator<maxNumBytes>::operator=(ConstrainedAllocator&& allocator) noexcept
+{
+    if (&allocator != this)
+    {
+        Allocator::operator=(std::move(allocator));
+
+        mBytesAllocated = allocator.mBytesAllocated;
+        allocator.mBytesAllocated = 0;
+    }
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+void* ConstrainedAllocator<maxNumBytes>::allocate() noexcept
+{
+    LS_ASSERT(false);
+    return nullptr;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+inline void* ConstrainedAllocator<maxNumBytes>::allocate(size_type numBytes) noexcept
+{
+    const size_type newByteCount = mBytesAllocated+numBytes;
+
+    if (newByteCount > maxNumBytes)
+    {
+        return nullptr;
+    }
+
+    void* pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        mBytesAllocated = newByteCount;
+    }
+
+    return  pData;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+void ConstrainedAllocator<maxNumBytes>::free(void* pData) noexcept
+{
+    (void)pData;
+    LS_ASSERT(false);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+template <unsigned long long maxNumBytes>
+inline void ConstrainedAllocator<maxNumBytes>::free(void* pData, size_type numBytes) noexcept
+{
+    if (pData && numBytes)
+    {
+        LS_ASSERT(mBytesAllocated >= numBytes);
+        mBytesAllocated -= numBytes;
+        this->memory_source().free(pData, numBytes);
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Constrained Allocator (specialized for run-time constraints)
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+-------------------------------------*/
+inline void* ConstrainedAllocator<0>::allocate(size_type numBytes) noexcept
+{
+    const size_type newByteCount = mBytesAllocated+numBytes;
+
+    if (newByteCount > mMaxAllocSize)
+    {
+        return nullptr;
+    }
+
+    void* pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        mBytesAllocated = newByteCount;
+    }
+
+    return  pData;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void ConstrainedAllocator<0>::free(void* pData, size_type numBytes) noexcept
+{
+    if (pData && numBytes)
+    {
+        LS_ASSERT(mBytesAllocated >= numBytes);
+        mBytesAllocated -= numBytes;
+        this->memory_source().free(pData, numBytes);
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Thread-safe Allocator
 -----------------------------------------------------------------------------*/
 /*-------------------------------------

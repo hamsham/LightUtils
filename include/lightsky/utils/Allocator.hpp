@@ -76,6 +76,77 @@ class Allocator : public IAllocator
 
 
 /*-----------------------------------------------------------------------------
+ * Constrained Allocator
+-----------------------------------------------------------------------------*/
+template <unsigned long long maxNumBytes>
+class ConstrainedAllocator : public Allocator
+{
+  private:
+    size_type mBytesAllocated;
+
+  public:
+    virtual ~ConstrainedAllocator() noexcept override;
+
+    ConstrainedAllocator() noexcept = delete;
+
+    ConstrainedAllocator(MemorySource& memorySource) noexcept;
+
+    ConstrainedAllocator(const ConstrainedAllocator& src) noexcept = delete;
+
+    ConstrainedAllocator(ConstrainedAllocator&& src) noexcept;
+
+    ConstrainedAllocator& operator=(const ConstrainedAllocator&) noexcept = delete;
+
+    ConstrainedAllocator& operator=(ConstrainedAllocator&&) noexcept;
+
+    virtual void* allocate() noexcept override;
+
+    virtual void* allocate(size_type numBytes) noexcept override;
+
+    virtual void free(void* pData) noexcept override;
+
+    virtual void free(void* pData, size_type numBytes) noexcept override;
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Constrained Allocator (specialized for run-time constraints)
+-----------------------------------------------------------------------------*/
+template <>
+class ConstrainedAllocator<0> : public Allocator
+{
+  private:
+    size_type mBytesAllocated;
+    size_type mMaxAllocSize;
+
+  public:
+    virtual ~ConstrainedAllocator() noexcept override;
+
+    ConstrainedAllocator() noexcept = delete;
+
+    ConstrainedAllocator(MemorySource& memorySource, size_type maxNumBytes) noexcept;
+
+    ConstrainedAllocator(const ConstrainedAllocator& src) noexcept = delete;
+
+    ConstrainedAllocator(ConstrainedAllocator&& src) noexcept;
+
+    ConstrainedAllocator& operator=(const ConstrainedAllocator&) noexcept = delete;
+
+    ConstrainedAllocator& operator=(ConstrainedAllocator&&) noexcept;
+
+    virtual void* allocate() noexcept override;
+
+    virtual void* allocate(size_type numBytes) noexcept override;
+
+    virtual void free(void* pData) noexcept override;
+
+    virtual void free(void* pData, size_type numBytes) noexcept override;
+};
+
+
+
+/*-----------------------------------------------------------------------------
  * Thread-Safe Allocator
 -----------------------------------------------------------------------------*/
 class ThreadSafeAllocator : public Allocator
@@ -111,7 +182,7 @@ class MallocAllocator : public ThreadSafeAllocator
 
     MallocAllocator() noexcept = delete;
 
-    MallocAllocator(ls::utils::MallocMemorySource& src) noexcept;
+    MallocAllocator(MallocMemorySource& src) noexcept;
 
     MallocAllocator(const Allocator&) = delete;
 

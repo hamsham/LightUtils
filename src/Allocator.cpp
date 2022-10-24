@@ -5,6 +5,7 @@
  * Created on Oct 19, 2022 at 6:03 PM
  */
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Allocator.hpp"
 
 namespace ls
@@ -92,6 +93,80 @@ Allocator& Allocator::operator=(Allocator&& allocator) noexcept
     return *this;
 }
 
+
+
+/*-----------------------------------------------------------------------------
+ * Constrained Allocator
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+ConstrainedAllocator<0>::~ConstrainedAllocator() noexcept
+{
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+ConstrainedAllocator<0>::ConstrainedAllocator(MemorySource& src, size_type maxNumBytes) noexcept :
+    Allocator{src},
+    mBytesAllocated{0},
+    mMaxAllocSize{maxNumBytes}
+{}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+ConstrainedAllocator<0>::ConstrainedAllocator(ConstrainedAllocator&& allocator) noexcept :
+    Allocator{std::move(allocator)},
+    mBytesAllocated{allocator.mBytesAllocated},
+    mMaxAllocSize{allocator.mMaxAllocSize}
+{
+    allocator.mBytesAllocated = 0;
+    allocator.mMaxAllocSize = 0;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+ConstrainedAllocator<0>& ConstrainedAllocator<0>::operator=(ConstrainedAllocator&& allocator) noexcept
+{
+    if (&allocator != this)
+    {
+        Allocator::operator=(std::move(allocator));
+
+        mBytesAllocated = allocator.mBytesAllocated;
+        allocator.mBytesAllocated = 0;
+
+        mMaxAllocSize = allocator.mMaxAllocSize;
+        allocator.mMaxAllocSize = 0;
+    }
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+void* ConstrainedAllocator<0>::allocate() noexcept
+{
+    LS_ASSERT(false);
+    return nullptr;
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+void ConstrainedAllocator<0>::free(void* pData) noexcept
+{
+    (void)pData;
+    LS_ASSERT(false);
+}
 
 
 /*-----------------------------------------------------------------------------

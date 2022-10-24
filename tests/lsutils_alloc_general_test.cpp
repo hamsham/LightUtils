@@ -12,80 +12,6 @@ namespace utils = ls::utils;
 
 
 
-template <unsigned maxNumBytes>
-class LimitedMemoryAllocator final : public utils::ThreadSafeAllocator
-{
-  private:
-    size_type mMaxAllocSize;
-    size_type mBytesAllocated;
-
-  public:
-    virtual ~LimitedMemoryAllocator() noexcept override {}
-
-    LimitedMemoryAllocator(utils::MallocMemorySource& memorySource) noexcept :
-        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)},
-        mMaxAllocSize{maxNumBytes},
-        mBytesAllocated{0}
-    {}
-
-    LimitedMemoryAllocator(const LimitedMemoryAllocator& src) noexcept :
-        ThreadSafeAllocator{src},
-        mMaxAllocSize{src.mMaxAllocSize},
-        mBytesAllocated{src.mBytesAllocated}
-    {}
-
-    LimitedMemoryAllocator(LimitedMemoryAllocator&& src) noexcept :
-        ThreadSafeAllocator{std::move(src)},
-        mMaxAllocSize{src.mMaxAllocSize},
-        mBytesAllocated{src.mBytesAllocated}
-    {
-        src.mMaxAllocSize = 0;
-        src.mBytesAllocated = 0;
-    }
-
-    LimitedMemoryAllocator& operator=(const LimitedMemoryAllocator&) noexcept = default;
-    LimitedMemoryAllocator& operator=(LimitedMemoryAllocator&&) noexcept = default;
-
-    virtual void* allocate() noexcept override
-    {
-        LS_ASSERT(false);
-        return nullptr;
-    }
-
-    virtual void* allocate(size_type numBytes) noexcept override
-    {
-        if (mBytesAllocated+numBytes > mMaxAllocSize)
-        {
-            return nullptr;
-        }
-
-        void* pData = this->memory_source().allocate(numBytes);
-        if (pData)
-        {
-            mBytesAllocated += numBytes;
-        }
-
-        return  pData;
-    }
-
-    virtual void free(void* pData) noexcept override
-    {
-        (void)pData;
-        LS_ASSERT(false);
-    }
-
-    virtual void free(void* pData, size_type numBytes) noexcept override
-    {
-        if (pData && numBytes)
-        {
-            mBytesAllocated -= numBytes;
-            this->memory_source().free(pData, numBytes);
-        }
-    }
-};
-
-
-
 int test_single_allocations()
 {
     constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
@@ -93,8 +19,9 @@ int test_single_allocations()
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
-    utils::MallocMemorySource mallocSrc{};
-    LimitedMemoryAllocator<alloc_table_size> memLimiter{mallocSrc};
+    //utils::MallocMemorySource mallocSrc{};
+    utils::SystemAllocator mallocSrc{};
+    utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
     utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -180,39 +107,29 @@ int test_single_allocations()
 
 
 
-template <unsigned block_size, unsigned maxNumBytes>
-class MallocMemorySource2 final : public utils::ThreadSafeAllocator
+template <unsigned block_size>
+  class MallocMemorySource2 final : virtual public utils::ThreadSafeAllocator
 {
   private:
     static constexpr size_type header_size = block_size;
-    size_type mMaxAllocSize;
-    size_type mBytesAllocated;
 
   public:
     virtual ~MallocMemorySource2() noexcept override {}
 
-    MallocMemorySource2(utils::MallocMemorySource& memorySource) noexcept :
-        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)},
-        mMaxAllocSize{maxNumBytes},
-        mBytesAllocated{0}
+    MallocMemorySource2(utils::MemorySource& memorySource) noexcept :
+        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)}
     {}
 
     MallocMemorySource2(const MallocMemorySource2& src) noexcept :
-        ThreadSafeAllocator{src},
-        mMaxAllocSize{src.mMaxAllocSize},
-        mBytesAllocated{src.mBytesAllocated}
+        ThreadSafeAllocator{src}
     {}
 
     MallocMemorySource2(MallocMemorySource2&& src) noexcept :
-        ThreadSafeAllocator{std::move(src)},
-        mMaxAllocSize{src.mMaxAllocSize},
-        mBytesAllocated{src.mBytesAllocated}
+        ThreadSafeAllocator{std::move(src)}
     {
-        src.mMaxAllocSize = 0;
-        src.mBytesAllocated = 0;
     }
 
-    MallocMemorySource2& operator=(const MallocMemorySource2&) noexcept = default;
+    MallocMemorySource2& operator=(const MallocMemorySource2&) noexcept = delete;
     MallocMemorySource2& operator=(MallocMemorySource2&&) noexcept = default;
 
     virtual void* allocate() noexcept override
@@ -222,17 +139,13 @@ class MallocMemorySource2 final : public utils::ThreadSafeAllocator
 
     virtual void* allocate(size_type numBytes) noexcept override
     {
-        numBytes += header_size;
-        const size_type blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
-        const size_type n = blocksFreed * block_size;
-
-        if (mBytesAllocated+n > mMaxAllocSize)
+        if (!numBytes)
         {
             return nullptr;
         }
 
-        mBytesAllocated += n;
-        return this->memory_source().allocate(n);
+        numBytes += block_size - (numBytes % block_size);
+        return ThreadSafeAllocator::allocate(numBytes);
     }
 
     virtual void free(void* pData) noexcept override
@@ -242,15 +155,13 @@ class MallocMemorySource2 final : public utils::ThreadSafeAllocator
 
     virtual void free(void* pData, size_type numBytes) noexcept override
     {
-        numBytes += header_size;
-        const size_type blocksFreed = (numBytes / block_size) + ((numBytes % block_size) ? 1 : 0);
-        const size_type n = blocksFreed * block_size;
-
-        if (pData)
+        if (!pData || !numBytes)
         {
-            mBytesAllocated -= n;
-            this->memory_source().free(pData, numBytes);
+            return;
         }
+
+        numBytes += block_size - (numBytes % block_size);
+        ThreadSafeAllocator::free(pData, numBytes);
     }
 };
 
@@ -262,19 +173,23 @@ int test_array_allocations()
     constexpr unsigned block_size = 16u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
     //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
-    utils::MallocMemorySource mallocSrc{};
+    //utils::MallocMemorySource mallocSrc{};
+    utils::SystemAllocator mallocSrc{};
 
-    constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
-    LimitedMemoryAllocator<alloc_table_size+allocSizeOffset> memLimiter{mallocSrc};
-    //utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
+    //constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
+    utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
+    utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
+    //MallocMemorySource2<block_size> testAllocator{memLimiter};
 
     // test allocator of 64 bytes in a 256-byte container
-    //utils::GeneralAllocator<block_size> internalAllocator{mallocSrc, alloc_table_size};
+    //utils::ConstrainedAllocator<alloc_table_size+block_size*5> memLimiter{mallocSrc};
+    //utils::GeneralAllocator<block_size, alloc_table_size+block_size*5> internalAllocator{memLimiter};
     //utils::AtomicAllocator atomicAllocator{internalAllocator};
-    //MallocMemorySource2<block_size, alloc_table_size+block_size*2> atomicAllocator{mallocSrc};
-    //utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
+    //utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{atomicAllocator};
 
-    utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{memLimiter};
+    //utils::ConstrainedAllocator<alloc_table_size+block_size*2> memLimiter{mallocSrc};
+    //MallocMemorySource2<block_size> atomicAllocator{memLimiter};
+    //utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
 
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -372,6 +287,7 @@ int main()
         return ret;
     }
 
+    /*
     std::cout << std::endl;
     std::cout << "Testing a threaded malloc cache:" << std::endl;
     utils::MallocMemorySource mallocSrc;
@@ -400,6 +316,7 @@ int main()
     t0.join();
     t1.join();
     t2.join();
+    */
 
     return 0;
 }

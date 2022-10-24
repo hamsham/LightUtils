@@ -37,8 +37,7 @@ GeneralAllocator<BlockSize, CacheSize>::~GeneralAllocator() noexcept
 -------------------------------------*/
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource) noexcept :
-    Allocator{memorySource},
-    mHead{nullptr}
+    GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator{memorySource, CacheSize} // delegate
 {
 }
 
