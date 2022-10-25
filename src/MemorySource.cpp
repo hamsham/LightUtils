@@ -221,7 +221,7 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
     numBytes += pageSize - (numBytes % pageSize);
 
     #if !defined(LS_OS_UNIX)
-        std::return malloc(numBytes);
+        return std::malloc(numBytes);
 
     #else
         constexpr int mapFlags = 0
