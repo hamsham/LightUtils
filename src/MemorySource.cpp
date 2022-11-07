@@ -126,6 +126,7 @@ void MallocMemorySource::free(void* pData, size_type numBytes) noexcept
  * System-based Allocator
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
+ * Get the system page size
 -------------------------------------*/
 SystemAllocator::size_type SystemAllocator::page_size() noexcept
 {
@@ -134,13 +135,19 @@ SystemAllocator::size_type SystemAllocator::page_size() noexcept
 
     #else
         const long temp = sysconf(_SC_PAGESIZE);
-        runtime_assert(temp >= 0, ErrorLevel::LS_WARNING, strerror(errno));
-        return (size_type)(temp >= 0 ? temp : 0);
+        if (temp < 0)
+        {
+            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+            return 0;
+        }
+
+        return (size_type)temp;
     #endif
 }
 
 
 /*-------------------------------------
+ * Destructor
 -------------------------------------*/
 SystemAllocator::~SystemAllocator() noexcept
 {
@@ -148,6 +155,7 @@ SystemAllocator::~SystemAllocator() noexcept
 
 
 /*-------------------------------------
+ * Constructor
 -------------------------------------*/
 SystemAllocator::SystemAllocator() noexcept
 {
@@ -156,6 +164,7 @@ SystemAllocator::SystemAllocator() noexcept
 
 
 /*-------------------------------------
+ * Copy Constructor
 -------------------------------------*/
 SystemAllocator::SystemAllocator(const SystemAllocator& src) noexcept :
     MemorySource{src}
@@ -164,6 +173,7 @@ SystemAllocator::SystemAllocator(const SystemAllocator& src) noexcept :
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 SystemAllocator::SystemAllocator(SystemAllocator&& allocator) noexcept :
     MemorySource{std::move(allocator)}
@@ -172,6 +182,7 @@ SystemAllocator::SystemAllocator(SystemAllocator&& allocator) noexcept :
 
 
 /*-------------------------------------
+ * Copy Operator
 -------------------------------------*/
 SystemAllocator& SystemAllocator::operator=(const SystemAllocator& allocator) noexcept
 {
@@ -186,6 +197,7 @@ SystemAllocator& SystemAllocator::operator=(const SystemAllocator& allocator) no
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 SystemAllocator& SystemAllocator::operator=(SystemAllocator&& allocator) noexcept
 {
@@ -200,6 +212,7 @@ SystemAllocator& SystemAllocator::operator=(SystemAllocator&& allocator) noexcep
 
 
 /*-------------------------------------
+ * Allocate
 -------------------------------------*/
 void* SystemAllocator::allocate() noexcept
 {
@@ -209,6 +222,7 @@ void* SystemAllocator::allocate() noexcept
 
 
 /*-------------------------------------
+ * Allocate (sized)
 -------------------------------------*/
 void* SystemAllocator::allocate(size_type numBytes) noexcept
 {
@@ -219,9 +233,10 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
 
     static const unsigned long long pageSize = page_size();
     numBytes += pageSize - (numBytes % pageSize);
+    void* p;
 
     #if !defined(LS_OS_UNIX)
-        return std::malloc(numBytes);
+        p = std::calloc(numBytes, sizeof(char));
 
     #else
         constexpr int mapFlags = 0
@@ -233,21 +248,21 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
         #endif
             | 0;
 
-        void* p = mmap(nullptr, numBytes, PROT_READ|PROT_WRITE, mapFlags, -1, 0);
+        p = mmap(nullptr, numBytes, PROT_READ|PROT_WRITE, mapFlags, -1, 0);
         if (p == MAP_FAILED)
         {
             runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
             p = nullptr;
         }
-
-        return p;
-
     #endif
+
+    return p;
 }
 
 
 
 /*-------------------------------------
+ * Free
 -------------------------------------*/
 void SystemAllocator::free(void* pData) noexcept
 {
@@ -258,6 +273,7 @@ void SystemAllocator::free(void* pData) noexcept
 
 
 /*-------------------------------------
+ * Free (sized)
 -------------------------------------*/
 void SystemAllocator::free(void* pData, size_type numBytes) noexcept
 {
@@ -272,7 +288,10 @@ void SystemAllocator::free(void* pData, size_type numBytes) noexcept
 
     #else
         int err = munmap(pData, numBytes);
-        runtime_assert(err == 0, ErrorLevel::LS_WARNING, strerror(errno));
+        if (err != 0)
+        {
+            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+        }
 
     #endif
 }

@@ -27,19 +27,21 @@ namespace utils
  * @tparam block_size
  * The number of bytes to be allocated per chunk.
 -----------------------------------------------------------------------------*/
-template <unsigned long long BlockSize = 16, unsigned long long CacheSize = 4096>
+template <unsigned long long BlockSize = 32, unsigned long long CacheSize = 4096>
 class GeneralAllocator final : public Allocator
 {
   public:
     typedef unsigned long long size_type;
 
   private:
-    union alignas(alignof(size_type)*2) AllocationEntry;
+    union alignas(alignof(size_type)*4) AllocationEntry;
 
-    struct alignas(alignof(size_type)*2) AllocationHeader
+    struct alignas(alignof(size_type)*4) AllocationHeader
     {
         size_type numBlocks;
         AllocationEntry* pNext;
+        size_type allocatedBlocks;
+        size_type padding;
     };
 
     enum : size_type
@@ -59,7 +61,8 @@ class GeneralAllocator final : public Allocator
 
     // insurance
     static_assert(CacheSize % BlockSize == 0, "Cache Size must be a multiple of Block Size.");
-    static_assert(BlockSize >= 16, "Block size must be a minimum of 32 bytes.");
+    static_assert(BlockSize >= sizeof(AllocationHeader), "Block size must exceed sizeof(AllocationHeader).");
+    static_assert(sizeof(AllocationHeader) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
     static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
     static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
@@ -86,7 +89,7 @@ class GeneralAllocator final : public Allocator
      *
      * @return A pointer to the head block.
      */
-    void _merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) noexcept;
+    void _merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) const noexcept;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
@@ -193,7 +196,73 @@ class GeneralAllocator final : public Allocator
     virtual void* allocate(size_type n) noexcept override;
 
     /**
+     * @brief Allocate an array of blocks and zero-initialize the allocation.
+     *
+     * @param numElements
+     * The number of elements of "BlockSize" to allocate.
+     *
+     * @return A pointer to the newly allocated array, or NULL of the memory
+     * allocation failed.
+     */
+    virtual void* allocate_contiguous(size_type numElements) noexcept override;
+
+    /**
+     * @brief Allocate an array of blocks and zero-initialize the allocation.
+     *
+     * @param numElements
+     * The number of elements of "BlockSize" to allocate.
+     *
+     * @param numBytesPerElement
+     * The size of each element, in bytes, to contiguously allocate.
+     *
+     * @return A pointer to the newly allocated array, or NULL of the memory
+     * allocation failed.
+     */
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+
+    /**
+     * @brief Reallocate a prior allocation, following the rules of
+     * std::realloc().
+     *
+     * @note It is assumed the number of previously allocated bytes pointed at
+     * by "p" is equal to "BlockSize".
+     *
+     * @param p
+     * A pointer to an allocation previously generated through allocate().
+     *
+     * @param numNewBytes
+     * The number of bytes needed for the new allocation.
+     *
+     * @return A pointer to the newly allocated data, or NULL of the
+     * reallocation failed.
+     */
+    virtual void* reallocate(void* p, size_type numNewBytes) noexcept override;
+
+    /**
+     * @brief Reallocate a prior allocation, following the rules of
+     * std::realloc().
+     *
+     * @param p
+     * A pointer to an allocation previously generated through allocate().
+     *
+     * @param numNewBytes
+     * The number of bytes needed for the new allocation.
+     *
+     * @param numPrevBytes
+     * The number of bytes contained within the prior allocation, pointed at by
+     * "p". This value must match exactly to what was passed into "allocate()"
+     * or "allocate_contiguous()."
+     *
+     * @return A pointer to the newly allocated data, or NULL of the
+     * reallocation failed.
+     */
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept override;
+
+    /**
      * @brief Return an allocated block of memory back to *this allocator.
+     *
+     * @note It is assumed the number of previously allocated bytes pointed at
+     * by "p" is equal to "BlockSize".
      *
      * This function does nothing if the input pointer is NULL.
      *
@@ -214,9 +283,23 @@ class GeneralAllocator final : public Allocator
      *
      * @param n
      * The number of bytes which were freed. This parameter must match exactly
-     * the "n" parameter to allocate(size_type n).
+     * the "n" parameter to allocate() or allocate_contiguous().
      */
     virtual void free(void* p, size_type n) noexcept override;
+
+    /**
+     * @brief Return an allocated block of memory back to *this allocator.
+     *
+     * @note It is assumed the number of previously allocated bytes pointed at
+     * by "p" is equal to "BlockSize".
+     *
+     * This function does nothing if the input pointer is NULL.
+     *
+     * @param p
+     * A pointer to a block of memory which was returned from a call to
+     * "allocate()."
+     */
+    virtual void free_unsized(void* p) noexcept override;
 };
 
 
@@ -228,7 +311,7 @@ class GeneralAllocator final : public Allocator
 
 
 
-extern template class ls::utils::GeneralAllocator<16, 4096>;
+extern template class ls::utils::GeneralAllocator<32, 4096>;
 
 
 

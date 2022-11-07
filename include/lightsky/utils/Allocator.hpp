@@ -32,14 +32,28 @@ class IAllocator : public MemorySource
 
     virtual MemorySource& memory_source() noexcept = 0;
 
+    static constexpr bool calloc_can_overflow(size_type numElements, size_type numBytesPerElement) noexcept;
+
   public:
     virtual ~IAllocator() noexcept = 0;
 
     virtual void* allocate() noexcept;
+
     virtual void* allocate(size_type n) noexcept;
 
+    virtual void* allocate_contiguous(size_type numElements) noexcept;
+
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept;
+
+    virtual void* reallocate(void* p, size_type numNewBytes) noexcept;
+
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept;
+
     virtual void free(void* p) noexcept;
+
     virtual void free(void* p, size_type n) noexcept;
+
+    virtual void free_unsized(void* p) noexcept;
 };
 
 
@@ -218,9 +232,13 @@ class AtomicAllocator : public ThreadSafeAllocator
 
     AtomicAllocator& operator=(AtomicAllocator&& allocator) noexcept;
 
-    virtual void* allocate(size_type n) noexcept override;
+    virtual void* allocate() noexcept override;
 
-    virtual void free(void* p, size_type n) noexcept override;
+    virtual void* allocate(size_type numBytes) noexcept override;
+
+    virtual void free(void* pData) noexcept override;
+
+    virtual void free(void* pData, size_type numBytes) noexcept override;
 };
 
 
@@ -262,9 +280,15 @@ class ThreadedMemoryCache
     // Handle moving an allocator out of a temporary variable
     void replace_allocator(const ThreadSafeAllocator* pOld, ThreadSafeAllocator* pNew) noexcept;
 
-    inline void* allocate(ThreadSafeAllocator* allocator, size_type n) noexcept;
+    void* allocate(ThreadSafeAllocator* allocator) noexcept;
 
-    inline void free(ThreadSafeAllocator* allocator, void* p, size_type n) noexcept;
+    void* allocate(ThreadSafeAllocator* allocator, size_type n) noexcept;
+
+    void free(ThreadSafeAllocator* allocator, void* p) noexcept;
+
+    void free(ThreadSafeAllocator* allocator, void* p, size_type n) noexcept;
+
+    void free_unsized(ThreadSafeAllocator* allocator, void* p) noexcept;
 };
 
 extern template class ThreadedMemoryCache<ls::utils::Allocator>;
@@ -297,9 +321,15 @@ class ThreadedAllocator final : public ThreadSafeAllocator
 
     ThreadedAllocator& operator=(ThreadedAllocator&& allocator) noexcept;
 
-    virtual void* allocate(size_type n) noexcept override;
+    virtual void* allocate() noexcept override;
 
-    virtual void free(void* p, size_type n) noexcept override;
+    virtual void* allocate(size_type numBytes) noexcept override;
+
+    virtual void free(void* pData) noexcept override;
+
+    virtual void free(void* pData, size_type numBytes) noexcept override;
+
+    virtual void free_unsized(void* p) noexcept override;
 };
 
 extern template class ThreadedAllocator<ls::utils::Allocator>;

@@ -7,6 +7,7 @@
 
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Allocator.hpp"
+#include "lightsky/utils/Copy.h"
 
 namespace ls
 {
@@ -38,6 +39,96 @@ void* IAllocator::allocate() noexcept
 
 
 /*-------------------------------------
+ * Calloc
+-------------------------------------*/
+void* IAllocator::allocate_contiguous(size_type numElements) noexcept
+{
+    (void)numElements;
+    return nullptr;
+}
+
+
+
+/*-------------------------------------
+ * Calloc (sized)
+-------------------------------------*/
+void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+{
+    if (!numElements || !numBytesPerElement)
+    {
+        return nullptr;
+    }
+
+    if (calloc_can_overflow(numElements, numBytesPerElement))
+    {
+        return nullptr;
+    }
+
+    const size_type numBytes = numElements * numBytesPerElement;
+    void* const pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        fast_memset(pData, '\0', numBytes);
+    }
+
+    return pData;
+}
+
+
+
+/*-------------------------------------
+ * Realloc
+-------------------------------------*/
+void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
+{
+    if (!numNewBytes)
+    {
+        return nullptr;
+    }
+
+    void* pNewData = this->memory_source().allocate(numNewBytes);
+    if (pNewData && p)
+    {
+        this->free_unsized(p);
+    }
+
+    return pNewData;
+}
+
+
+
+/*-------------------------------------
+ * Realloc (sized)
+-------------------------------------*/
+void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept
+{
+    if (!numNewBytes)
+    {
+        if (p)
+        {
+            this->free(p);
+        }
+
+        return nullptr;
+    }
+
+    void* const pNewData = this->memory_source().allocate(numNewBytes);
+    if (pNewData)
+    {
+        if (p)
+        {
+            const size_type numMaxBytes = numNewBytes < numPrevBytes ? numNewBytes : numPrevBytes;
+            fast_memcpy(pNewData, p, numMaxBytes);
+            this->free(p, numPrevBytes);
+        }
+    }
+
+    return pNewData;
+}
+
+
+
+/*-------------------------------------
  * Free
 -------------------------------------*/
 void IAllocator::free(void* pData) noexcept
@@ -60,6 +151,7 @@ Allocator::~Allocator() noexcept
 
 
 /*-------------------------------------
+ * Constructor
 -------------------------------------*/
 Allocator::Allocator(MemorySource& src) noexcept :
     mMemSource{&src}
@@ -68,6 +160,7 @@ Allocator::Allocator(MemorySource& src) noexcept :
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 Allocator::Allocator(Allocator&& allocator) noexcept :
     IAllocator{allocator},
@@ -79,6 +172,7 @@ Allocator::Allocator(Allocator&& allocator) noexcept :
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 Allocator& Allocator::operator=(Allocator&& allocator) noexcept
 {
@@ -108,6 +202,7 @@ ConstrainedAllocator<0>::~ConstrainedAllocator() noexcept
 
 
 /*-------------------------------------
+ * Constructor
 -------------------------------------*/
 ConstrainedAllocator<0>::ConstrainedAllocator(MemorySource& src, size_type maxNumBytes) noexcept :
     Allocator{src},
@@ -118,6 +213,7 @@ ConstrainedAllocator<0>::ConstrainedAllocator(MemorySource& src, size_type maxNu
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 ConstrainedAllocator<0>::ConstrainedAllocator(ConstrainedAllocator&& allocator) noexcept :
     Allocator{std::move(allocator)},
@@ -131,6 +227,7 @@ ConstrainedAllocator<0>::ConstrainedAllocator(ConstrainedAllocator&& allocator) 
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 ConstrainedAllocator<0>& ConstrainedAllocator<0>::operator=(ConstrainedAllocator&& allocator) noexcept
 {
@@ -151,6 +248,7 @@ ConstrainedAllocator<0>& ConstrainedAllocator<0>::operator=(ConstrainedAllocator
 
 
 /*-------------------------------------
+ * Allocate
 -------------------------------------*/
 void* ConstrainedAllocator<0>::allocate() noexcept
 {
@@ -161,6 +259,7 @@ void* ConstrainedAllocator<0>::allocate() noexcept
 
 
 /*-------------------------------------
+ * Free
 -------------------------------------*/
 void ConstrainedAllocator<0>::free(void* pData) noexcept
 {
@@ -189,6 +288,7 @@ ThreadSafeAllocator::ThreadSafeAllocator(MemorySource& src) noexcept :
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 ThreadSafeAllocator::ThreadSafeAllocator(ThreadSafeAllocator&& allocator) noexcept :
     Allocator{std::move(allocator)}
@@ -197,6 +297,7 @@ ThreadSafeAllocator::ThreadSafeAllocator(ThreadSafeAllocator&& allocator) noexce
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 ThreadSafeAllocator& ThreadSafeAllocator::operator=(ThreadSafeAllocator&& allocator) noexcept
 {
@@ -222,14 +323,16 @@ MallocAllocator::~MallocAllocator() noexcept
 
 
 /*-------------------------------------
+ * Constructor
 -------------------------------------*/
-MallocAllocator::MallocAllocator(ls::utils::MallocMemorySource& src) noexcept :
+MallocAllocator::MallocAllocator(MallocMemorySource& src) noexcept :
     ThreadSafeAllocator{src}
 {}
 
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 MallocAllocator::MallocAllocator(MallocAllocator&& allocator) noexcept :
     ThreadSafeAllocator{std::move(allocator)}
@@ -238,6 +341,7 @@ MallocAllocator::MallocAllocator(MallocAllocator&& allocator) noexcept :
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 MallocAllocator& MallocAllocator::operator=(MallocAllocator&& allocator) noexcept
 {
@@ -271,6 +375,7 @@ AtomicAllocator::AtomicAllocator(MemorySource& src) noexcept :
 
 
 /*-------------------------------------
+ * Move Constructor
 -------------------------------------*/
 AtomicAllocator::AtomicAllocator(AtomicAllocator&& allocator) noexcept :
     ThreadSafeAllocator{std::move(allocator)},
@@ -281,6 +386,7 @@ AtomicAllocator::AtomicAllocator(AtomicAllocator&& allocator) noexcept :
 
 
 /*-------------------------------------
+ * Move Operator
 -------------------------------------*/
 AtomicAllocator& AtomicAllocator::operator=(AtomicAllocator&& allocator) noexcept
 {

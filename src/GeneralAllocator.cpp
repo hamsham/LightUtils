@@ -9,4 +9,4 @@
 
 
 
-template class ls::utils::GeneralAllocator<16, 4096>;
+template class ls::utils::GeneralAllocator<32, 4096>;

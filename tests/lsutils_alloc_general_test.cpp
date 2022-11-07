@@ -1,28 +1,109 @@
 
 #include <iostream>
 #include <memory> // std::nothrow
-#include <mutex>
 #include <thread>
 #include <vector>
 
 #include "lightsky/utils/GeneralAllocator.hpp"
 #include "lightsky/utils/SpinLock.hpp"
+#include "lightsky/utils/Time.hpp"
 
 namespace utils = ls::utils;
+
+#define TEST_MALLOC_MEM_SRC   false
+#define TEST_MALLOC_ALLOCATOR false
+
+
+
+template <unsigned block_size>
+  class MallocMemorySource2 final : virtual public utils::ThreadSafeAllocator
+{
+  private:
+    static constexpr size_type header_size = block_size;
+
+  public:
+    virtual ~MallocMemorySource2() noexcept override {}
+
+    MallocMemorySource2(utils::MemorySource& memorySource) noexcept :
+        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)}
+    {}
+
+    MallocMemorySource2(const MallocMemorySource2& src) noexcept = delete;
+
+    MallocMemorySource2(MallocMemorySource2&& src) noexcept :
+        ThreadSafeAllocator{std::move(src)}
+    {
+    }
+
+    MallocMemorySource2& operator=(const MallocMemorySource2&) noexcept = delete;
+
+    MallocMemorySource2& operator=(MallocMemorySource2&& src) noexcept
+    {
+        if (this != &src)
+        {
+            ThreadSafeAllocator::operator=(std::move(src));
+        }
+
+        return *this;
+    }
+
+    virtual void* allocate() noexcept override
+    {
+        return ThreadSafeAllocator::allocate(block_size);
+    }
+
+    virtual void* allocate(size_type numBytes) noexcept override
+    {
+        if (!numBytes)
+        {
+            return nullptr;
+        }
+
+        numBytes += block_size - (numBytes % block_size);
+        return ThreadSafeAllocator::allocate(numBytes);
+    }
+
+    virtual void free(void* pData) noexcept override
+    {
+        ThreadSafeAllocator::free(pData, block_size);
+    }
+
+    virtual void free(void* pData, size_type numBytes) noexcept override
+    {
+        if (!pData || !numBytes)
+        {
+            return;
+        }
+
+        numBytes += block_size - (numBytes % block_size);
+        ThreadSafeAllocator::free(pData, numBytes);
+    }
+};
 
 
 
 int test_single_allocations()
 {
+    // test allocator of 512 bytes in a 256-byte container
     constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
     constexpr unsigned block_size = 512u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
 
     // test allocator of 64 bytes in a 256-byte container
-    //utils::MallocMemorySource mallocSrc{};
-    utils::SystemAllocator mallocSrc{};
+    #if TEST_MALLOC_MEM_SRC
+        utils::MallocMemorySource mallocSrc{};
+    #else
+        utils::SystemAllocator mallocSrc{};
+    #endif
+
     utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
-    utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter, alloc_table_size};
+
+    #if TEST_MALLOC_ALLOCATOR
+        MallocMemorySource2<block_size> testAllocator{memLimiter};
+    #else
+        utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
+    #endif
+
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
     void* last = nullptr;
@@ -40,11 +121,14 @@ int test_single_allocations()
             p = testAllocator.allocate();
             if (!p && i < max_allocations)
             {
-                std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
+                std::cerr << "Error: ran out of single memory blocks at allocation #" << i << '/' << max_allocations << std::endl;
                 return -1;
             }
 
-            LS_ASSERT(p == nullptr || last < p);
+            #if TEST_MALLOC_ALLOCATOR == false
+                LS_ASSERT(p == nullptr || last < p);
+            #endif
+
             last = p;
 
             //std::cout << "Allocated chunk " << i << ": " << p << std::endl;
@@ -107,79 +191,27 @@ int test_single_allocations()
 
 
 
-template <unsigned block_size>
-  class MallocMemorySource2 final : virtual public utils::ThreadSafeAllocator
-{
-  private:
-    static constexpr size_type header_size = block_size;
-
-  public:
-    virtual ~MallocMemorySource2() noexcept override {}
-
-    MallocMemorySource2(utils::MemorySource& memorySource) noexcept :
-        ThreadSafeAllocator{static_cast<utils::MemorySource&>(memorySource)}
-    {}
-
-    MallocMemorySource2(const MallocMemorySource2& src) noexcept :
-        ThreadSafeAllocator{src}
-    {}
-
-    MallocMemorySource2(MallocMemorySource2&& src) noexcept :
-        ThreadSafeAllocator{std::move(src)}
-    {
-    }
-
-    MallocMemorySource2& operator=(const MallocMemorySource2&) noexcept = delete;
-    MallocMemorySource2& operator=(MallocMemorySource2&&) noexcept = default;
-
-    virtual void* allocate() noexcept override
-    {
-        return this->allocate(block_size);
-    }
-
-    virtual void* allocate(size_type numBytes) noexcept override
-    {
-        if (!numBytes)
-        {
-            return nullptr;
-        }
-
-        numBytes += block_size - (numBytes % block_size);
-        return ThreadSafeAllocator::allocate(numBytes);
-    }
-
-    virtual void free(void* pData) noexcept override
-    {
-        this->free(pData, block_size);
-    }
-
-    virtual void free(void* pData, size_type numBytes) noexcept override
-    {
-        if (!pData || !numBytes)
-        {
-            return;
-        }
-
-        numBytes += block_size - (numBytes % block_size);
-        ThreadSafeAllocator::free(pData, numBytes);
-    }
-};
-
-
-
 int test_array_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
-    constexpr unsigned block_size = 16u;
+    constexpr unsigned alloc_table_size = 1024u*1024u*1024u*3u;
+    constexpr unsigned block_size = 32u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
     //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
-    //utils::MallocMemorySource mallocSrc{};
-    utils::SystemAllocator mallocSrc{};
+
+    #if TEST_MALLOC_MEM_SRC
+        utils::MallocMemorySource mallocSrc{};
+    #else
+        utils::SystemAllocator mallocSrc{};
+    #endif
 
     //constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
     utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
-    utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
-    //MallocMemorySource2<block_size> testAllocator{memLimiter};
+
+    #if TEST_MALLOC_ALLOCATOR
+        MallocMemorySource2<block_size> testAllocator{memLimiter};
+    #else
+        utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
+    #endif
 
     // test allocator of 64 bytes in a 256-byte container
     //utils::ConstrainedAllocator<alloc_table_size+block_size*5> memLimiter{mallocSrc};
@@ -271,10 +303,89 @@ int test_array_allocations()
 
 
 
+int test_threaded_allocations()
+{
+    // test allocator of 32 bytes in a 256-byte container
+    constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
+    constexpr unsigned block_size = 32u;
+    constexpr unsigned max_allocations = alloc_table_size / block_size;
+
+    // test allocator of 64 bytes in a 256-byte container
+    #if TEST_MALLOC_MEM_SRC
+        utils::MallocMemorySource mallocSrc{};
+    #else
+        utils::SystemAllocator mallocSrc{};
+    #endif
+
+    #if TEST_MALLOC_ALLOCATOR
+        MallocMemorySource2<block_size> testAllocator{mallocSrc};
+    #else
+        utils::GeneralAllocator<block_size, alloc_table_size*2> internalAllocator{mallocSrc};
+        utils::AtomicAllocator atomicAllocator{internalAllocator};
+        utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{atomicAllocator};
+
+        //utils::AtomicAllocator testAllocator{internalAllocator};
+    #endif
+
+    auto threadFunc = [&]()->void
+    {
+        void** allocations = new void* [max_allocations];
+        void* p = nullptr;
+
+        for (unsigned i = 0; i < max_allocations; ++i)
+        {
+            allocations[i] = nullptr;
+        }
+
+        for (unsigned testRuns = 0; testRuns < 8; ++testRuns)
+        {
+            for (unsigned i = 0; i < max_allocations; ++i)
+            {
+                p = testAllocator.allocate();
+                if (!p)
+                {
+                    std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
+                    return;
+                }
+
+                allocations[i] = p;
+            }
+
+            // free all chunks and try again
+            for (unsigned i = 0; i < max_allocations; ++i)
+            {
+                testAllocator.free(allocations[i]);
+                allocations[i] = nullptr;
+            }
+        }
+
+        delete[] allocations;
+    };
+
+    std::thread t0{threadFunc};
+    std::thread t1{threadFunc};
+    std::thread t2{threadFunc};
+    std::thread t3{threadFunc};
+
+    t0.join();
+    t1.join();
+    t2.join();
+    t3.join();
+
+    return 0;
+}
+
+
+
 int main()
 {
     int ret = 0;
+    ls::utils::Clock<unsigned long long, std::ratio<1, 1000>> ticks;
 
+    std::cout << "Running allocator benchmark..." << std::endl;
+    ticks.start();
+
+    #if 0
     ret = test_single_allocations();
     if (ret != 0)
     {
@@ -286,37 +397,14 @@ int main()
     {
         return ret;
     }
+    #endif
 
-    /*
-    std::cout << std::endl;
-    std::cout << "Testing a threaded malloc cache:" << std::endl;
-    utils::MallocMemorySource mallocSrc;
-    utils::AtomicAllocator atomicAllocator{mallocSrc};
-    utils::ThreadedAllocator<utils::Allocator> threadedAllocator{atomicAllocator};
-    std::mutex lock;
+    ret = test_threaded_allocations();
 
-    const auto allocFunc = [&]()->void {
-        void* pData = threadedAllocator.allocate(32);
+    ticks.tick();
+    std::cout << "\tDone." << std::endl;
 
-        lock.lock();
-        std::cout << "Allocated 32 bytes from thread " << std::this_thread::get_id() << ": " << pData << std::endl;
-        lock.unlock();
+    std::cout << "Allocator time: " << ticks.tick_time().count() << "ms" << std::endl;
 
-        threadedAllocator.free(pData, 32);
-
-        lock.lock();
-        std::cout << "Free'd 32 bytes from thread " << std::this_thread::get_id() << std::endl;
-        lock.unlock();
-    };
-
-    std::thread t0{allocFunc};
-    std::thread t1{allocFunc};
-    std::thread t2{allocFunc};
-
-    t0.join();
-    t1.join();
-    t2.join();
-    */
-
-    return 0;
+    return ret;
 }
