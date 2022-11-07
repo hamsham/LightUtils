@@ -18,6 +18,7 @@ namespace utils
 -------------------------------------*/
 SpinLock::~SpinLock() noexcept
 {
+    (void)mPadding;
     mLock.clear(std::memory_order_release);
 }
 

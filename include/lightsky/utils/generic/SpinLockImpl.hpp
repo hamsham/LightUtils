@@ -14,7 +14,7 @@ namespace utils
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    while (mLock.test_and_set(std::memory_order_acquire))
+    while (mLock.test_and_set(std::memory_order_acq_rel))
     {
     }
 }
@@ -26,7 +26,7 @@ inline void SpinLock::lock() noexcept
 -------------------------------------*/
 inline bool SpinLock::try_lock() noexcept
 {
-    return !mLock.test_and_set(std::memory_order_acquire);
+    return !mLock.test_and_set(std::memory_order_acq_rel);
 }
 
 

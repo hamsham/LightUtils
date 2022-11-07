@@ -21,6 +21,7 @@ class SpinLock
 {
   private:
     std::atomic_flag mLock = ATOMIC_FLAG_INIT;
+    char mPadding[sizeof(std::atomic_flag) < 64ull ? (64ull - sizeof(std::atomic_flag)) : sizeof(std::atomic_flag)];
 
   public:
     ~SpinLock() noexcept;
