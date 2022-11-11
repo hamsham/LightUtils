@@ -37,8 +37,8 @@ GeneralAllocator<BlockSize, CacheSize>::~GeneralAllocator() noexcept
         this->memory_source().free(temp, temp->header.numBlocks * BlockSize);
     }
 
-    mTotalBlocksAllocd = 0;
     mHead = nullptr;
+    mTotalBlocksAllocd = 0;
 }
 
 
@@ -50,8 +50,8 @@ template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource) noexcept :
     //GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator{memorySource, CacheSize} // delegate
     Allocator{memorySource},
-    mTotalBlocksAllocd{0},
-    mHead{nullptr}
+    mHead{nullptr},
+    mTotalBlocksAllocd{0}
 {
 }
 
@@ -63,6 +63,7 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource, size_type initialSize) noexcept :
     Allocator{memorySource},
+    mHead{nullptr},
     mTotalBlocksAllocd{0}
 {
     ls::utils::runtime_assert(initialSize >= sizeof(size_type), ls::utils::ErrorLevel::LS_ERROR, "Allocated memory table cannot be less than sizeof(size_type).");
@@ -74,11 +75,11 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
     {
         // setup all links in the allocation list
         size_type numBlocks = initialSize / BlockSize;
-        mTotalBlocksAllocd = numBlocks;
 
         mHead->header.pNext = nullptr;
         mHead->header.numBlocks = numBlocks;
         mHead->header.allocatedBlocks = numBlocks;
+        mTotalBlocksAllocd = numBlocks;
     }
 }
 
@@ -90,8 +91,8 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(GeneralAllocator&& a) noexcept :
     Allocator{std::move(a)},
-    mTotalBlocksAllocd{a.mTotalBlocksAllocd},
-    mHead{a.mHead}
+    mHead{a.mHead},
+    mTotalBlocksAllocd{a.mTotalBlocksAllocd}
 {
     a.mTotalBlocksAllocd = 0;
     a.mHead = nullptr;
@@ -109,11 +110,11 @@ GeneralAllocator<BlockSize, CacheSize>& GeneralAllocator<BlockSize, CacheSize>::
     {
         Allocator::operator=(std::move(a));
 
-        mTotalBlocksAllocd = a.mTotalBlocksAllocd;
-        a.mTotalBlocksAllocd = 0;
-
         mHead = a.mHead;
         a.mHead = nullptr;
+
+        mTotalBlocksAllocd = a.mTotalBlocksAllocd;
+        a.mTotalBlocksAllocd = 0;
     }
 
     return *this;
@@ -211,8 +212,6 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
         const size_type numBlocks = temp->header.numBlocks;
         const size_type numBytes = numBlocks * BlockSize;
 
-        mTotalBlocksAllocd -= numBlocks;
-
         if (LS_LIKELY(temp != mHead))
         {
             prev->header.pNext = temp->header.pNext;
@@ -221,6 +220,8 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
         {
             mHead = mHead->header.pNext;
         }
+
+        mTotalBlocksAllocd -= numBlocks;
 
         temp->header.numBlocks = 0;
         temp->header.pNext = nullptr;

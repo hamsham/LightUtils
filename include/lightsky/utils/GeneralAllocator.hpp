@@ -68,8 +68,6 @@ class GeneralAllocator final : public Allocator
     static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
 
   private:
-    size_type mTotalBlocksAllocd;
-
     /**
      * @brief Each chunk of memory contains a reference to the next subsequent
      * chunk of memory in its first set of bytes. "mHead" is an offset to the
@@ -77,6 +75,12 @@ class GeneralAllocator final : public Allocator
      * this, all other chunks in the allocation table can be accessed.
      */
     AllocationEntry* mHead;
+
+    /**
+     * @brief Tracking variable to help with reserving additional memory
+     * regions for future allocations.
+     */
+    size_type mTotalBlocksAllocd;
 
     /**
      * @brief Helper function to merge two contiguous memory blocks.
