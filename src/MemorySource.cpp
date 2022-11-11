@@ -236,18 +236,10 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
     void* p;
 
     #if !defined(LS_OS_UNIX)
-        p = std::calloc(numBytes, sizeof(char));
+        p = std::malloc(numBytes, sizeof(char));
 
     #else
-        constexpr int mapFlags = 0
-            | MAP_PRIVATE
-            | MAP_ANONYMOUS
-        #ifdef LS_OS_LINUX
-            //| MAP_POPULATE
-            | MAP_NONBLOCK
-        #endif
-            | 0;
-
+        constexpr int mapFlags = MAP_PRIVATE | MAP_ANON;
         p = mmap(nullptr, numBytes, PROT_READ|PROT_WRITE, mapFlags, -1, 0);
         if (p == MAP_FAILED)
         {
@@ -287,12 +279,12 @@ void SystemAllocator::free(void* pData, size_type numBytes) noexcept
         std::free(pData);
 
     #else
+        //int err = madvise(pData, numBytes, MADV_DONTNEED);
         int err = munmap(pData, numBytes);
         if (err != 0)
         {
             runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
         }
-
     #endif
 }
 

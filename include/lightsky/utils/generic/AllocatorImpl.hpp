@@ -407,22 +407,22 @@ void ThreadedMemoryCache<IAllocatorType>::remove_allocator(ThreadSafeAllocator* 
 
         if (pIter->mAllocator == allocator)
         {
+            AllocatorList* pNext = pIter->pNext;
+            if (pPrev)
+            {
+                pPrev->pNext = pNext;
+            }
+
+            if (mAllocators == pIter)
+            {
+                mAllocators = pNext;
+            }
+
             break;
         }
 
         pPrev = pIter;
         pIter = pIter->pNext;
-    }
-
-    AllocatorList* pNext = pIter->pNext;
-    if (pPrev)
-    {
-        pPrev->pNext = pNext;
-    }
-
-    if (mAllocators == pIter)
-    {
-        mAllocators = pNext;
     }
 
     ThreadSafeAllocator* pAllocator = pIter->mAllocator;

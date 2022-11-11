@@ -68,6 +68,8 @@ class GeneralAllocator final : public Allocator
     static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
 
   private:
+    size_type mTotalBlocksAllocd;
+
     /**
      * @brief Each chunk of memory contains a reference to the next subsequent
      * chunk of memory in its first set of bytes. "mHead" is an offset to the

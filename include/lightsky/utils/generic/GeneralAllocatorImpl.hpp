@@ -37,6 +37,7 @@ GeneralAllocator<BlockSize, CacheSize>::~GeneralAllocator() noexcept
         this->memory_source().free(temp, temp->header.numBlocks * BlockSize);
     }
 
+    mTotalBlocksAllocd = 0;
     mHead = nullptr;
 }
 
@@ -47,7 +48,10 @@ GeneralAllocator<BlockSize, CacheSize>::~GeneralAllocator() noexcept
 -------------------------------------*/
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource) noexcept :
-    GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator{memorySource, CacheSize} // delegate
+    //GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator{memorySource, CacheSize} // delegate
+    Allocator{memorySource},
+    mTotalBlocksAllocd{0},
+    mHead{nullptr}
 {
 }
 
@@ -58,7 +62,8 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
 -------------------------------------*/
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource, size_type initialSize) noexcept :
-    Allocator{memorySource}
+    Allocator{memorySource},
+    mTotalBlocksAllocd{0}
 {
     ls::utils::runtime_assert(initialSize >= sizeof(size_type), ls::utils::ErrorLevel::LS_ERROR, "Allocated memory table cannot be less than sizeof(size_type).");
     ls::utils::runtime_assert(initialSize % BlockSize == 0, ls::utils::ErrorLevel::LS_ERROR, "Cannot fit the current block size within an allocation table.");
@@ -69,6 +74,7 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
     {
         // setup all links in the allocation list
         size_type numBlocks = initialSize / BlockSize;
+        mTotalBlocksAllocd = numBlocks;
 
         mHead->header.pNext = nullptr;
         mHead->header.numBlocks = numBlocks;
@@ -84,8 +90,10 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(GeneralAllocator&& a) noexcept :
     Allocator{std::move(a)},
+    mTotalBlocksAllocd{a.mTotalBlocksAllocd},
     mHead{a.mHead}
 {
+    a.mTotalBlocksAllocd = 0;
     a.mHead = nullptr;
 }
 
@@ -100,6 +108,9 @@ GeneralAllocator<BlockSize, CacheSize>& GeneralAllocator<BlockSize, CacheSize>::
     if (this != &a)
     {
         Allocator::operator=(std::move(a));
+
+        mTotalBlocksAllocd = a.mTotalBlocksAllocd;
+        a.mTotalBlocksAllocd = 0;
 
         mHead = a.mHead;
         a.mHead = nullptr;
@@ -116,11 +127,20 @@ GeneralAllocator<BlockSize, CacheSize>& GeneralAllocator<BlockSize, CacheSize>::
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 inline void GeneralAllocator<BlockSize, CacheSize>::_merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) const noexcept
 {
-    pHead->header.numBlocks += pBlock->header.numBlocks;
-    pHead->header.pNext = pBlock->header.pNext;
+    // Double-free detection
+    if (LS_UNLIKELY((pHead < pBlock) && ((pHead + pHead->header.numBlocks) > pBlock)))
+    {
+        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
+    }
 
-    pBlock->header.numBlocks = 0;
-    pBlock->header.pNext = nullptr;
+    if (pHead + pHead->header.numBlocks == pBlock)
+    {
+        pHead->header.numBlocks += pBlock->header.numBlocks;
+        pHead->header.pNext = pBlock->header.pNext;
+
+        pBlock->header.numBlocks = 0;
+        pBlock->header.pNext = nullptr;
+    }
 }
 
 
@@ -141,36 +161,25 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
         // reset the head pointer
         reclaimed->header.pNext = nullptr;
         mHead = reclaimed;
+        return;
     }
-    else if (reclaimed < mHead)
+
+    AllocationEntry* prev = nullptr;
+    AllocationEntry* temp = reclaimed;
+
+    if (mHead > reclaimed)
     {
         // ensure the header-pointer from p points to the current "next" chunk.
         // increase the block count if possible
         reclaimed->header.pNext = mHead;
 
-        if (reclaimed + reclaimed->header.numBlocks == mHead)
-        {
-            _merge_allocation_blocks(reclaimed, mHead);
-        }
+        _merge_allocation_blocks(reclaimed, mHead);
 
+        prev = nullptr;
         mHead = reclaimed;
-
-        if (mHead->header.numBlocks == mHead->header.allocatedBlocks && mHead->header.pNext)
-        {
-            AllocationEntry* temp = mHead;
-            mHead = mHead->header.pNext;
-
-            const size_type numBytes = temp->header.numBlocks * BlockSize;
-            temp->header.numBlocks = 0;
-            temp->header.pNext = nullptr;
-
-            this->memory_source().free(temp, numBytes);
-        }
     }
-    else // mHead > reclaimed
+    else // mHead < reclaimed
     {
-        AllocationEntry* prev = nullptr;
-        AllocationEntry* temp = nullptr;
         AllocationEntry* curr = mHead;
 
         while (reclaimed < curr)
@@ -182,33 +191,41 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
         reclaimed->header.pNext = curr->header.pNext;
         curr->header.pNext = reclaimed;
 
-        if (reclaimed + reclaimed->header.numBlocks == reclaimed->header.pNext)
-        {
-            temp = reclaimed;
-            _merge_allocation_blocks(reclaimed, reclaimed->header.pNext);
-        }
+        _merge_allocation_blocks(curr, curr->header.pNext);
+        _merge_allocation_blocks(reclaimed, reclaimed->header.pNext);
 
-        if (curr + curr->header.numBlocks == curr->header.pNext)
+        // Move our cursors depending on whether "reclaimed" was merged into
+        // the "curr" allocation block.
+        if (LS_LIKELY(!reclaimed->header.numBlocks))
         {
             temp = curr;
-            _merge_allocation_blocks(curr, curr->header.pNext);
         }
-
-        if (temp != curr)
+        else
         {
             prev = curr;
         }
+    }
 
-        if (prev && temp && temp->header.numBlocks == temp->header.allocatedBlocks)
+    if (temp->header.numBlocks == temp->header.allocatedBlocks && temp->header.pNext)
+    {
+        const size_type numBlocks = temp->header.numBlocks;
+        const size_type numBytes = numBlocks * BlockSize;
+
+        mTotalBlocksAllocd -= numBlocks;
+
+        if (LS_LIKELY(temp != mHead))
         {
-            const size_type numBytes = temp->header.numBlocks * BlockSize;
             prev->header.pNext = temp->header.pNext;
-
-            temp->header.numBlocks = 0;
-            temp->header.pNext = nullptr;
-
-            this->memory_source().free(temp, numBytes);
         }
+        else
+        {
+            mHead = mHead->header.pNext;
+        }
+
+        temp->header.numBlocks = 0;
+        temp->header.pNext = nullptr;
+
+        this->memory_source().free(temp, numBytes);
     }
 }
 
@@ -220,30 +237,38 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 inline typename GeneralAllocator<BlockSize, CacheSize>::AllocationEntry* GeneralAllocator<BlockSize, CacheSize>::_alloc_new_cache(size_type n) noexcept
 {
-    // round to the next multiple of block_size
-    if (n < CacheSize)
-    {
-        n = CacheSize;
-    }
+    // Any allocation larger than the block size gets rounded to the next cache
+    // size. If that fails, we try again by rounding to the next block. Should
+    // that also fail, we bail completely.
+    const size_type maxBytes = mTotalBlocksAllocd * BlockSize;
+    const size_type potentialBytes = maxBytes > n ? maxBytes : n;
+    const size_type t = potentialBytes;
+    const size_type reserveRounding = t + ((t % CacheSize) ? (CacheSize - (t % CacheSize)) : 0);
+    const size_type cacheRounding   = n + ((n % CacheSize) ? (CacheSize - (n % CacheSize)) : 0);
+    const size_type blockRounding   = n + ((n % BlockSize) ? (BlockSize - (n % BlockSize)) : 0);
 
-    // Any "n" larger than "CacheSize" gets returned as its own allocation,
-    // or round to the next block if there's not enough memory available.
-    const size_type cacheRounding = n + (CacheSize - (n % CacheSize));
-    const size_type blockRounding = n + (BlockSize - (n % BlockSize));
+    size_type allocSize;
+    void* pCache;
 
-    size_type allocSize = cacheRounding;
-    void* pCache = this->memory_source().allocate(allocSize);
+    allocSize = reserveRounding;
+    pCache = this->memory_source().allocate(reserveRounding);
     if (!pCache)
     {
-        allocSize = blockRounding;
-        pCache = this->memory_source().allocate(allocSize);
+        allocSize = cacheRounding;
+        pCache = this->memory_source().allocate(cacheRounding);
         if (!pCache)
         {
-            return nullptr;
+            allocSize = blockRounding;
+            pCache = this->memory_source().allocate(blockRounding);
+            if (!pCache)
+            {
+                return nullptr;
+            }
         }
     }
 
     const size_type numBlocks = allocSize / BlockSize;
+    mTotalBlocksAllocd += numBlocks;
 
     AllocationEntry* pCacheEntry = reinterpret_cast<AllocationEntry*>(pCache);
     pCacheEntry->header.numBlocks = numBlocks;
@@ -261,16 +286,17 @@ inline typename GeneralAllocator<BlockSize, CacheSize>::AllocationEntry* General
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 void* GeneralAllocator<BlockSize, CacheSize>::allocate() noexcept
 {
+    /*
     if (LS_UNLIKELY(mHead == nullptr))
     {
-        mHead = _alloc_new_cache(cache_size);
+        mHead = _alloc_new_cache(CacheSize);
         if (LS_UNLIKELY(mHead == nullptr))
         {
             return nullptr;
         }
     }
 
-    // Single allocation of "block_size". This should be matched to a non-sized
+    // Single allocation of "BlockSize". This should be matched to a non-sized
     // deallocation to avoid memory corruption.
     AllocationEntry* iter = mHead;
 
@@ -289,6 +315,9 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate() noexcept
     iter->header.pNext = nullptr;
 
     return reinterpret_cast<void*>(iter);
+    */
+
+    return this->allocate(BlockSize);
 }
 
 
@@ -305,7 +334,7 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate(size_type n) noexcept
     }
 
     n += GeneralAllocator<BlockSize, CacheSize>::header_size;
-    size_type blocksNeeded = (n / block_size) + ((n % block_size) ? 1 : 0);
+    const size_type blocksNeeded = (n / BlockSize) + ((n % BlockSize) ? 1 : 0);
 
     if (mHead == nullptr)
     {
@@ -343,10 +372,14 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate(size_type n) noexcept
 
     if (count > blocksNeeded)
     {
-        AllocationEntry* next = reinterpret_cast<AllocationEntry*>(iter + blocksNeeded);
-        next->header.numBlocks = iter->header.numBlocks - blocksNeeded;
-        next->header.pNext = iter->header.pNext;
-        prev->header.pNext = next;
+        //AllocationEntry* next = reinterpret_cast<AllocationEntry*>(iter + blocksNeeded);
+        //next->header.numBlocks = iter->header.numBlocks - blocksNeeded;
+        //next->header.pNext = iter->header.pNext;
+        //prev->header.pNext = next;
+
+        AllocationEntry* temp = iter + (iter->header.numBlocks - blocksNeeded);
+        iter->header.numBlocks -= blocksNeeded;
+        iter = temp;
     }
     else // count == blocksNeeded
     {
@@ -420,14 +453,15 @@ inline void* GeneralAllocator<BlockSize, CacheSize>::reallocate(void* p, size_ty
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 void GeneralAllocator<BlockSize, CacheSize>::free(void* p) noexcept
 {
-    if (!p)
+    if (LS_UNLIKELY(!p))
     {
         return;
     }
 
     // Non-sized allocations do not contain a header to ensure the maximum
     // allocation size can be made available.
-    this->_free_impl(reinterpret_cast<AllocationEntry*>(p), 1);
+    //this->_free_impl(reinterpret_cast<AllocationEntry*>(p), 1);
+    this->free_unsized(p);
 }
 
 
@@ -438,7 +472,7 @@ void GeneralAllocator<BlockSize, CacheSize>::free(void* p) noexcept
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 void GeneralAllocator<BlockSize, CacheSize>::free(void* p, size_type n) noexcept
 {
-    if (!p || !n)
+    if (LS_UNLIKELY(!p || !n))
     {
         return;
     }
@@ -446,20 +480,20 @@ void GeneralAllocator<BlockSize, CacheSize>::free(void* p, size_type n) noexcept
     // retrieve the allocation size from header, make sure it matches what is
     // expected
     n += GeneralAllocator<BlockSize, CacheSize>::header_size;
-    const size_type blocksFreed = (n / block_size) + ((n % block_size) ? 1 : 0);
+    const size_type blocksFreed = (n / BlockSize) + ((n % BlockSize) ? 1 : 0);
 
     // Offset to the start of the allocation (a.k.a. the allocation header).
     char* const pData = reinterpret_cast<char*>(p) - GeneralAllocator<BlockSize, CacheSize>::header_size;
 
     AllocationEntry* const reclaimed = reinterpret_cast<AllocationEntry*>(pData);
-    if (reclaimed == mHead)
+    if (LS_UNLIKELY(reclaimed == mHead))
     {
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
     }
 
     // Read the input allocation size for validation
     const size_type allocSize = reclaimed->header.numBlocks;
-    if (allocSize != blocksFreed)
+    if (LS_UNLIKELY(allocSize != blocksFreed))
     {
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Invalid de-allocation size detected!");
     }
@@ -475,7 +509,7 @@ void GeneralAllocator<BlockSize, CacheSize>::free(void* p, size_type n) noexcept
 template <unsigned long long BlockSize, unsigned long long CacheSize>
 void GeneralAllocator<BlockSize, CacheSize>::free_unsized(void* p) noexcept
 {
-    if (!p)
+    if (LS_UNLIKELY(!p))
     {
         return;
     }
@@ -484,7 +518,7 @@ void GeneralAllocator<BlockSize, CacheSize>::free_unsized(void* p) noexcept
     char* const pData = reinterpret_cast<char*>(p) - GeneralAllocator<BlockSize, CacheSize>::header_size;
 
     AllocationEntry* const reclaimed = reinterpret_cast<AllocationEntry*>(pData);
-    if (reclaimed == mHead)
+    if (LS_UNLIKELY(reclaimed == mHead))
     {
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
     }
