@@ -60,8 +60,8 @@ class GeneralAllocator final : public Allocator
     };
 
     // insurance
-    static_assert(CacheSize % BlockSize == 0, "Cache Size must be a multiple of Block Size.");
-    static_assert(BlockSize >= sizeof(AllocationHeader), "Block size must exceed sizeof(AllocationHeader).");
+    static_assert(cache_size % block_size == 0, "Cache Size must be a multiple of Block Size.");
+    static_assert(block_size >= sizeof(AllocationHeader), "Block size must exceed sizeof(AllocationHeader).");
     static_assert(sizeof(AllocationHeader) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
     static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
@@ -81,6 +81,11 @@ class GeneralAllocator final : public Allocator
      * regions for future allocations.
      */
     size_type mTotalBlocksAllocd;
+
+    /**
+     * @brief Convenience member to track the size of the last allocation.
+     */
+    size_type mLastAllocSize;
 
     /**
      * @brief Helper function to merge two contiguous memory blocks.
@@ -176,16 +181,6 @@ class GeneralAllocator final : public Allocator
     GeneralAllocator& operator=(GeneralAllocator&&) noexcept;
 
     /**
-     * @brief Retrieve a contiguous block of memory from *this.
-     *
-     * The returned block of memory is "block_size" bytes in length.
-     *
-     * @return A pointer to the first element in the newly allocated memory
-     * block. If no more blocks exist within the allocator, NULL is returned.
-     */
-    virtual void* allocate() noexcept override;
-
-    /**
      * @brief Allocate a contiguous block of memory which is at least "n" bytes
      * in size.
      *
@@ -200,17 +195,6 @@ class GeneralAllocator final : public Allocator
      * allocator to fufill the request for memory.
      */
     virtual void* allocate(size_type n) noexcept override;
-
-    /**
-     * @brief Allocate an array of blocks and zero-initialize the allocation.
-     *
-     * @param numElements
-     * The number of elements of "BlockSize" to allocate.
-     *
-     * @return A pointer to the newly allocated array, or NULL of the memory
-     * allocation failed.
-     */
-    virtual void* allocate_contiguous(size_type numElements) noexcept override;
 
     /**
      * @brief Allocate an array of blocks and zero-initialize the allocation.
@@ -292,20 +276,6 @@ class GeneralAllocator final : public Allocator
      * the "n" parameter to allocate() or allocate_contiguous().
      */
     virtual void free(void* p, size_type n) noexcept override;
-
-    /**
-     * @brief Return an allocated block of memory back to *this allocator.
-     *
-     * @note It is assumed the number of previously allocated bytes pointed at
-     * by "p" is equal to "BlockSize".
-     *
-     * This function does nothing if the input pointer is NULL.
-     *
-     * @param p
-     * A pointer to a block of memory which was returned from a call to
-     * "allocate()."
-     */
-    virtual void free_unsized(void* p) noexcept override;
 };
 
 

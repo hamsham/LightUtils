@@ -12,6 +12,7 @@
 #include <utility> // std::move
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Copy.h"
 
 namespace ls
 {
@@ -41,21 +42,21 @@ inline void* IAllocator::allocate(size_type n) noexcept
 
 
 /*-------------------------------------
- * Free (sized)
+ * Free
 -------------------------------------*/
-inline void IAllocator::free(void* p, size_type n) noexcept
+inline void IAllocator::free(void* pData) noexcept
 {
-    this->memory_source().free(p, n);
+    this->memory_source().free(pData);
 }
 
 
 
 /*-------------------------------------
- * Free (unsized)
+ * Free (sized)
 -------------------------------------*/
-inline void IAllocator::free_unsized(void* p) noexcept
+inline void IAllocator::free(void* p, size_type n) noexcept
 {
-    this->memory_source().free(p);
+    this->memory_source().free(p, n);
 }
 
 
@@ -89,8 +90,8 @@ inline MemorySource& Allocator::memory_source() noexcept
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-ConstrainedAllocator<maxNumBytes>::~ConstrainedAllocator() noexcept
+template <unsigned long long MaxNumBytes>
+ConstrainedAllocator<MaxNumBytes>::~ConstrainedAllocator() noexcept
 {
 }
 
@@ -99,8 +100,8 @@ ConstrainedAllocator<maxNumBytes>::~ConstrainedAllocator() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(MemorySource& src) noexcept :
+template <unsigned long long MaxNumBytes>
+ConstrainedAllocator<MaxNumBytes>::ConstrainedAllocator(MemorySource& src) noexcept :
     Allocator{src},
     mBytesAllocated{0}
 {}
@@ -110,8 +111,8 @@ ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(MemorySource& src) noexc
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(ConstrainedAllocator&& allocator) noexcept :
+template <unsigned long long MaxNumBytes>
+ConstrainedAllocator<MaxNumBytes>::ConstrainedAllocator(ConstrainedAllocator&& allocator) noexcept :
     Allocator{std::move(allocator)},
     mBytesAllocated{allocator.mBytesAllocated}
 {
@@ -123,8 +124,8 @@ ConstrainedAllocator<maxNumBytes>::ConstrainedAllocator(ConstrainedAllocator&& a
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-ConstrainedAllocator<maxNumBytes>& ConstrainedAllocator<maxNumBytes>::operator=(ConstrainedAllocator&& allocator) noexcept
+template <unsigned long long MaxNumBytes>
+ConstrainedAllocator<MaxNumBytes>& ConstrainedAllocator<MaxNumBytes>::operator=(ConstrainedAllocator&& allocator) noexcept
 {
     if (&allocator != this)
     {
@@ -140,26 +141,14 @@ ConstrainedAllocator<maxNumBytes>& ConstrainedAllocator<maxNumBytes>::operator=(
 
 
 /*-------------------------------------
- * Allocate
--------------------------------------*/
-template <unsigned long long maxNumBytes>
-void* ConstrainedAllocator<maxNumBytes>::allocate() noexcept
-{
-    LS_ASSERT(false);
-    return nullptr;
-}
-
-
-
-/*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-inline void* ConstrainedAllocator<maxNumBytes>::allocate(size_type numBytes) noexcept
+template <unsigned long long MaxNumBytes>
+inline void* ConstrainedAllocator<MaxNumBytes>::allocate(size_type numBytes) noexcept
 {
     const size_type newByteCount = mBytesAllocated+numBytes;
 
-    if (newByteCount > maxNumBytes)
+    if (newByteCount > MaxNumBytes)
     {
         return nullptr;
     }
@@ -176,10 +165,46 @@ inline void* ConstrainedAllocator<maxNumBytes>::allocate(size_type numBytes) noe
 
 
 /*-------------------------------------
+ * Calloc (sized)
+-------------------------------------*/
+template <unsigned long long MaxNumBytes>
+void* ConstrainedAllocator<MaxNumBytes>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+{
+    if (!numElements || !numBytesPerElement)
+    {
+        return nullptr;
+    }
+
+    if (calloc_can_overflow(numElements, numBytesPerElement))
+    {
+        return nullptr;
+    }
+
+    const size_type numBytes = numElements * numBytesPerElement;
+    const size_type newByteCount = mBytesAllocated+numBytes;
+
+    if (newByteCount > MaxNumBytes)
+    {
+        return nullptr;
+    }
+
+    void* const pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        mBytesAllocated = newByteCount;
+        fast_memset(pData, '\0', numBytes);
+    }
+
+    return pData;
+}
+
+
+
+/*-------------------------------------
  * Free
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-void ConstrainedAllocator<maxNumBytes>::free(void* pData) noexcept
+template <unsigned long long MaxNumBytes>
+void ConstrainedAllocator<MaxNumBytes>::free(void* pData) noexcept
 {
     (void)pData;
     LS_ASSERT(false);
@@ -190,8 +215,8 @@ void ConstrainedAllocator<maxNumBytes>::free(void* pData) noexcept
 /*-------------------------------------
  * Free (sized)
 -------------------------------------*/
-template <unsigned long long maxNumBytes>
-inline void ConstrainedAllocator<maxNumBytes>::free(void* pData, size_type numBytes) noexcept
+template <unsigned long long MaxNumBytes>
+inline void ConstrainedAllocator<MaxNumBytes>::free(void* pData, size_type numBytes) noexcept
 {
     if (pData && numBytes)
     {
@@ -245,6 +270,132 @@ inline void ConstrainedAllocator<0>::free(void* pData, size_type numBytes) noexc
 
 
 /*-----------------------------------------------------------------------------
+ * Block Allocator
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+template <unsigned long long BlockSize>
+BlockAllocator<BlockSize>::~BlockAllocator() noexcept
+{
+}
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+template <unsigned long long BlockSize>
+BlockAllocator<BlockSize>::BlockAllocator(MemorySource& src) noexcept :
+    Allocator{src}
+{}
+
+
+
+/*-------------------------------------
+ * Move Constructor
+-------------------------------------*/
+template <unsigned long long BlockSize>
+BlockAllocator<BlockSize>::BlockAllocator(BlockAllocator&& allocator) noexcept :
+    Allocator{std::move(allocator)}
+{
+}
+
+
+
+/*-------------------------------------
+ * Move Operator
+-------------------------------------*/
+template <unsigned long long BlockSize>
+BlockAllocator<BlockSize>& BlockAllocator<BlockSize>::operator=(BlockAllocator&& allocator) noexcept
+{
+    if (&allocator != this)
+    {
+        Allocator::operator=(std::move(allocator));
+    }
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+ * Allocate (sized)
+-------------------------------------*/
+template <unsigned long long BlockSize>
+inline void* BlockAllocator<BlockSize>::allocate(size_type numBytes) noexcept
+{
+    const size_type remainder = numBytes % BlockSize;
+    numBytes = numBytes + (remainder ? (BlockSize - remainder) : 0);
+
+    return this->memory_source().allocate(numBytes);
+}
+
+
+
+/*-------------------------------------
+ * Calloc (sized)
+-------------------------------------*/
+template <unsigned long long BlockSize>
+void* BlockAllocator<BlockSize>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+{
+    if (!numElements || !numBytesPerElement)
+    {
+        return nullptr;
+    }
+
+    if (calloc_can_overflow(numElements, numBytesPerElement))
+    {
+        return nullptr;
+    }
+
+    size_type numBytes = numElements * numBytesPerElement;
+    const size_type remainder = numBytes % BlockSize;
+    numBytes = numBytes + (remainder ? (BlockSize - remainder) : 0);
+
+    void* const pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        fast_memset(pData, '\0', numBytes);
+    }
+
+    return pData;
+}
+
+
+
+/*-------------------------------------
+ * Free
+-------------------------------------*/
+template <unsigned long long BlockSize>
+void BlockAllocator<BlockSize>::free(void* pData) noexcept
+{
+    if (pData)
+    {
+        this->memory_source().free(pData);
+    }
+}
+
+
+
+/*-------------------------------------
+ * Free (sized)
+-------------------------------------*/
+template <unsigned long long BlockSize>
+inline void BlockAllocator<BlockSize>::free(void* pData, size_type numBytes) noexcept
+{
+    if (pData && numBytes)
+    {
+        const size_type remainder = numBytes % BlockSize;
+        numBytes = numBytes + (remainder ? (BlockSize - remainder) : 0);
+        
+        this->memory_source().free(pData, numBytes);
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Thread-safe Allocator
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
@@ -260,20 +411,6 @@ constexpr bool ThreadSafeAllocator::is_thread_safe() noexcept
 /*-----------------------------------------------------------------------------
  * Atomic Allocator wrapper
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * Allocate
--------------------------------------*/
-inline void* AtomicAllocator::allocate() noexcept
-{
-    mLock.lock();
-    void* const pMem = this->memory_source().allocate();
-    mLock.unlock();
-
-    return pMem;
-}
-
-
-
 /*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
@@ -455,41 +592,6 @@ void ThreadedMemoryCache<IAllocatorType>::replace_allocator(const ThreadSafeAllo
 
 
 /*-------------------------------------
- * Allocate
--------------------------------------*/
-template <typename IAllocatorType>
-inline void* ThreadedMemoryCache<IAllocatorType>::allocate(ThreadSafeAllocator* allocator) noexcept
-{
-    AllocatorList* iter = mAllocators;
-
-    do
-    {
-        if (LS_UNLIKELY(!iter))
-        {
-            iter = _insert_sub_allocator(nullptr, allocator);
-            if (LS_UNLIKELY(!iter))
-            {
-                return nullptr;
-            }
-
-            break;
-        }
-
-        if (LS_LIKELY(iter->mAllocator == allocator))
-        {
-            break;
-        }
-
-        iter = iter->pNext;
-    }
-    while (true);
-
-    return iter->mMemCache.allocate();
-}
-
-
-
-/*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
 template <typename IAllocatorType>
@@ -576,32 +678,6 @@ inline void ThreadedMemoryCache<IAllocatorType>::free(ThreadSafeAllocator* alloc
 
 
 
-/*-------------------------------------
- * Free (unsized)
--------------------------------------*/
-template <typename IAllocatorType>
-inline void ThreadedMemoryCache<IAllocatorType>::free_unsized(ThreadSafeAllocator* allocator, void* p) noexcept
-{
-    // pIter must never be NULL in this function, otherwise our memory-source
-    // has mysteriously gone out of scope before its static member
-    AllocatorList* pIter = mAllocators;
-
-    do
-    {
-        if (LS_LIKELY(pIter->mAllocator == allocator))
-        {
-            break;
-        }
-
-        pIter = pIter->pNext;
-    }
-    while (true);
-
-    pIter->mMemCache.free_unsized(p);
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * Threaded Allocator
 -----------------------------------------------------------------------------*/
@@ -666,18 +742,6 @@ ThreadedAllocator<IAllocatorType>& ThreadedAllocator<IAllocatorType>::operator=(
 
 
 /*-------------------------------------
- * Allocate
--------------------------------------*/
-template <typename IAllocatorType>
-inline void* ThreadedAllocator<IAllocatorType>::allocate() noexcept
-{
-    ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    return sThreadCache.allocate(&memSrc);
-}
-
-
-
-/*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
 template <typename IAllocatorType>
@@ -709,18 +773,6 @@ inline void ThreadedAllocator<IAllocatorType>::free(void* p, size_type n) noexce
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     sThreadCache.free(&memSrc, p, n);
-}
-
-
-
-/*-------------------------------------
- * Free (unsized)
--------------------------------------*/
-template <typename IAllocatorType>
-inline void ThreadedAllocator<IAllocatorType>::free_unsized(void* p) noexcept
-{
-    ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    sThreadCache.free_unsized(&memSrc, p);
 }
 
 

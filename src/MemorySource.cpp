@@ -84,16 +84,6 @@ MallocMemorySource::MallocMemorySource(MallocMemorySource&& src) noexcept :
 /*-------------------------------------
  * Allocate
 -------------------------------------*/
-void* MallocMemorySource::allocate() noexcept
-{
-    return nullptr;
-}
-
-
-
-/*-------------------------------------
- * Allocate
--------------------------------------*/
 void* MallocMemorySource::allocate(size_type numBytes) noexcept
 {
     return std::malloc(numBytes);
@@ -212,16 +202,6 @@ SystemAllocator& SystemAllocator::operator=(SystemAllocator&& allocator) noexcep
 
 
 /*-------------------------------------
- * Allocate
--------------------------------------*/
-void* SystemAllocator::allocate() noexcept
-{
-    return this->allocate(page_size());
-}
-
-
-
-/*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
 void* SystemAllocator::allocate(size_type numBytes) noexcept
@@ -236,7 +216,7 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
     void* p;
 
     #if !defined(LS_OS_UNIX)
-        p = std::malloc(numBytes, sizeof(char));
+        p = std::malloc(numBytes);
 
     #else
         constexpr int mapFlags = MAP_PRIVATE | MAP_ANON;

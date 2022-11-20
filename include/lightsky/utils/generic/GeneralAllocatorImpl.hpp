@@ -39,6 +39,7 @@ GeneralAllocator<BlockSize, CacheSize>::~GeneralAllocator() noexcept
 
     mHead = nullptr;
     mTotalBlocksAllocd = 0;
+    mLastAllocSize = 0;
 }
 
 
@@ -51,7 +52,8 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
     //GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator{memorySource, CacheSize} // delegate
     Allocator{memorySource},
     mHead{nullptr},
-    mTotalBlocksAllocd{0}
+    mTotalBlocksAllocd{0},
+    mLastAllocSize{0}
 {
 }
 
@@ -64,7 +66,8 @@ template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySource, size_type initialSize) noexcept :
     Allocator{memorySource},
     mHead{nullptr},
-    mTotalBlocksAllocd{0}
+    mTotalBlocksAllocd{0},
+    mLastAllocSize{0}
 {
     ls::utils::runtime_assert(initialSize >= sizeof(size_type), ls::utils::ErrorLevel::LS_ERROR, "Allocated memory table cannot be less than sizeof(size_type).");
     ls::utils::runtime_assert(initialSize % BlockSize == 0, ls::utils::ErrorLevel::LS_ERROR, "Cannot fit the current block size within an allocation table.");
@@ -80,6 +83,7 @@ GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(MemorySource& memorySou
         mHead->header.numBlocks = numBlocks;
         mHead->header.allocatedBlocks = numBlocks;
         mTotalBlocksAllocd = numBlocks;
+        mLastAllocSize = initialSize;
     }
 }
 
@@ -92,10 +96,12 @@ template <unsigned long long BlockSize, unsigned long long CacheSize>
 GeneralAllocator<BlockSize, CacheSize>::GeneralAllocator(GeneralAllocator&& a) noexcept :
     Allocator{std::move(a)},
     mHead{a.mHead},
-    mTotalBlocksAllocd{a.mTotalBlocksAllocd}
+    mTotalBlocksAllocd{a.mTotalBlocksAllocd},
+    mLastAllocSize{a.mLastAllocSize}
 {
-    a.mTotalBlocksAllocd = 0;
     a.mHead = nullptr;
+    a.mTotalBlocksAllocd = 0;
+    a.mLastAllocSize = 0;
 }
 
 
@@ -115,6 +121,9 @@ GeneralAllocator<BlockSize, CacheSize>& GeneralAllocator<BlockSize, CacheSize>::
 
         mTotalBlocksAllocd = a.mTotalBlocksAllocd;
         a.mTotalBlocksAllocd = 0;
+
+        mLastAllocSize = a.mLastAllocSize;
+        a.mLastAllocSize = 0;
     }
 
     return *this;
@@ -155,6 +164,7 @@ inline void GeneralAllocator<BlockSize, CacheSize>::_free_impl(AllocationEntry* 
     // Minor input validation. Non-sized allocations will not contain an
     // valid block count.
     reclaimed->header.numBlocks = blockCount;
+    reclaimed->header.pNext = nullptr;
 
     // reset the head pointer if we're out of memory
     if (mHead == nullptr)
@@ -241,12 +251,12 @@ inline typename GeneralAllocator<BlockSize, CacheSize>::AllocationEntry* General
     // Any allocation larger than the block size gets rounded to the next cache
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
-    const size_type maxBytes = mTotalBlocksAllocd * BlockSize;
-    const size_type potentialBytes = maxBytes > n ? maxBytes : n;
-    const size_type t = potentialBytes;
-    const size_type reserveRounding = t + ((t % CacheSize) ? (CacheSize - (t % CacheSize)) : 0);
-    const size_type cacheRounding   = n + ((n % CacheSize) ? (CacheSize - (n % CacheSize)) : 0);
-    const size_type blockRounding   = n + ((n % BlockSize) ? (BlockSize - (n % BlockSize)) : 0);
+    const size_type maxBytes0 = mLastAllocSize * 2;
+    const size_type maxBytes1 = mTotalBlocksAllocd / 2;
+    const size_type t = (n < maxBytes0) ? maxBytes0 : (n <= maxBytes1 ? maxBytes1 : n);
+    const size_type reserveRounding = t + (CacheSize - (t % CacheSize));
+    const size_type cacheRounding   = n + (CacheSize - (n % CacheSize));
+    const size_type blockRounding   = n + (BlockSize - (n % BlockSize));
 
     size_type allocSize;
     void* pCache;
@@ -270,6 +280,7 @@ inline typename GeneralAllocator<BlockSize, CacheSize>::AllocationEntry* General
 
     const size_type numBlocks = allocSize / BlockSize;
     mTotalBlocksAllocd += numBlocks;
+    mLastAllocSize = allocSize;
 
     AllocationEntry* pCacheEntry = reinterpret_cast<AllocationEntry*>(pCache);
     pCacheEntry->header.numBlocks = numBlocks;
@@ -277,48 +288,6 @@ inline typename GeneralAllocator<BlockSize, CacheSize>::AllocationEntry* General
     pCacheEntry->header.pNext = nullptr;
 
     return pCacheEntry;
-}
-
-
-
-/*-------------------------------------
- * General Allocations
--------------------------------------*/
-template <unsigned long long BlockSize, unsigned long long CacheSize>
-void* GeneralAllocator<BlockSize, CacheSize>::allocate() noexcept
-{
-    /*
-    if (LS_UNLIKELY(mHead == nullptr))
-    {
-        mHead = _alloc_new_cache(CacheSize);
-        if (LS_UNLIKELY(mHead == nullptr))
-        {
-            return nullptr;
-        }
-    }
-
-    // Single allocation of "BlockSize". This should be matched to a non-sized
-    // deallocation to avoid memory corruption.
-    AllocationEntry* iter = mHead;
-
-    if (LS_LIKELY(mHead->header.numBlocks > 1))
-    {
-        mHead = mHead + 1;
-        mHead->header.numBlocks = iter->header.numBlocks - 1;
-        mHead->header.pNext = iter->header.pNext;
-    }
-    else
-    {
-        mHead = mHead->header.pNext;
-    }
-
-    iter->header.numBlocks = 0;
-    iter->header.pNext = nullptr;
-
-    return reinterpret_cast<void*>(iter);
-    */
-
-    return this->allocate(BlockSize);
 }
 
 
@@ -408,17 +377,6 @@ void* GeneralAllocator<BlockSize, CacheSize>::allocate(size_type n) noexcept
  * Calloc
 -------------------------------------*/
 template <unsigned long long BlockSize, unsigned long long CacheSize>
-inline void* GeneralAllocator<BlockSize, CacheSize>::allocate_contiguous(size_type numElements) noexcept
-{
-    return IAllocator::allocate_contiguous(numElements, BlockSize);
-}
-
-
-
-/*-------------------------------------
- * Calloc
--------------------------------------*/
-template <unsigned long long BlockSize, unsigned long long CacheSize>
 inline void* GeneralAllocator<BlockSize, CacheSize>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
 {
     return IAllocator::allocate_contiguous(numElements, numBytesPerElement);
@@ -461,8 +419,20 @@ void GeneralAllocator<BlockSize, CacheSize>::free(void* p) noexcept
 
     // Non-sized allocations do not contain a header to ensure the maximum
     // allocation size can be made available.
-    //this->_free_impl(reinterpret_cast<AllocationEntry*>(p), 1);
-    this->free_unsized(p);
+    //this->free_raw(reinterpret_cast<AllocationEntry*>(p), 1);
+
+    // Offset to the start of the allocation (a.k.a. the allocation header).
+    char* const pData = reinterpret_cast<char*>(p) - GeneralAllocator<BlockSize, CacheSize>::header_size;
+
+    AllocationEntry* const reclaimed = reinterpret_cast<AllocationEntry*>(pData);
+    if (LS_UNLIKELY(reclaimed == mHead))
+    {
+        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
+    }
+
+    // Read the input allocation size for validation
+    const size_type allocSize = reclaimed->header.numBlocks;
+    this->_free_impl(reclaimed, allocSize);
 }
 
 
@@ -499,33 +469,6 @@ void GeneralAllocator<BlockSize, CacheSize>::free(void* p, size_type n) noexcept
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Invalid de-allocation size detected!");
     }
 
-    this->_free_impl(reclaimed, allocSize);
-}
-
-
-
-/*-------------------------------------
- * Free Memory
--------------------------------------*/
-template <unsigned long long BlockSize, unsigned long long CacheSize>
-void GeneralAllocator<BlockSize, CacheSize>::free_unsized(void* p) noexcept
-{
-    if (LS_UNLIKELY(!p))
-    {
-        return;
-    }
-
-    // Offset to the start of the allocation (a.k.a. the allocation header).
-    char* const pData = reinterpret_cast<char*>(p) - GeneralAllocator<BlockSize, CacheSize>::header_size;
-
-    AllocationEntry* const reclaimed = reinterpret_cast<AllocationEntry*>(pData);
-    if (LS_UNLIKELY(reclaimed == mHead))
-    {
-        ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
-    }
-
-    // Read the input allocation size for validation
-    const size_type allocSize = reclaimed->header.numBlocks;
     this->_free_impl(reclaimed, allocSize);
 }
 

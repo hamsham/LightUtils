@@ -29,27 +29,6 @@ IAllocator::~IAllocator() noexcept
 
 
 /*-------------------------------------
- * Allocate
--------------------------------------*/
-void* IAllocator::allocate() noexcept
-{
-    return nullptr;
-}
-
-
-
-/*-------------------------------------
- * Calloc
--------------------------------------*/
-void* IAllocator::allocate_contiguous(size_type numElements) noexcept
-{
-    (void)numElements;
-    return nullptr;
-}
-
-
-
-/*-------------------------------------
  * Calloc (sized)
 -------------------------------------*/
 void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
@@ -86,10 +65,10 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
         return nullptr;
     }
 
-    void* pNewData = this->memory_source().allocate(numNewBytes);
+    void* pNewData = this->allocate(numNewBytes);
     if (pNewData && p)
     {
-        this->free_unsized(p);
+        this->free(p);
     }
 
     return pNewData;
@@ -112,7 +91,7 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBy
         return nullptr;
     }
 
-    void* const pNewData = this->memory_source().allocate(numNewBytes);
+    void* const pNewData = this->allocate(numNewBytes);
     if (pNewData)
     {
         if (p)
@@ -124,16 +103,6 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBy
     }
 
     return pNewData;
-}
-
-
-
-/*-------------------------------------
- * Free
--------------------------------------*/
-void IAllocator::free(void* pData) noexcept
-{
-    (void)pData;
 }
 
 
@@ -248,12 +217,36 @@ ConstrainedAllocator<0>& ConstrainedAllocator<0>::operator=(ConstrainedAllocator
 
 
 /*-------------------------------------
- * Allocate
+ * Calloc (sized)
 -------------------------------------*/
-void* ConstrainedAllocator<0>::allocate() noexcept
+void* ConstrainedAllocator<0>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
 {
-    LS_ASSERT(false);
-    return nullptr;
+    if (!numElements || !numBytesPerElement)
+    {
+        return nullptr;
+    }
+
+    if (calloc_can_overflow(numElements, numBytesPerElement))
+    {
+        return nullptr;
+    }
+
+    const size_type numBytes = numElements * numBytesPerElement;
+    const size_type newByteCount = mBytesAllocated+numBytes;
+
+    if (newByteCount > mMaxAllocSize)
+    {
+        return nullptr;
+    }
+
+    void* const pData = this->memory_source().allocate(numBytes);
+    if (pData)
+    {
+        mBytesAllocated = newByteCount;
+        fast_memset(pData, '\0', numBytes);
+    }
+
+    return pData;
 }
 
 
@@ -398,6 +391,38 @@ AtomicAllocator& AtomicAllocator::operator=(AtomicAllocator&& allocator) noexcep
     }
 
     return *this;
+}
+
+
+
+/*-------------------------------------
+ * Calloc (sized)
+-------------------------------------*/
+void* AtomicAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+{
+    if (!numElements || !numBytesPerElement)
+    {
+        return nullptr;
+    }
+
+    if (calloc_can_overflow(numElements, numBytesPerElement))
+    {
+        return nullptr;
+    }
+
+    const size_type numBytes = numElements * numBytesPerElement;
+    void* pData;
+
+    mLock.lock();
+    pData = this->memory_source().allocate(numBytes);
+    mLock.unlock();
+
+    if (pData)
+    {
+        fast_memset(pData, '\0', numBytes);
+    }
+
+    return pData;
 }
 
 

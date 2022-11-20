@@ -34,7 +34,6 @@ class MemorySource
     MemorySource& operator=(const MemorySource&) noexcept = default;
     MemorySource& operator=(MemorySource&&) noexcept = default;
 
-    virtual void* allocate() noexcept = 0;
     virtual void* allocate(size_type numBytes) noexcept = 0;
 
     virtual void free(void* pData) noexcept = 0;
@@ -60,7 +59,6 @@ class MallocMemorySource final : public MemorySource
     MallocMemorySource& operator=(const MallocMemorySource&) noexcept = default;
     MallocMemorySource& operator=(MallocMemorySource&&) noexcept = default;
 
-    virtual void* allocate() noexcept override;
     virtual void* allocate(size_type numBytes) noexcept override;
 
     virtual void free(void* pData) noexcept override;
@@ -90,12 +88,9 @@ class SystemAllocator final : public MemorySource
 
     SystemAllocator& operator=(SystemAllocator&& allocator) noexcept;
 
-    virtual void* allocate() noexcept override;
-
     virtual void* allocate(size_type numBytes) noexcept override;
 
     virtual void free(void* pData) noexcept override;
-
     virtual void free(void* pData, size_type numBytes) noexcept override;
 };
 

@@ -10,8 +10,8 @@
 
 namespace utils = ls::utils;
 
-#define TEST_MALLOC_MEM_SRC   false
-#define TEST_MALLOC_ALLOCATOR false
+#define TEST_MALLOC_MEM_SRC   true
+#define TEST_MALLOC_ALLOCATOR true
 
 
 
@@ -45,11 +45,6 @@ template <unsigned block_size>
         }
 
         return *this;
-    }
-
-    virtual void* allocate() noexcept override
-    {
-        return ThreadSafeAllocator::allocate(block_size);
     }
 
     virtual void* allocate(size_type numBytes) noexcept override
@@ -99,7 +94,7 @@ int test_single_allocations()
     utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
 
     #if TEST_MALLOC_ALLOCATOR
-        MallocMemorySource2<block_size> testAllocator{memLimiter};
+        MallocMemorySource2<block_size+32u> testAllocator{memLimiter};
     #else
         utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
     #endif
@@ -118,14 +113,14 @@ int test_single_allocations()
     {
         for (unsigned i = 0; i <= max_allocations+1; ++i)
         {
-            p = testAllocator.allocate();
-            if (!p && i < max_allocations)
+            p = testAllocator.allocate(block_size);
+            if (!p && i < max_allocations/2)
             {
                 std::cerr << "Error: ran out of single memory blocks at allocation #" << i << '/' << max_allocations << std::endl;
                 return -1;
             }
 
-            #if TEST_MALLOC_ALLOCATOR == false
+            #if 0//TEST_MALLOC_ALLOCATOR == false
                 LS_ASSERT(p == nullptr || last < p);
             #endif
 
@@ -150,7 +145,7 @@ int test_single_allocations()
         /*
         p = allocations[max_allocations/2];
         testAllocator.free(allocations[max_allocations/2]);
-        allocations[max_allocations/2] = testAllocator.allocate();
+        allocations[max_allocations/2] = testAllocator.allocate(block_size);
         LS_ASSERT(allocations[max_allocations/2] != nullptr);
         LS_ASSERT(allocations[max_allocations/2] == p);
         */
@@ -159,7 +154,7 @@ int test_single_allocations()
         testAllocator.free(allocations[2]);
         allocations[2] = nullptr;
 
-        p = testAllocator.allocate();
+        p = testAllocator.allocate(block_size);
         if (!p)
         {
             std::cerr << "Error: Unable to reallocate block 2!" << std::endl;
@@ -170,7 +165,7 @@ int test_single_allocations()
             allocations[2] = p;
         }
 
-        p = testAllocator.allocate();
+        p = testAllocator.allocate(block_size);
         if (p)
         {
             std::cerr << "Error: Allocated too many blocks!" << std::endl;
@@ -341,7 +336,7 @@ int test_threaded_allocations()
         {
             for (unsigned i = 0; i < max_allocations; ++i)
             {
-                p = testAllocator.allocate();
+                p = testAllocator.allocate(block_size);
                 if (!p)
                 {
                     std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
