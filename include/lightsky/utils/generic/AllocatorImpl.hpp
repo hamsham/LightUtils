@@ -685,7 +685,7 @@ inline void ThreadedMemoryCache<IAllocatorType>::free(ThreadSafeAllocator* alloc
  * TLS Manager
 -------------------------------------*/
 template <typename IAllocatorType>
-thread_local ThreadedMemoryCache<IAllocatorType> ThreadedAllocator<IAllocatorType>::sThreadCache;
+thread_local ThreadedMemoryCache<IAllocatorType> ThreadLocalAllocator<IAllocatorType>::sThreadCache;
 
 
 
@@ -693,7 +693,7 @@ thread_local ThreadedMemoryCache<IAllocatorType> ThreadedAllocator<IAllocatorTyp
  * Destructor
 -------------------------------------*/
 template <typename IAllocatorType>
-ThreadedAllocator<IAllocatorType>::~ThreadedAllocator() noexcept
+ThreadLocalAllocator<IAllocatorType>::~ThreadLocalAllocator() noexcept
 {
     //ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     //sThreadCache.remove_allocator(&memSrc);
@@ -705,7 +705,7 @@ ThreadedAllocator<IAllocatorType>::~ThreadedAllocator() noexcept
  * Constructor
 -------------------------------------*/
 template <typename IAllocatorType>
-ThreadedAllocator<IAllocatorType>::ThreadedAllocator(ThreadSafeAllocator& src) noexcept :
+ThreadLocalAllocator<IAllocatorType>::ThreadLocalAllocator(ThreadSafeAllocator& src) noexcept :
     ThreadSafeAllocator{static_cast<MemorySource&>(src)}
 {
 }
@@ -716,7 +716,7 @@ ThreadedAllocator<IAllocatorType>::ThreadedAllocator(ThreadSafeAllocator& src) n
  * Move Constructor
 -------------------------------------*/
 template <typename IAllocatorType>
-ThreadedAllocator<IAllocatorType>::ThreadedAllocator(ThreadedAllocator&& allocator) noexcept :
+ThreadLocalAllocator<IAllocatorType>::ThreadLocalAllocator(ThreadLocalAllocator&& allocator) noexcept :
     ThreadSafeAllocator{std::move(allocator)}
 {
     sThreadCache.replace_allocator(&allocator, this);
@@ -728,7 +728,7 @@ ThreadedAllocator<IAllocatorType>::ThreadedAllocator(ThreadedAllocator&& allocat
  * Move Operator
 -------------------------------------*/
 template <typename IAllocatorType>
-ThreadedAllocator<IAllocatorType>& ThreadedAllocator<IAllocatorType>::operator=(ThreadedAllocator&& allocator) noexcept
+ThreadLocalAllocator<IAllocatorType>& ThreadLocalAllocator<IAllocatorType>::operator=(ThreadLocalAllocator&& allocator) noexcept
 {
     if (this != &allocator)
     {
@@ -745,7 +745,7 @@ ThreadedAllocator<IAllocatorType>& ThreadedAllocator<IAllocatorType>::operator=(
  * Allocate (sized)
 -------------------------------------*/
 template <typename IAllocatorType>
-inline void* ThreadedAllocator<IAllocatorType>::allocate(size_type n) noexcept
+inline void* ThreadLocalAllocator<IAllocatorType>::allocate(size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     return sThreadCache.allocate(&memSrc, n);
@@ -757,7 +757,7 @@ inline void* ThreadedAllocator<IAllocatorType>::allocate(size_type n) noexcept
  * Free
 -------------------------------------*/
 template <typename IAllocatorType>
-inline void ThreadedAllocator<IAllocatorType>::free(void* p) noexcept
+inline void ThreadLocalAllocator<IAllocatorType>::free(void* p) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     sThreadCache.free(&memSrc, p);
@@ -769,7 +769,7 @@ inline void ThreadedAllocator<IAllocatorType>::free(void* p) noexcept
  * Free (sized)
 -------------------------------------*/
 template <typename IAllocatorType>
-inline void ThreadedAllocator<IAllocatorType>::free(void* p, size_type n) noexcept
+inline void ThreadLocalAllocator<IAllocatorType>::free(void* p, size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
     sThreadCache.free(&memSrc, p, n);

@@ -322,7 +322,7 @@ extern template class ThreadedMemoryCache<ls::utils::Allocator>;
  * Threaded Allocator
 -----------------------------------------------------------------------------*/
 template <typename IAllocatorType = ls::utils::Allocator>
-class ThreadedAllocator final : public ThreadSafeAllocator
+class ThreadLocalAllocator final : public ThreadSafeAllocator
 {
     static_assert(ls::setup::IsBaseOf<ls::utils::IAllocator, IAllocatorType>::value, "Template allocator type does not implement the IAllocator interface.");
 
@@ -330,19 +330,19 @@ class ThreadedAllocator final : public ThreadSafeAllocator
     static thread_local ThreadedMemoryCache<IAllocatorType> sThreadCache;
 
   public:
-    virtual ~ThreadedAllocator() noexcept override;
+    virtual ~ThreadLocalAllocator() noexcept override;
 
-    ThreadedAllocator() noexcept = delete;
+    ThreadLocalAllocator() noexcept = delete;
 
-    ThreadedAllocator(ThreadSafeAllocator& src) noexcept;
+    ThreadLocalAllocator(ThreadSafeAllocator& src) noexcept;
 
-    ThreadedAllocator(const ThreadedAllocator&) = delete;
+    ThreadLocalAllocator(const ThreadLocalAllocator&) = delete;
 
-    ThreadedAllocator(ThreadedAllocator&& allocator) noexcept;
+    ThreadLocalAllocator(ThreadLocalAllocator&& allocator) noexcept;
 
-    ThreadedAllocator& operator=(const ThreadedAllocator&) = delete;
+    ThreadLocalAllocator& operator=(const ThreadLocalAllocator&) = delete;
 
-    ThreadedAllocator& operator=(ThreadedAllocator&& allocator) noexcept;
+    ThreadLocalAllocator& operator=(ThreadLocalAllocator&& allocator) noexcept;
 
     virtual void* allocate(size_type numBytes) noexcept override;
 
@@ -351,7 +351,7 @@ class ThreadedAllocator final : public ThreadSafeAllocator
     virtual void free(void* pData, size_type numBytes) noexcept override;
 };
 
-extern template class ThreadedAllocator<ls::utils::Allocator>;
+extern template class ThreadLocalAllocator<ls::utils::Allocator>;
 
 
 
