@@ -125,6 +125,8 @@ else()
     set(LS_UTILS_DL_LIB "")
 endif()
 
+find_package(Threads REQUIRED)
+
 
 
 # -------------------------------------
@@ -140,6 +142,7 @@ target_link_libraries(${OUTPUT_NAME}
         LightSky::Setup
         ${LS_UTILS_DL_LIB}
         ${ENET_LIBRARIES}
+        Threads::Threads
 )
 
 
