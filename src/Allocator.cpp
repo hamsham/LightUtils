@@ -62,13 +62,23 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
 {
     if (!numNewBytes)
     {
+        if (p)
+        {
+            this->free(p);
+        }
+
         return nullptr;
     }
 
     void* pNewData = this->allocate(numNewBytes);
-    if (pNewData && p)
+    if (pNewData)
     {
-        this->free(p);
+        if (p)
+        {
+            this->free(p);
+        }
+
+        fast_memset(pNewData, '\x00', numNewBytes);
     }
 
     return pNewData;
@@ -99,6 +109,10 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBy
             const size_type numMaxBytes = numNewBytes < numPrevBytes ? numNewBytes : numPrevBytes;
             fast_memcpy(pNewData, p, numMaxBytes);
             this->free(p, numPrevBytes);
+        }
+        else
+        {
+            fast_memset(pNewData, '\x00', numNewBytes);
         }
     }
 
@@ -437,7 +451,7 @@ template class ThreadedMemoryCache<ls::utils::Allocator>;
 /*-----------------------------------------------------------------------------
  * Threaded Allocator
 -----------------------------------------------------------------------------*/
-template class ThreadedAllocator<ls::utils::Allocator>;
+template class ThreadLocalAllocator<ls::utils::Allocator>;
 
 
 
