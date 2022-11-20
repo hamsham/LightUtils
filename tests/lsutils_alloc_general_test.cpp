@@ -96,7 +96,7 @@ int test_single_allocations()
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size+32u> testAllocator{memLimiter};
     #else
-        utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
+        utils::GeneralAllocator<alloc_table_size> testAllocator{memLimiter};
     #endif
 
     void** allocations = new void*[max_allocations];
@@ -205,18 +205,18 @@ int test_array_allocations()
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size> testAllocator{memLimiter};
     #else
-        utils::GeneralAllocator<block_size, alloc_table_size> testAllocator{memLimiter};
+        utils::GeneralAllocator<alloc_table_size> testAllocator{memLimiter};
     #endif
 
     // test allocator of 64 bytes in a 256-byte container
     //utils::ConstrainedAllocator<alloc_table_size+block_size*5> memLimiter{mallocSrc};
-    //utils::GeneralAllocator<block_size, alloc_table_size+block_size*5> internalAllocator{memLimiter};
+    //utils::GeneralAllocator<alloc_table_size+block_size*5> internalAllocator{memLimiter};
     //utils::AtomicAllocator atomicAllocator{internalAllocator};
-    //utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{atomicAllocator};
+    //utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size>> testAllocator{atomicAllocator};
 
     //utils::ConstrainedAllocator<alloc_table_size+block_size*2> memLimiter{mallocSrc};
     //MallocMemorySource2<block_size> atomicAllocator{memLimiter};
-    //utils::ThreadedAllocator<utils::Allocator> testAllocator{atomicAllocator};
+    //utils::ThreadLocalAllocator<utils::Allocator> testAllocator{atomicAllocator};
 
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -315,9 +315,9 @@ int test_threaded_allocations()
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size> testAllocator{mallocSrc};
     #else
-        utils::GeneralAllocator<block_size, alloc_table_size*2> internalAllocator{mallocSrc};
+        utils::GeneralAllocator<alloc_table_size*2> internalAllocator{mallocSrc};
         utils::AtomicAllocator atomicAllocator{internalAllocator};
-        utils::ThreadedAllocator<utils::GeneralAllocator<block_size, alloc_table_size>> testAllocator{atomicAllocator};
+        utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size>> testAllocator{atomicAllocator};
 
         //utils::AtomicAllocator testAllocator{internalAllocator};
     #endif
@@ -380,7 +380,7 @@ int main()
     std::cout << "Running allocator benchmark..." << std::endl;
     ticks.start();
 
-    #if 0
+    #if 1
     ret = test_single_allocations();
     if (ret != 0)
     {

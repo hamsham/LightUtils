@@ -16,15 +16,15 @@ namespace utils = ls::utils;
 namespace
 {
 
-constexpr unsigned main_block_size = 32u;
+//constexpr unsigned main_block_size = 32u;
 constexpr unsigned main_cache_size = 32768u;
 
-constexpr unsigned tls_block_size = 32u;
+//constexpr unsigned tls_block_size = 32u;
 constexpr unsigned tls_cache_size = 65536u;
 
-typedef utils::GeneralAllocator<main_block_size, main_cache_size> CachedAllocatorType;
-typedef utils::GeneralAllocator<tls_block_size, tls_cache_size> TLSAllocatorType;
-typedef utils::ThreadedAllocator<TLSAllocatorType> ExternalAllocatorType;
+typedef utils::GeneralAllocator<main_cache_size> CachedAllocatorType;
+typedef utils::GeneralAllocator<tls_cache_size> TLSAllocatorType;
+typedef utils::ThreadLocalAllocator<TLSAllocatorType> ExternalAllocatorType;
 
 inline ExternalAllocatorType& _get_allocator() noexcept
 {
@@ -36,6 +36,7 @@ inline ExternalAllocatorType& _get_allocator() noexcept
 }
 
 }
+
 
 
 LS_API void* malloc(size_t size)

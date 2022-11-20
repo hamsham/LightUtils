@@ -27,7 +27,7 @@ namespace utils
  * @tparam block_size
  * The number of bytes to be allocated per chunk.
 -----------------------------------------------------------------------------*/
-template <unsigned long long BlockSize = 32, unsigned long long CacheSize = 4096>
+template <unsigned long long CacheSize = 4096>
 class GeneralAllocator final : public Allocator
 {
   public:
@@ -47,7 +47,7 @@ class GeneralAllocator final : public Allocator
     enum : size_type
     {
         header_size = sizeof(AllocationHeader),
-        block_size = BlockSize,
+        block_size = sizeof(AllocationHeader),
         cache_size = CacheSize
     };
 
@@ -287,7 +287,7 @@ class GeneralAllocator final : public Allocator
 
 
 
-extern template class ls::utils::GeneralAllocator<32, 4096>;
+extern template class ls::utils::GeneralAllocator<4096>;
 
 
 
