@@ -18,6 +18,13 @@ namespace utils = ls::utils;
 #endif
 
 
+#ifdef LS_COMPILER_MSC
+    #define _LSMALLOC_API LS_CCALL
+#else
+    #define _LSMALLOC_API
+#endif
+
+
 
 namespace
 {
@@ -58,25 +65,25 @@ inline ExternalAllocatorType& _get_allocator() noexcept
 
 
 
-LS_API void* malloc(size_t size)
+LS_API void* _LSMALLOC_API malloc(size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate(size);
 }
 
-LS_API void* calloc(size_t num, size_t size)
+LS_API void* _LSMALLOC_API calloc(size_t num, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate_contiguous(num, size);
 }
 
-LS_API void* realloc(void* ptr, size_t size)
+LS_API void* _LSMALLOC_API realloc(void* ptr, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.reallocate(ptr, size);
 }
 
-LS_API void free(void* ptr)
+LS_API void _LSMALLOC_API free(void* ptr)
 {
     ExternalAllocatorType& a = _get_allocator();
     a.free(ptr);
