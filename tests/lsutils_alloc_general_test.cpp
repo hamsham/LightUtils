@@ -88,7 +88,7 @@ int test_single_allocations()
     #if TEST_MALLOC_MEM_SRC
         utils::MallocMemorySource mallocSrc{};
     #else
-        utils::SystemAllocator mallocSrc{};
+        utils::SystemMemorySource mallocSrc{};
     #endif
 
     utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
@@ -196,7 +196,7 @@ int test_array_allocations()
     #if TEST_MALLOC_MEM_SRC
         utils::MallocMemorySource mallocSrc{};
     #else
-        utils::SystemAllocator mallocSrc{};
+        utils::SystemMemorySource mallocSrc{};
     #endif
 
     //constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
@@ -309,15 +309,15 @@ int test_threaded_allocations()
     #if TEST_MALLOC_MEM_SRC
         utils::MallocMemorySource mallocSrc{};
     #else
-        utils::SystemAllocator mallocSrc{};
+        utils::SystemMemorySource mallocSrc{};
     #endif
 
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size> testAllocator{mallocSrc};
     #else
-        utils::GeneralAllocator<alloc_table_size*2> internalAllocator{mallocSrc};
+        utils::GeneralAllocator<16384, true> internalAllocator{mallocSrc};
         utils::AtomicAllocator atomicAllocator{internalAllocator};
-        utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size>> testAllocator{atomicAllocator};
+        utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size, false>> testAllocator{atomicAllocator};
 
         //utils::AtomicAllocator testAllocator{internalAllocator};
     #endif

@@ -218,7 +218,7 @@ void ConstrainedAllocator<MaxNumBytes>::free(void* pData) noexcept
 template <unsigned long long MaxNumBytes>
 inline void ConstrainedAllocator<MaxNumBytes>::free(void* pData, size_type numBytes) noexcept
 {
-    if (pData && numBytes)
+    if (pData)
     {
         LS_ASSERT(mBytesAllocated >= numBytes);
         mBytesAllocated -= numBytes;
@@ -259,7 +259,7 @@ inline void* ConstrainedAllocator<0>::allocate(size_type numBytes) noexcept
 -------------------------------------*/
 inline void ConstrainedAllocator<0>::free(void* pData, size_type numBytes) noexcept
 {
-    if (pData && numBytes)
+    if (pData)
     {
         LS_ASSERT(mBytesAllocated >= numBytes);
         mBytesAllocated -= numBytes;
@@ -384,7 +384,7 @@ void BlockAllocator<BlockSize>::free(void* pData) noexcept
 template <unsigned long long BlockSize>
 inline void BlockAllocator<BlockSize>::free(void* pData, size_type numBytes) noexcept
 {
-    if (pData && numBytes)
+    if (pData)
     {
         const size_type remainder = numBytes % BlockSize;
         numBytes = numBytes + (remainder ? (BlockSize - remainder) : 0);
@@ -467,9 +467,8 @@ ThreadedMemoryCache<IAllocatorType>::~ThreadedMemoryCache() noexcept
     while (pIter != nullptr)
     {
         // Each allocator must free its own cache entry
-        ThreadSafeAllocator* pAllocator = pIter->mAllocator;
         pIter->~AllocatorList();
-        pAllocator->free(pIter, sizeof(AllocatorList));
+        memory_source().free(pIter, sizeof(AllocatorList));
         pIter = pNext;
 
         if (pNext)
@@ -477,6 +476,8 @@ ThreadedMemoryCache<IAllocatorType>::~ThreadedMemoryCache() noexcept
             pNext = pNext->pNext;
         }
     }
+
+    mAllocators = nullptr;
 }
 
 
@@ -492,14 +493,24 @@ ThreadedMemoryCache<IAllocatorType>::ThreadedMemoryCache() noexcept :
 
 
 /*-------------------------------------
+ * Memory Source
+-------------------------------------*/
+template <typename IAllocatorType>
+MemorySource& ThreadedMemoryCache<IAllocatorType>::memory_source() noexcept
+{
+    return mMemSource;
+}
+
+
+
+/*-------------------------------------
  * Insert TLS Cache
 -------------------------------------*/
 template <typename IAllocatorType>
 typename ThreadedMemoryCache<IAllocatorType>::AllocatorList*
-ThreadedMemoryCache<IAllocatorType>::_insert_sub_allocator(
-    typename ThreadedMemoryCache<IAllocatorType>::AllocatorList* iter, ThreadSafeAllocator* allocator) noexcept
+ThreadedMemoryCache<IAllocatorType>::_insert_sub_allocator(ThreadSafeAllocator* allocator) noexcept
 {
-    void* const pCacheLocation = allocator->allocate(sizeof(AllocatorList));
+    void* const pCacheLocation = memory_source().allocate(sizeof(AllocatorList));
     if (!pCacheLocation)
     {
         return nullptr;
@@ -511,18 +522,12 @@ ThreadedMemoryCache<IAllocatorType>::_insert_sub_allocator(
 
     AllocatorList* const pListEntry = new (pCacheLocation) AllocatorList{
         allocator,
-        nullptr,
+        mAllocators, // make the head node into our "next" node
         IAllocatorType{*pMemSrc}
     };
 
-    if (iter)
-    {
-        iter->pNext = pListEntry;
-    }
-    else
-    {
-        mAllocators = pListEntry;
-    }
+    // place the new node at the front of our node list.
+    mAllocators = pListEntry;
 
     return pListEntry;
 }
@@ -562,9 +567,8 @@ void ThreadedMemoryCache<IAllocatorType>::remove_allocator(ThreadSafeAllocator* 
         pIter = pIter->pNext;
     }
 
-    ThreadSafeAllocator* pAllocator = pIter->mAllocator;
     pIter->~AllocatorList();
-    pAllocator->free(pIter, sizeof(AllocatorList));
+    memory_source().free(pIter, sizeof(AllocatorList));
 }
 
 
@@ -603,7 +607,7 @@ inline void* ThreadedMemoryCache<IAllocatorType>::allocate(ThreadSafeAllocator* 
     {
         if (LS_UNLIKELY(!iter))
         {
-            iter = _insert_sub_allocator(nullptr, allocator);
+            iter = _insert_sub_allocator(allocator);
             if (LS_UNLIKELY(!iter))
             {
                 return nullptr;
@@ -636,18 +640,16 @@ inline void ThreadedMemoryCache<IAllocatorType>::free(ThreadSafeAllocator* alloc
     // has mysteriously gone out of scope before its static member
     AllocatorList* pIter = mAllocators;
 
-    do
+    while (pIter)
     {
         if (LS_LIKELY(pIter->mAllocator == allocator))
         {
+            pIter->mMemCache.free(p);
             break;
         }
 
         pIter = pIter->pNext;
     }
-    while (true);
-
-    pIter->mMemCache.free(p);
 }
 
 
@@ -685,7 +687,11 @@ inline void ThreadedMemoryCache<IAllocatorType>::free(ThreadSafeAllocator* alloc
  * TLS Manager
 -------------------------------------*/
 template <typename IAllocatorType>
-thread_local ThreadedMemoryCache<IAllocatorType> ThreadLocalAllocator<IAllocatorType>::sThreadCache;
+ThreadedMemoryCache<IAllocatorType>& ThreadLocalAllocator<IAllocatorType>::_memory_cache() noexcept
+{
+    static thread_local ThreadedMemoryCache<IAllocatorType> sThreadCache;
+    return sThreadCache;
+}
 
 
 
@@ -696,7 +702,7 @@ template <typename IAllocatorType>
 ThreadLocalAllocator<IAllocatorType>::~ThreadLocalAllocator() noexcept
 {
     //ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    //sThreadCache.remove_allocator(&memSrc);
+    //_memory_cache().remove_allocator(&memSrc);
 }
 
 
@@ -719,7 +725,7 @@ template <typename IAllocatorType>
 ThreadLocalAllocator<IAllocatorType>::ThreadLocalAllocator(ThreadLocalAllocator&& allocator) noexcept :
     ThreadSafeAllocator{std::move(allocator)}
 {
-    sThreadCache.replace_allocator(&allocator, this);
+    _memory_cache().replace_allocator(&allocator, this);
 }
 
 
@@ -733,7 +739,7 @@ ThreadLocalAllocator<IAllocatorType>& ThreadLocalAllocator<IAllocatorType>::oper
     if (this != &allocator)
     {
         Allocator::operator=(std::move(allocator));
-        sThreadCache.replace_allocator(&allocator, this);
+        _memory_cache().replace_allocator(&allocator, this);
     }
 
     return *this;
@@ -748,7 +754,7 @@ template <typename IAllocatorType>
 inline void* ThreadLocalAllocator<IAllocatorType>::allocate(size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    return sThreadCache.allocate(&memSrc, n);
+    return _memory_cache().allocate(&memSrc, n);
 }
 
 
@@ -760,7 +766,7 @@ template <typename IAllocatorType>
 inline void ThreadLocalAllocator<IAllocatorType>::free(void* p) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    sThreadCache.free(&memSrc, p);
+    _memory_cache().free(&memSrc, p);
 }
 
 
@@ -772,7 +778,7 @@ template <typename IAllocatorType>
 inline void ThreadLocalAllocator<IAllocatorType>::free(void* p, size_type n) noexcept
 {
     ThreadSafeAllocator& memSrc = static_cast<ThreadSafeAllocator&>(this->memory_source());
-    sThreadCache.free(&memSrc, p, n);
+    _memory_cache().free(&memSrc, p, n);
 }
 
 

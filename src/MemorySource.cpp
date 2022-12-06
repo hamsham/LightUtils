@@ -118,7 +118,7 @@ void MallocMemorySource::free(void* pData, size_type numBytes) noexcept
 /*-------------------------------------
  * Get the system page size
 -------------------------------------*/
-SystemAllocator::size_type SystemAllocator::page_size() noexcept
+SystemMemorySource::size_type SystemMemorySource::page_size() noexcept
 {
     #if !defined(LS_OS_UNIX)
         return 4096ull;
@@ -139,7 +139,7 @@ SystemAllocator::size_type SystemAllocator::page_size() noexcept
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SystemAllocator::~SystemAllocator() noexcept
+SystemMemorySource::~SystemMemorySource() noexcept
 {
 }
 
@@ -147,7 +147,7 @@ SystemAllocator::~SystemAllocator() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SystemAllocator::SystemAllocator() noexcept
+SystemMemorySource::SystemMemorySource() noexcept
 {
 }
 
@@ -156,7 +156,7 @@ SystemAllocator::SystemAllocator() noexcept
 /*-------------------------------------
  * Copy Constructor
 -------------------------------------*/
-SystemAllocator::SystemAllocator(const SystemAllocator& src) noexcept :
+SystemMemorySource::SystemMemorySource(const SystemMemorySource& src) noexcept :
     MemorySource{src}
 {}
 
@@ -165,7 +165,7 @@ SystemAllocator::SystemAllocator(const SystemAllocator& src) noexcept :
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-SystemAllocator::SystemAllocator(SystemAllocator&& allocator) noexcept :
+SystemMemorySource::SystemMemorySource(SystemMemorySource&& allocator) noexcept :
     MemorySource{std::move(allocator)}
 {}
 
@@ -174,7 +174,7 @@ SystemAllocator::SystemAllocator(SystemAllocator&& allocator) noexcept :
 /*-------------------------------------
  * Copy Operator
 -------------------------------------*/
-SystemAllocator& SystemAllocator::operator=(const SystemAllocator& allocator) noexcept
+SystemMemorySource& SystemMemorySource::operator=(const SystemMemorySource& allocator) noexcept
 {
     if (&allocator != this)
     {
@@ -189,7 +189,7 @@ SystemAllocator& SystemAllocator::operator=(const SystemAllocator& allocator) no
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SystemAllocator& SystemAllocator::operator=(SystemAllocator&& allocator) noexcept
+SystemMemorySource& SystemMemorySource::operator=(SystemMemorySource&& allocator) noexcept
 {
     if (&allocator != this)
     {
@@ -204,7 +204,7 @@ SystemAllocator& SystemAllocator::operator=(SystemAllocator&& allocator) noexcep
 /*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
-void* SystemAllocator::allocate(size_type numBytes) noexcept
+void* SystemMemorySource::allocate(size_type numBytes) noexcept
 {
     if (!numBytes)
     {
@@ -236,7 +236,7 @@ void* SystemAllocator::allocate(size_type numBytes) noexcept
 /*-------------------------------------
  * Free
 -------------------------------------*/
-void SystemAllocator::free(void* pData) noexcept
+void SystemMemorySource::free(void* pData) noexcept
 {
     static const unsigned long long pageSize = page_size();
     this->free(pData, pageSize);
@@ -247,9 +247,9 @@ void SystemAllocator::free(void* pData) noexcept
 /*-------------------------------------
  * Free (sized)
 -------------------------------------*/
-void SystemAllocator::free(void* pData, size_type numBytes) noexcept
+void SystemMemorySource::free(void* pData, size_type numBytes) noexcept
 {
-    if (!pData || !numBytes)
+    if (!pData)
     {
         return;
     }
@@ -263,7 +263,8 @@ void SystemAllocator::free(void* pData, size_type numBytes) noexcept
         int err = munmap(pData, numBytes);
         if (err != 0)
         {
-            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+            //runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+            runtime_assert(false, ErrorLevel::LS_WARNING, "Invalid pointer detected on munmap().");
         }
     #endif
 }

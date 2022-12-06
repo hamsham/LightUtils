@@ -70,23 +70,23 @@ class MallocMemorySource final : public MemorySource
 /*-----------------------------------------------------------------------------
  * System-based Memory Source (currently mmap on posix systems)
 -----------------------------------------------------------------------------*/
-class SystemAllocator final : public MemorySource
+class SystemMemorySource final : public MemorySource
 {
   public:
     static size_type page_size() noexcept;
 
   public:
-    virtual ~SystemAllocator() noexcept override;
+    virtual ~SystemMemorySource() noexcept override;
 
-    SystemAllocator() noexcept;
+    SystemMemorySource() noexcept;
 
-    SystemAllocator(const SystemAllocator&) noexcept;
+    SystemMemorySource(const SystemMemorySource&) noexcept;
 
-    SystemAllocator(SystemAllocator&& allocator) noexcept;
+    SystemMemorySource(SystemMemorySource&& allocator) noexcept;
 
-    SystemAllocator& operator=(const SystemAllocator& allocator) noexcept;
+    SystemMemorySource& operator=(const SystemMemorySource& allocator) noexcept;
 
-    SystemAllocator& operator=(SystemAllocator&& allocator) noexcept;
+    SystemMemorySource& operator=(SystemMemorySource&& allocator) noexcept;
 
     virtual void* allocate(size_type numBytes) noexcept override;
 

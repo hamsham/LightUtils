@@ -18,16 +18,24 @@ include_directories(".")
 
 
 # -------------------------------------
+# Third Party Tools
+# -------------------------------------
+include(FindPackageHandleStandardArgs)
+
+find_path(VALGRIND_INCLUDE_DIR valgrind/valgrind.h)
+find_path(MEMCHECK_INCLUDE_DIR valgrind/memcheck.h)
+find_package_handle_standard_args(Valgrind DEFAULT_MSG VALGRIND_INCLUDE_DIR MEMCHECK_INCLUDE_DIR)
+
+
+
+# -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
+find_package(Threads REQUIRED)
+
 function(LS_UTILS_ADD_TARGET target sources)
     add_executable(${target} ${sources} ${ARGN})
-	if (NOT MSVC)
-		target_link_libraries(${target} LightSky::Utils LightSky::Setup pthread)
-	else()
-		target_link_libraries(${target} LightSky::Utils LightSky::Setup)
-	endif()
-
+	target_link_libraries(${target} LightSky::Utils LightSky::Setup Threads::Threads)
 	ls_configure_target(${target})
 
 	# Precompiled Headers
@@ -50,3 +58,22 @@ LS_UTILS_ADD_TARGET(lsutils_to_str_test        lsutils_to_str_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_tuple_test         lsutils_tuple_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_worker_test        lsutils_worker_test.cpp)
 
+add_library(lsmalloc
+	SHARED
+		lsutils_libmalloc_test.cpp
+		${LightUtils_SOURCE_DIR}/src/Allocator.cpp
+		${LightUtils_SOURCE_DIR}/src/Assertions.cpp
+		${LightUtils_SOURCE_DIR}/src/GeneralAllocator.cpp
+		${LightUtils_SOURCE_DIR}/src/MemorySource.cpp
+		${LightUtils_SOURCE_DIR}/src/SpinLock.cpp
+)
+
+target_compile_definitions(lsmalloc PRIVATE -DLS_BUILD_SHARED=1)
+ls_configure_target(lsmalloc)
+target_link_libraries(lsmalloc LightSky::Utils LightSky::Setup Threads::Threads)
+
+if (ENABLE_VALGRIND_TRACKING)
+	target_compile_definitions(lsmalloc PUBLIC -DLS_VALGRIND_TRACKING)
+endif ()
+
+add_dependencies(lsutils_alloc_general_test lsmalloc)

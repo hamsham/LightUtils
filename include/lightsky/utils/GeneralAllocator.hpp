@@ -27,7 +27,7 @@ namespace utils
  * @tparam block_size
  * The number of bytes to be allocated per chunk.
 -----------------------------------------------------------------------------*/
-template <unsigned long long CacheSize = 4096>
+template <unsigned long long CacheSize = 4096, bool OffsetFreeHeader = true>
 class GeneralAllocator final : public Allocator
 {
   public:
@@ -287,7 +287,7 @@ class GeneralAllocator final : public Allocator
 
 
 
-extern template class ls::utils::GeneralAllocator<4096>;
+extern template class ls::utils::GeneralAllocator<4096, true>;
 
 
 

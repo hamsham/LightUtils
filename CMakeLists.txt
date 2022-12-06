@@ -16,6 +16,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -------------------------------------
 include(enetConfig.cmake)
 
+if (Valgrind_FOUND)
+    option(ENABLE_VALGRIND_TRACKING "Enable memory tracking in custom allocators with Valgrind." ON)
+endif ()
+
+if (ENABLE_VALGRIND_TRACKING)
+    message("-- Enabled custom allocator tracking with Valgrind.")
+endif ()
+
 
 
 # -------------------------------------
@@ -144,6 +152,11 @@ target_link_libraries(${OUTPUT_NAME}
         ${ENET_LIBRARIES}
         Threads::Threads
 )
+
+if (ENABLE_VALGRIND_TRACKING)
+    target_compile_definitions(${OUTPUT_NAME} PUBLIC -DLS_VALGRIND_TRACKING)
+endif ()
+
 
 
 

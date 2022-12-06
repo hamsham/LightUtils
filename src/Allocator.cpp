@@ -441,20 +441,6 @@ void* AtomicAllocator::allocate_contiguous(size_type numElements, size_type numB
 
 
 
-/*-----------------------------------------------------------------------------
- * Threaded Memory Cache
------------------------------------------------------------------------------*/
-template class ThreadedMemoryCache<ls::utils::Allocator>;
-
-
-
-/*-----------------------------------------------------------------------------
- * Threaded Allocator
------------------------------------------------------------------------------*/
-template class ThreadLocalAllocator<ls::utils::Allocator>;
-
-
-
 
 } // end utils namespace
 } // end ls namespace

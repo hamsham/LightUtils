@@ -8,10 +8,84 @@
 #ifndef LS_UTILS_ALLOCATOR_HPP
 #define LS_UTILS_ALLOCATOR_HPP
 
+#ifdef LS_VALGRIND_TRACKING
+    #include <valgrind/valgrind.h>
+    #include <valgrind/memcheck.h>
+#endif
+
 #include "lightsky/setup/Types.h"
 
 #include "lightsky/utils/MemorySource.hpp"
 #include "lightsky/utils/SpinLock.hpp"
+
+
+
+/*-----------------------------------------------------------------------------
+ * Memory Tracking
+-----------------------------------------------------------------------------*/
+#ifdef LS_VALGRIND_TRACKING
+    // Track the creation of a memory pool, with red-zone support
+    #ifndef LS_MEMTRACK_POOL_CREATE
+        #define LS_MEMTRACK_POOL_CREATE(pool, rzB, is_zeroed) VALGRIND_CREATE_MEMPOOL(pool, rzB, is_zeroed)
+    #endif
+
+    // Destroy a memory pool
+    #ifndef LS_MEMTRACK_POOL_DESTROY
+        #define LS_MEMTRACK_POOL_DESTROY(pool) VALGRIND_DESTROY_MEMPOOL(pool)
+    #endif
+
+    // Track a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_POOL_ALLOC
+        #define LS_MEMTRACK_POOL_ALLOC(pool, addr, size) VALGRIND_MEMPOOL_ALLOC(pool, addr, size)
+    #endif
+
+    // Track the freeing of a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_POOL_FREE
+        #define LS_MEMTRACK_POOL_FREE(pool, addr) VALGRIND_MEMPOOL_FREE(pool, addr)
+    #endif
+
+    // Track an allocation0 from a malloc()-like function
+    #ifndef LS_MEMTRACK_ALLOC
+        #define LS_MEMTRACK_ALLOC(addr, sizeB, rzB, is_zeroed) VALGRIND_MALLOCLIKE_BLOCK(addr, sizeB, rzB, is_zeroed)
+    #endif
+
+    // Track the freeing of a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_FREE
+        #define LS_MEMTRACK_FREE(addr, rzB) VALGRIND_FREELIKE_BLOCK(addr, rzB)
+    #endif
+
+#else
+    // Track the creation of a memory pool, with red-zone support
+    #ifndef LS_MEMTRACK_POOL_CREATE
+        #define LS_MEMTRACK_POOL_CREATE(pool, rzB, is_zeroed)
+    #endif
+
+    // Destroy a memory pool
+    #ifndef LS_MEMTRACK_POOL_DESTROY
+        #define LS_MEMTRACK_POOL_DESTROY(pool)
+    #endif
+
+    // Track a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_POOL_ALLOC
+        #define LS_MEMTRACK_POOL_ALLOC(pool, addr, size)
+    #endif
+
+    // Track the freeing of a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_POOL_FREE
+        #define LS_MEMTRACK_POOL_FREE(pool, addr)
+    #endif
+
+    // Track an allocation0 from a malloc()-like function
+    #ifndef LS_MEMTRACK_ALLOC
+        #define LS_MEMTRACK_ALLOC(addr, sizeB, rzB, is_zeroed)
+    #endif
+
+    // Track the freeing of a sub-allocation of a memory pool
+    #ifndef LS_MEMTRACK_FREE
+        #define LS_MEMTRACK_FREE(addr, rzB)
+    #endif
+
+#endif
 
 
 
@@ -38,7 +112,7 @@ class IAllocator : public MemorySource
   public:
     virtual ~IAllocator() noexcept = 0;
 
-    virtual void* allocate(size_type n) noexcept;
+    virtual void* allocate(size_type n) noexcept override;
 
     virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept;
 
@@ -46,9 +120,9 @@ class IAllocator : public MemorySource
 
     virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept;
 
-    virtual void free(void* p) noexcept;
+    virtual void free(void* p) noexcept override;
 
-    virtual void free(void* p, size_type n) noexcept;
+    virtual void free(void* p, size_type n) noexcept override;
 };
 
 
@@ -61,7 +135,7 @@ class Allocator : public IAllocator
   private:
     MemorySource* mMemSource;
 
-  protected:
+  public:
     const MemorySource& memory_source() const noexcept override;
 
     MemorySource& memory_source() noexcept override;
@@ -291,9 +365,13 @@ class ThreadedMemoryCache
     };
 
   private:
+    SystemMemorySource mMemSource;
+
     AllocatorList* mAllocators;
 
-    AllocatorList* _insert_sub_allocator(AllocatorList* iter, ThreadSafeAllocator* allocator) noexcept;
+    MemorySource& memory_source() noexcept;
+
+    AllocatorList* _insert_sub_allocator(ThreadSafeAllocator* allocator) noexcept;
 
   public:
     ~ThreadedMemoryCache() noexcept;
@@ -314,8 +392,6 @@ class ThreadedMemoryCache
     void free(ThreadSafeAllocator* allocator, void* p, size_type n) noexcept;
 };
 
-extern template class ThreadedMemoryCache<ls::utils::Allocator>;
-
 
 
 /*-----------------------------------------------------------------------------
@@ -327,7 +403,7 @@ class ThreadLocalAllocator final : public ThreadSafeAllocator
     static_assert(ls::setup::IsBaseOf<ls::utils::IAllocator, IAllocatorType>::value, "Template allocator type does not implement the IAllocator interface.");
 
   private:
-    static thread_local ThreadedMemoryCache<IAllocatorType> sThreadCache;
+    static ThreadedMemoryCache<IAllocatorType>& _memory_cache() noexcept;
 
   public:
     virtual ~ThreadLocalAllocator() noexcept override;
@@ -350,8 +426,6 @@ class ThreadLocalAllocator final : public ThreadSafeAllocator
 
     virtual void free(void* pData, size_type numBytes) noexcept override;
 };
-
-extern template class ThreadLocalAllocator<ls::utils::Allocator>;
 
 
 
