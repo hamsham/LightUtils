@@ -13,19 +13,6 @@ namespace utils = ls::utils;
 
 
 
-#ifndef _LSMALLOC_CACHE_MEM_SRC
-    #define _LSMALLOC_CACHE_MEM_SRC 1
-#endif
-
-
-#ifdef LS_COMPILER_MSC
-    #define _LSMALLOC_API LS_CCALL
-#else
-    #define _LSMALLOC_API
-#endif
-
-
-
 namespace
 {
 
@@ -36,13 +23,7 @@ constexpr unsigned main_cache_size = 4096u;
 constexpr unsigned tls_cache_size = 2u*1024u*1024u;
 
 typedef utils::GeneralAllocator<main_cache_size, true> CachedAllocatorType;
-typedef utils::GeneralAllocator<tls_cache_size, false> TLSAllocatorType;
-
-#if _LSMALLOC_CACHE_MEM_SRC
-    typedef utils::ThreadLocalAllocator<TLSAllocatorType> ExternalAllocatorType;
-#else
-    typedef utils::AtomicAllocator ExternalAllocatorType;
-#endif
+typedef utils::GeneralAllocator<tls_cache_size, false> ExternalAllocatorType;
 
 
 
@@ -50,40 +31,35 @@ inline ExternalAllocatorType& _get_allocator() noexcept
 {
     static utils::SystemMemorySource mallocSrc{};
     static CachedAllocatorType internalAllocator{mallocSrc};
-
-    #if _LSMALLOC_CACHE_MEM_SRC
-        static utils::AtomicAllocator atomicAllocator{internalAllocator};
-        static ExternalAllocatorType allocator{atomicAllocator};
-    #else
-        static ExternalAllocatorType allocator{internalAllocator};
-    #endif
+    static utils::AtomicAllocator atomicAllocator{internalAllocator};
+    static thread_local ExternalAllocatorType allocator{atomicAllocator};
 
     return allocator;
 }
 
-}
+} // end anonymous namespace
 
 
 
-LS_API void* _LSMALLOC_API malloc(size_t size)
+extern "C" void* LS_API malloc(size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate(size);
 }
 
-LS_API void* _LSMALLOC_API calloc(size_t num, size_t size)
+extern "C" void* LS_API calloc(size_t num, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate_contiguous(num, size);
 }
 
-LS_API void* _LSMALLOC_API realloc(void* ptr, size_t size)
+extern "C" void* LS_API realloc(void* ptr, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.reallocate(ptr, size);
 }
 
-LS_API void _LSMALLOC_API free(void* ptr)
+extern "C" void LS_API free(void* ptr)
 {
     ExternalAllocatorType& a = _get_allocator();
     a.free(ptr);
