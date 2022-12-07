@@ -178,6 +178,17 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_merge_allocation_blo
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
 inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept
 {
+    #ifdef LS_VALGRIND_TRACKING
+        if (reclaimed->header.pSrcPool != nullptr)
+        {
+            LS_MEMTRACK_POOL_FREE(reclaimed->header.pSrcPool, reclaimed+1);
+        }
+        else
+        {
+            LS_MEMTRACK_FREE(reclaimed+1, 0);
+        }
+    #endif
+
     // Minor input validation. Non-sized allocations will not contain an
     // valid block count.
     reclaimed->header.numBlocks = blockCount;
@@ -219,17 +230,7 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(Allocation
         _merge_allocation_blocks(prev, reclaimed);
     }
 
-    #ifdef LS_VALGRIND_TRACKING
-        if (reclaimed->header.pSrcPool != nullptr)
-        {
-            LS_MEMTRACK_POOL_FREE(reclaimed->header.pSrcPool, reclaimed+1);
-        }
-        else
-        {
-            LS_MEMTRACK_FREE(reclaimed+1, 0);
-        }
-    #endif
-
+    // Cleanup memory regions
     reclaimed->header.pSrcPool = nullptr;
 
     // Prune the smallest cache when possible
@@ -275,34 +276,26 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
 
-    const size_type maxBytes = (mTotalBlocksAllocd * block_size) / 2;
-    const size_type maxBytes2 = mLastAllocSize * 2;
-    //const size_type maxBytes2 = mLastAllocSize;
-    //const size_type maxBytes2 = (mLastAllocSize * 3) / 2;
-    //const size_type maxBytes1 = (mLastAllocSize * 4) / 3;
-    //const size_type maxBytes1 = (mLastAllocSize * 2) / 3;
-    //const size_type maxBytes0 = mLastAllocSize;
-    //const size_type maxBytes0 = (mLastAllocSize * 2) / 3;
-    const size_type maxBytes0 = mLastAllocSize / 2;
+    //const size_type maxBytes = (mTotalBlocksAllocd * block_size) / 2;
+    //const size_type maxBytes = mLastAllocSize * 2;
+    const size_type maxBytes = (mLastAllocSize * 3) / 2;
+    //const size_type maxBytes = (mLastAllocSize * 4) / 3;
+    //const size_type maxBytes = (mLastAllocSize * 2) / 3;
+    //const size_type maxBytes = mLastAllocSize;
+    //const size_type maxBytes = (mLastAllocSize * 2) / 3;
+    //const size_type maxBytes = mLastAllocSize / 4;
 
     size_type t = n;
     if (!OffsetFreeHeader)
     {
-        if (n > maxBytes)
+        if (n < mLastAllocSize/2)
         {
             t = (n * 3) / 2;
         }
-        else if (n > maxBytes2)
-        {
-            t = maxBytes;
-        }
-        else if (n > maxBytes0)
-        {
-            t = maxBytes2;
-        }
         else
         {
-            t = n + mLastAllocSize; // fibonacci
+            //t = n + mLastAllocSize; // fibonacci
+            t = maxBytes;
         }
     }
 
@@ -332,7 +325,7 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
 
     const size_type numBlocks = allocSize / block_size;
     mTotalBlocksAllocd += numBlocks;
-    mLastAllocSize = n;
+    mLastAllocSize = allocSize;
 
     AllocationEntry* pCacheEntry = reinterpret_cast<AllocationEntry*>(pCache);
     pCacheEntry->header.numBlocks = numBlocks;

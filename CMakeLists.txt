@@ -17,7 +17,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(enetConfig.cmake)
 
 if (Valgrind_FOUND)
-    option(ENABLE_VALGRIND_TRACKING "Enable memory tracking in custom allocators with Valgrind." ON)
+    option(ENABLE_VALGRIND_TRACKING "Enable memory tracking in custom allocators with Valgrind." OFF)
 endif ()
 
 if (ENABLE_VALGRIND_TRACKING)
