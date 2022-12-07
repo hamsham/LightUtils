@@ -24,63 +24,74 @@
  * Memory Tracking
 -----------------------------------------------------------------------------*/
 #ifdef LS_VALGRIND_TRACKING
-    // Track the creation of a memory pool, with red-zone support
+    // Track the creation of a memory pool, with red-zone support.
     #ifndef LS_MEMTRACK_POOL_CREATE
         #define LS_MEMTRACK_POOL_CREATE(pool, rzB, is_zeroed) VALGRIND_CREATE_MEMPOOL(pool, rzB, is_zeroed)
     #endif
 
-    // Destroy a memory pool
+    // Track the creation of a slab-like memory pool , with red-zone support.
+    #ifndef LS_MEMTRACK_SLAB_POOL_CREATE
+        #define LS_MEMTRACK_SLAB_POOL_CREATE(pool, rzB, is_zeroed) VALGRIND_CREATE_MEMPOOL_EXT(pool, rzB, is_zeroed, VALGRIND_MEMPOOL_METAPOOL)
+    #endif
+
+    // Destroy a memory pool.
     #ifndef LS_MEMTRACK_POOL_DESTROY
         #define LS_MEMTRACK_POOL_DESTROY(pool) VALGRIND_DESTROY_MEMPOOL(pool)
     #endif
 
-    // Track a sub-allocation of a memory pool
+    // Track a sub-allocation of a memory pool.
+    // This function should be used if sub-allocating from a pool created with
+    // "LS_MEMTRACK_POOL_CREATE."
     #ifndef LS_MEMTRACK_POOL_ALLOC
         #define LS_MEMTRACK_POOL_ALLOC(pool, addr, size) VALGRIND_MEMPOOL_ALLOC(pool, addr, size)
     #endif
 
-    // Track the freeing of a sub-allocation of a memory pool
+    // Track the freeing of a sub-allocation of a memory pool.
+    // This function should be used if sub-allocating from a pool created with
+    // "LS_MEMTRACK_POOL_CREATE."
     #ifndef LS_MEMTRACK_POOL_FREE
         #define LS_MEMTRACK_POOL_FREE(pool, addr) VALGRIND_MEMPOOL_FREE(pool, addr)
     #endif
 
-    // Track an allocation0 from a malloc()-like function
+    // Track an allocation0 from a malloc()-like function.
+    // This function should be used if sub-allocating from a pool created with
+    // "LS_MEMTRACK_SLAB_POOL_CREATE."
     #ifndef LS_MEMTRACK_ALLOC
         #define LS_MEMTRACK_ALLOC(addr, sizeB, rzB, is_zeroed) VALGRIND_MALLOCLIKE_BLOCK(addr, sizeB, rzB, is_zeroed)
     #endif
 
-    // Track the freeing of a sub-allocation of a memory pool
+    // Track the freeing of a sub-allocation of a memory pool.
+    // This function should be used if sub-allocating from a pool created with
+    // "LS_MEMTRACK_SLAB_POOL_CREATE."
     #ifndef LS_MEMTRACK_FREE
         #define LS_MEMTRACK_FREE(addr, rzB) VALGRIND_FREELIKE_BLOCK(addr, rzB)
     #endif
 
 #else
-    // Track the creation of a memory pool, with red-zone support
     #ifndef LS_MEMTRACK_POOL_CREATE
         #define LS_MEMTRACK_POOL_CREATE(pool, rzB, is_zeroed)
     #endif
 
-    // Destroy a memory pool
+    #ifndef LS_MEMTRACK_SLAB_POOL_CREATE
+        #define LS_MEMTRACK_SLAB_POOL_CREATE(pool, rzB, is_zeroed)
+    #endif
+
     #ifndef LS_MEMTRACK_POOL_DESTROY
         #define LS_MEMTRACK_POOL_DESTROY(pool)
     #endif
 
-    // Track a sub-allocation of a memory pool
     #ifndef LS_MEMTRACK_POOL_ALLOC
         #define LS_MEMTRACK_POOL_ALLOC(pool, addr, size)
     #endif
 
-    // Track the freeing of a sub-allocation of a memory pool
     #ifndef LS_MEMTRACK_POOL_FREE
         #define LS_MEMTRACK_POOL_FREE(pool, addr)
     #endif
 
-    // Track an allocation0 from a malloc()-like function
     #ifndef LS_MEMTRACK_ALLOC
         #define LS_MEMTRACK_ALLOC(addr, sizeB, rzB, is_zeroed)
     #endif
 
-    // Track the freeing of a sub-allocation of a memory pool
     #ifndef LS_MEMTRACK_FREE
         #define LS_MEMTRACK_FREE(addr, rzB)
     #endif

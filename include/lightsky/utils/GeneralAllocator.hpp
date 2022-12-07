@@ -41,7 +41,7 @@ class GeneralAllocator final : public Allocator
         size_type numBlocks;
         AllocationEntry* pNext;
         size_type allocatedBlocks;
-        size_type padding;
+        AllocationEntry* pSrcPool;
     };
 
     enum : size_type
@@ -61,11 +61,10 @@ class GeneralAllocator final : public Allocator
 
     // insurance
     static_assert(cache_size % block_size == 0, "Cache Size must be a multiple of Block Size.");
-    static_assert(block_size >= sizeof(AllocationHeader), "Block size must exceed sizeof(AllocationHeader).");
     static_assert(sizeof(AllocationHeader) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
-    static_assert(block_size >= header_size, "Allocation sizes must be less than sizeof(header_type).");
+    static_assert(block_size == header_size, "Allocation sizes must equal sizeof(AllocationHeader).");
+    static_assert(block_size == sizeof(AllocationEntry), "Allocation entry meta data contains invalid padding.");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
-    static_assert(sizeof(AllocationEntry) == block_size, "Allocation entry meta data contains invalid padding.");
 
   private:
     /**
