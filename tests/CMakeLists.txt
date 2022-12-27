@@ -18,17 +18,6 @@ include_directories(".")
 
 
 # -------------------------------------
-# Third Party Tools
-# -------------------------------------
-include(FindPackageHandleStandardArgs)
-
-find_path(VALGRIND_INCLUDE_DIR valgrind/valgrind.h)
-find_path(MEMCHECK_INCLUDE_DIR valgrind/memcheck.h)
-find_package_handle_standard_args(Valgrind DEFAULT_MSG VALGRIND_INCLUDE_DIR MEMCHECK_INCLUDE_DIR)
-
-
-
-# -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
 find_package(Threads REQUIRED)

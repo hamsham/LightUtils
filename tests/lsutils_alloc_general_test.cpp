@@ -199,7 +199,6 @@ int test_array_allocations()
         utils::SystemMemorySource mallocSrc{};
     #endif
 
-    //constexpr unsigned allocSizeOffset = sizeof(utils::ThreadedMemoryCache<utils::GeneralAllocator<block_size, alloc_table_size>>::AllocatorList);
     utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
 
     #if TEST_MALLOC_ALLOCATOR
@@ -207,16 +206,6 @@ int test_array_allocations()
     #else
         utils::GeneralAllocator<alloc_table_size> testAllocator{memLimiter};
     #endif
-
-    // test allocator of 64 bytes in a 256-byte container
-    //utils::ConstrainedAllocator<alloc_table_size+block_size*5> memLimiter{mallocSrc};
-    //utils::GeneralAllocator<alloc_table_size+block_size*5> internalAllocator{memLimiter};
-    //utils::AtomicAllocator atomicAllocator{internalAllocator};
-    //utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size>> testAllocator{atomicAllocator};
-
-    //utils::ConstrainedAllocator<alloc_table_size+block_size*2> memLimiter{mallocSrc};
-    //MallocMemorySource2<block_size> atomicAllocator{memLimiter};
-    //utils::ThreadLocalAllocator<utils::Allocator> testAllocator{atomicAllocator};
 
     void** allocations = new void*[max_allocations];
     void* p = nullptr;
@@ -298,29 +287,35 @@ int test_array_allocations()
 
 
 
-int test_threaded_allocations()
-{
-    // test allocator of 32 bytes in a 256-byte container
-    constexpr unsigned alloc_table_size = 1024u*1024u*1024u;
-    constexpr unsigned block_size = 32u;
-    constexpr unsigned max_allocations = alloc_table_size / block_size;
+static constexpr unsigned THREAD_ALLOC_TABLE_SIZE = 1024u*1024u*1024u;
+static constexpr unsigned THREAD_ALLOC_BLOCK_SIZE = 32u;
 
+inline utils::IAllocator& get_allocator() noexcept
+{
     // test allocator of 64 bytes in a 256-byte container
     #if TEST_MALLOC_MEM_SRC
-        utils::MallocMemorySource mallocSrc{};
+        static utils::MallocMemorySource mallocSrc{};
     #else
-        utils::SystemMemorySource mallocSrc{};
+        static utils::SystemMemorySource mallocSrc{};
     #endif
 
     #if TEST_MALLOC_ALLOCATOR
-        MallocMemorySource2<block_size> testAllocator{mallocSrc};
+        static MallocMemorySource2<THREAD_ALLOC_BLOCK_SIZE> testAllocator{mallocSrc};
     #else
-        utils::GeneralAllocator<16384, true> internalAllocator{mallocSrc};
-        utils::AtomicAllocator atomicAllocator{internalAllocator};
-        utils::ThreadLocalAllocator<utils::GeneralAllocator<alloc_table_size, false>> testAllocator{atomicAllocator};
-
-        //utils::AtomicAllocator testAllocator{internalAllocator};
+        static utils::GeneralAllocator<THREAD_ALLOC_TABLE_SIZE, true> internalAllocator{mallocSrc};
+        static utils::AtomicAllocator atomicAllocator{internalAllocator};
+        static thread_local utils::GeneralAllocator<THREAD_ALLOC_TABLE_SIZE, false> testAllocator{atomicAllocator};
     #endif
+
+    return testAllocator;
+}
+
+
+
+int test_threaded_allocations()
+{
+    // test allocator of 32 bytes in a 256-byte container
+    constexpr unsigned max_allocations = THREAD_ALLOC_TABLE_SIZE / THREAD_ALLOC_BLOCK_SIZE;
 
     auto threadFunc = [&]()->void
     {
@@ -336,7 +331,7 @@ int test_threaded_allocations()
         {
             for (unsigned i = 0; i < max_allocations; ++i)
             {
-                p = testAllocator.allocate(block_size);
+                p = get_allocator().allocate(THREAD_ALLOC_BLOCK_SIZE);
                 if (!p)
                 {
                     std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
@@ -349,7 +344,7 @@ int test_threaded_allocations()
             // free all chunks and try again
             for (unsigned i = 0; i < max_allocations; ++i)
             {
-                testAllocator.free(allocations[i]);
+                get_allocator().free(allocations[i]);
                 allocations[i] = nullptr;
             }
         }
@@ -360,12 +355,11 @@ int test_threaded_allocations()
     std::thread t0{threadFunc};
     std::thread t1{threadFunc};
     std::thread t2{threadFunc};
-    std::thread t3{threadFunc};
+    threadFunc();
 
     t0.join();
     t1.join();
     t2.join();
-    t3.join();
 
     return 0;
 }
@@ -380,21 +374,25 @@ int main()
     std::cout << "Running allocator benchmark..." << std::endl;
     ticks.start();
 
-    #if 1
-    ret = test_single_allocations();
-    if (ret != 0)
-    {
-        return ret;
-    }
-
-    ret = test_array_allocations();
-    if (ret != 0)
-    {
-        return ret;
-    }
+    #if 0
+        ret = test_single_allocations();
+        if (ret != 0)
+        {
+            return ret;
+        }
     #endif
 
-    ret = test_threaded_allocations();
+    #if 0
+        ret = test_array_allocations();
+        if (ret != 0)
+        {
+            return ret;
+        }
+    #endif
+
+    #if 1
+        ret = test_threaded_allocations();
+    #endif
 
     ticks.tick();
     std::cout << "\tDone." << std::endl;

@@ -14,14 +14,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -------------------------------------
 # 3rd-party libraries
 # -------------------------------------
+include(FindPackageHandleStandardArgs)
+
 include(enetConfig.cmake)
+
+find_path(VALGRIND_INCLUDE_DIR valgrind/valgrind.h)
+find_path(MEMCHECK_INCLUDE_DIR valgrind/memcheck.h)
+find_package_handle_standard_args(Valgrind DEFAULT_MSG VALGRIND_INCLUDE_DIR MEMCHECK_INCLUDE_DIR)
 
 if (Valgrind_FOUND)
     option(ENABLE_VALGRIND_TRACKING "Enable memory tracking in custom allocators with Valgrind." OFF)
-endif ()
 
-if (ENABLE_VALGRIND_TRACKING)
-    message("-- Enabled custom allocator tracking with Valgrind.")
+    if (ENABLE_VALGRIND_TRACKING)
+        message("-- Enabled custom allocator tracking with Valgrind.")
+    endif ()
 endif ()
 
 

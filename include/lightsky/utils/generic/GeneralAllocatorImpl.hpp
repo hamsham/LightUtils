@@ -23,18 +23,13 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::~GeneralAllocator() noexcept
 
     while (iter)
     {
-        // This had to be disabled in threaded builds due to allocating/freeing
-        // in different threads. It should be enabled when testing single
-        // threaded though
-        //LS_ASSERT(iter->header.numBlocks >= cache_size/block_size);
-
         AllocationEntry* temp = iter;
         iter = iter->header.pNext;
 
         const size_type numBlocks = temp->header.numBlocks;
         const size_type allocSize = temp->header.allocatedBlocks;
         const size_type numBytes = numBlocks * block_size;
-        if (numBlocks == allocSize || OffsetFreeHeader)
+        if (numBlocks == allocSize || (OffsetFreeHeader && allocSize > 0))
         {
             temp->header.numBlocks = 0;
             temp->header.pNext = nullptr;
@@ -46,7 +41,7 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::~GeneralAllocator() noexcept
                 LS_MEMTRACK_POOL_DESTROY(temp);
             #endif
         }
-        else
+        else if (!OffsetFreeHeader)
         {
             temp->header.pNext = nullptr;
             this->memory_source().free(reinterpret_cast<char*>(temp)+block_size, numBytes-block_size);
@@ -178,17 +173,6 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_merge_allocation_blo
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
 inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept
 {
-    #ifdef LS_VALGRIND_TRACKING
-        if (reclaimed->header.pSrcPool != nullptr)
-        {
-            LS_MEMTRACK_POOL_FREE(reclaimed->header.pSrcPool, reclaimed+1);
-        }
-        else
-        {
-            LS_MEMTRACK_FREE(reclaimed+1, 0);
-        }
-    #endif
-
     // Minor input validation. Non-sized allocations will not contain an
     // valid block count.
     reclaimed->header.numBlocks = blockCount;
@@ -230,12 +214,24 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(Allocation
         _merge_allocation_blocks(prev, reclaimed);
     }
 
+    #ifdef LS_VALGRIND_TRACKING
+        if (reclaimed->header.pSrcPool != nullptr)
+        {
+            LS_MEMTRACK_POOL_FREE(reclaimed->header.pSrcPool, reclaimed+1);
+        }
+        else
+        {
+            LS_MEMTRACK_FREE(reclaimed+1, 0);
+        }
+    #endif
+
     // Cleanup memory regions
     reclaimed->header.pSrcPool = nullptr;
 
     // Prune the smallest cache when possible
-    //if (temp->header.numBlocks && temp->header.numBlocks == temp->header.allocatedBlocks)
-    if (temp->header.numBlocks == temp->header.allocatedBlocks && temp->header.pNext)
+    if (temp->header.numBlocks
+    && temp->header.numBlocks == temp->header.allocatedBlocks
+    && temp->header.pNext)
     {
         const size_type numBlocks = temp->header.numBlocks;
         const size_type numBytes = numBlocks * block_size;
@@ -276,12 +272,12 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
 
-    //const size_type maxBytes = (mTotalBlocksAllocd * block_size) / 2;
-    //const size_type maxBytes = mLastAllocSize * 2;
-    const size_type maxBytes = (mLastAllocSize * 3) / 2;
-    //const size_type maxBytes = (mLastAllocSize * 4) / 3;
-    //const size_type maxBytes = (mLastAllocSize * 2) / 3;
-    //const size_type maxBytes = mLastAllocSize;
+    //const size_type minBytes = (mTotalBlocksAllocd * block_size) / 2;
+    //const size_type minBytes = mLastAllocSize;
+    //const size_type minBytes = (mLastAllocSize * 3) / 2;
+    //const size_type minBytes = (mLastAllocSize * 4) / 3;
+    const size_type minBytes = (mLastAllocSize * 2) / 3;
+    const size_type maxBytes = mLastAllocSize;
     //const size_type maxBytes = (mLastAllocSize * 2) / 3;
     //const size_type maxBytes = mLastAllocSize / 4;
 
@@ -290,18 +286,17 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
     {
         if (n < mLastAllocSize/2)
         {
-            t = (n * 3) / 2;
+            t += minBytes;
         }
         else
         {
-            //t = n + mLastAllocSize; // fibonacci
-            t = maxBytes;
+            t += maxBytes;
         }
     }
 
-    const size_type reserveRounding = t + ((t % cache_size) ? (cache_size - (t % cache_size)) : 0ull);
-    const size_type cacheRounding   = n + ((n % cache_size) ? (cache_size - (n % cache_size)) : 0ull);
-    const size_type blockRounding   = n + ((n % block_size) ? (block_size - (n % block_size)) : 0ull);
+    const size_type reserveRounding = t + (cache_size - (t % cache_size));
+    const size_type cacheRounding   = n + (cache_size - (n % cache_size));
+    const size_type blockRounding   = n + (block_size - (n % block_size));
 
     size_type allocSize;
     void* pCache;

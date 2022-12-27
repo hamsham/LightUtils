@@ -11,6 +11,7 @@
     extern "C"
     {
         #include <errno.h>
+        #include <fcntl.h>
         #include <string.h> // strerror()
         #include <sys/mman.h> // mmap
         #include <unistd.h> // sysconf(_SC_PAGESIZE)
@@ -115,6 +116,86 @@ void MallocMemorySource::free(void* pData, size_type numBytes) noexcept
 /*-----------------------------------------------------------------------------
  * System-based Allocator
 -----------------------------------------------------------------------------*/
+#if defined(LS_OS_UNIX)
+
+class FDZero
+{
+  private:
+    int mFd;
+
+  public:
+    ~FDZero() noexcept;
+    FDZero() noexcept;
+    FDZero(const FDZero& fd) noexcept;
+    FDZero(FDZero&& fd) noexcept;
+    FDZero& operator=(const FDZero& fd) noexcept;
+    FDZero& operator=(FDZero&& fd) noexcept;
+    int file_descriptor() const noexcept;
+};
+
+inline FDZero::~FDZero() noexcept
+{
+    if (mFd > 0)
+    {
+        const int err = close(mFd);
+        if (err == -1)
+        {
+            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+        }
+    }
+
+    mFd = -1;
+}
+
+inline FDZero::FDZero() noexcept :
+    mFd{open("/dev/zero", O_RDONLY)}
+{
+    if (mFd == -1)
+    {
+        runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+    }
+}
+
+inline FDZero::FDZero(const FDZero& fd) noexcept :
+    mFd{fd.mFd}
+{
+}
+
+inline FDZero::FDZero(FDZero&& fd) noexcept :
+    mFd{fd.mFd}
+{
+    fd.mFd = -1;
+}
+
+inline FDZero& FDZero::operator=(const FDZero& fd) noexcept
+{
+    if (this != &fd)
+    {
+        mFd = fd.mFd;
+    }
+
+    return *this;
+}
+
+inline FDZero& FDZero::operator=(FDZero&& fd) noexcept
+{
+    if (this != &fd)
+    {
+        mFd = fd.mFd;
+        fd.mFd = -1;
+    }
+
+    return *this;
+}
+
+inline int FDZero::file_descriptor() const noexcept
+{
+    return mFd;
+}
+
+#endif // LS_OS_UNIX
+
+
 /*-------------------------------------
  * Get the system page size
 -------------------------------------*/
@@ -213,18 +294,21 @@ void* SystemMemorySource::allocate(size_type numBytes) noexcept
 
     static const unsigned long long pageSize = page_size();
     numBytes += pageSize - (numBytes % pageSize);
-    void* p;
+    void* p = nullptr;
 
     #if !defined(LS_OS_UNIX)
         p = std::malloc(numBytes);
 
     #else
-        constexpr int mapFlags = MAP_PRIVATE | MAP_ANON;
-        p = mmap(nullptr, numBytes, PROT_READ|PROT_WRITE, mapFlags, -1, 0);
-        if (p == MAP_FAILED)
+        static const FDZero fdz{};
+        if (fdz.file_descriptor() != -1)
         {
-            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
-            p = nullptr;
+            p = mmap(nullptr, numBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE, fdz.file_descriptor(), 0);
+            if (p == MAP_FAILED)
+            {
+                runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+                p = nullptr;
+            }
         }
     #endif
 
@@ -260,7 +344,7 @@ void SystemMemorySource::free(void* pData, size_type numBytes) noexcept
 
     #else
         //int err = madvise(pData, numBytes, MADV_DONTNEED);
-        int err = munmap(pData, numBytes);
+        const int err = munmap(pData, numBytes);
         if (err != 0)
         {
             //runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
