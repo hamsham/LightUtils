@@ -17,11 +17,11 @@ namespace utils
  * @brief A SpinLock attempts to mimic a mutex object but will allow the CPU
  * to continue running while it is locked.
 -----------------------------------------------------------------------------*/
-class SpinLock
+class alignas(64) SpinLock
 {
   private:
-    std::atomic_flag mLock = ATOMIC_FLAG_INIT;
-    char mPadding[sizeof(std::atomic_flag) < 64ull ? (64ull - sizeof(std::atomic_flag)) : sizeof(std::atomic_flag)];
+    std::atomic<uint_fast32_t> mLock{0};
+    char mPadding[64ull - sizeof(mLock)];
 
   public:
     ~SpinLock() noexcept;
@@ -42,6 +42,9 @@ class SpinLock
 
     void unlock() noexcept;
 };
+
+static_assert(sizeof(SpinLock) == 64, "Incorrect size for SpinLock type.");
+static_assert(alignof(SpinLock) == 64, "Incorrect alignment for SpinLock type.");
 
 
 

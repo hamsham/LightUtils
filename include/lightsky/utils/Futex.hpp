@@ -4,8 +4,14 @@
 
 #include <atomic>
 
-#include "lightsky/utils/SpinLock.hpp"
+#include "lightsky/setup/OS.h"
+#include "lightsky/setup/Compiler.h"
 
+#if defined(LS_OS_LINUX) && defined(LS_COMPILER_GNU)
+    #ifndef LS_UTILS_USE_LINUX_FUTEX
+        #define LS_UTILS_HAVE_LINUX_FUTEX 1
+    #endif
+#endif
 
 
 namespace ls
@@ -23,14 +29,14 @@ namespace utils
  * std::this_thread_yield() on unsupported hardware). Use these enum values to
  * control how many yield instructions are sent to the CPU.
  */
-enum class FutexPauseCount : uint_fast64_t
+enum class FutexPauseCount : int32_t
 {
-    FUTEX_PAUSE_COUNT_1,
-    FUTEX_PAUSE_COUNT_2,
-    FUTEX_PAUSE_COUNT_4,
-    FUTEX_PAUSE_COUNT_8,
-    FUTEX_PAUSE_COUNT_16,
-    FUTEX_PAUSE_COUNT_32,
+    FUTEX_PAUSE_COUNT_1 = 1ull,
+    FUTEX_PAUSE_COUNT_2 = 2ull,
+    FUTEX_PAUSE_COUNT_4 = 4ull,
+    FUTEX_PAUSE_COUNT_8 = 8ull,
+    FUTEX_PAUSE_COUNT_16 = 16ull,
+    FUTEX_PAUSE_COUNT_32 = 32ull,
 
     FUTEX_PAUSE_COUNT_MAX = FUTEX_PAUSE_COUNT_32,
 };
@@ -41,12 +47,19 @@ enum class FutexPauseCount : uint_fast64_t
  * @brief A Futex attempts to mimic a mutex object but will attempt to run in
  * user-space rather than switch to kernel-space unless necessary.
 -----------------------------------------------------------------------------*/
-class Futex
+class alignas(64) Futex
 {
   private:
-    ls::utils::SpinLock mLock;
+#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+    alignas(alignof(int32_t)) int mLock;
+#else
+    alignas(alignof(int32_t)) std::atomic<int32_t> mLock;
 
-    FutexPauseCount mMaxPauseCount;
+#endif
+
+    alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
+
+    alignas(alignof(int32_t)) int32_t mPad[14];
 
   public:
     ~Futex() noexcept;
@@ -71,6 +84,9 @@ class Futex
 
     void unlock() noexcept;
 };
+
+static_assert(sizeof(Futex) == 64, "Incorrect size for futex type.");
+static_assert(alignof(Futex) == 64, "Incorrect alignment for futex type.");
 
 
 

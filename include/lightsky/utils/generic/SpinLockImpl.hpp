@@ -14,9 +14,13 @@ namespace utils
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    while (mLock.test_and_set(std::memory_order_acq_rel))
+    uint_fast32_t cachedVal;
+    do
     {
+        while (mLock.load(std::memory_order_acquire));
+        cachedVal = 0;
     }
+    while (!mLock.compare_exchange_weak(cachedVal, 1, std::memory_order_acquire, std::memory_order_relaxed));
 }
 
 
@@ -26,7 +30,8 @@ inline void SpinLock::lock() noexcept
 -------------------------------------*/
 inline bool SpinLock::try_lock() noexcept
 {
-    return !mLock.test_and_set(std::memory_order_acq_rel);
+    uint_fast32_t cachedVal = 0;
+    return mLock.compare_exchange_strong(cachedVal, true, std::memory_order_acq_rel);
 }
 
 
@@ -36,7 +41,7 @@ inline bool SpinLock::try_lock() noexcept
 -------------------------------------*/
 inline void SpinLock::unlock() noexcept
 {
-    mLock.clear(std::memory_order_release);
+    mLock.store(0, std::memory_order_release);
 }
 
 

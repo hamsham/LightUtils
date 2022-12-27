@@ -19,7 +19,7 @@ namespace utils
 SpinLock::~SpinLock() noexcept
 {
     (void)mPadding;
-    mLock.clear(std::memory_order_release);
+    mLock.store(0, std::memory_order_release);
 }
 
 

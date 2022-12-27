@@ -2,6 +2,18 @@
 #ifndef LS_UTILS_FUTEX_IMPL_HPP
 #define LS_UTILS_FUTEX_IMPL_HPP
 
+#include <limits>
+
+#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+    extern "C"
+    {
+        #include <linux/futex.h>
+        #include <sys/syscall.h>
+        #include <sys/time.h>
+        #include <unistd.h>
+    }
+#endif
+
 #include "lightsky/setup/CPU.h"
 
 
@@ -18,52 +30,86 @@ namespace utils
 -------------------------------------*/
 inline void Futex::lock() noexcept
 {
-    const uint_fast64_t maxPauses = static_cast<uint_fast64_t>(mMaxPauseCount);
-    uint_fast64_t currentPauses = 1ull;
+#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+    const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
+    int32_t currentPauses = 1;
 
-    while (!mLock.try_lock())
+    do
     {
-        switch (currentPauses)
+        int32_t tmp = 0;
+        if (__atomic_compare_exchange_n(&mLock, &tmp, 1, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
         {
-            case 32: ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-            case 16: ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-            case 8:  ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-            case 4:  ls::setup::cpu_yield();
-                     ls::setup::cpu_yield();
-            case 2:  ls::setup::cpu_yield();
-            case 1:  ls::setup::cpu_yield();
+            break;
         }
 
         if (currentPauses < maxPauses)
         {
-            currentPauses <<= 1ull;
+            const int32_t status = syscall(SYS_futex, &mLock, FUTEX_WAIT_BITSET_PRIVATE, 1, currentPauses, nullptr, FUTEX_BITSET_MATCH_ANY);
+
+            if (status != 0)
+            {
+                currentPauses <<= 1;
+            }
+        }
+        else
+        {
+            syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1, nullptr);
         }
     }
+    while (true);
+
+#else
+    const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
+    int32_t currentPauses = 1;
+    int32_t tmp;
+
+    do
+    {
+        while (mLock.load(std::memory_order_acquire))
+        {
+            switch (currentPauses)
+            {
+                case 32: ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                case 16: ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                case 8:  ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                case 4:  ls::setup::cpu_yield();
+                         ls::setup::cpu_yield();
+                case 2:  ls::setup::cpu_yield();
+                case 1:  ls::setup::cpu_yield();
+                default: currentPauses <<= (int)(currentPauses < maxPauses);
+            }
+        }
+
+        tmp = 0;
+    }
+    while (!mLock.compare_exchange_weak(tmp, 1, std::memory_order_acquire, std::memory_order_relaxed));
+
+#endif
 }
 
 
@@ -73,7 +119,15 @@ inline void Futex::lock() noexcept
 -------------------------------------*/
 inline bool Futex::try_lock() noexcept
 {
-    return mLock.try_lock();
+#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+    int32_t tmp = 0;
+    return __atomic_compare_exchange_n(&mLock, &tmp, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+#else
+    int32_t tmp = 0;
+    return mLock.compare_exchange_strong(tmp, 1, std::memory_order_seq_cst, std::memory_order_relaxed);
+
+#endif
 }
 
 
@@ -103,7 +157,14 @@ inline FutexPauseCount Futex::pause_count() const noexcept
 -------------------------------------*/
 inline void Futex::unlock() noexcept
 {
-    mLock.unlock();
+#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+    __atomic_store_n(&mLock, 0, __ATOMIC_RELEASE);
+    syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1);
+
+#else
+    mLock.store(0, std::memory_order_release);
+
+#endif
 }
 
 
