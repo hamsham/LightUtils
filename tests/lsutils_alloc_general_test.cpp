@@ -290,7 +290,11 @@ int test_array_allocations()
 static constexpr unsigned THREAD_ALLOC_TABLE_SIZE = 1024u*1024u*1024u;
 static constexpr unsigned THREAD_ALLOC_BLOCK_SIZE = 32u;
 
-inline utils::IAllocator& get_allocator() noexcept
+#if TEST_MALLOC_MEM_SRC
+inline LS_INLINE MallocMemorySource2<THREAD_ALLOC_BLOCK_SIZE>& get_allocator() noexcept
+#else
+inline LS_INLINE utils::GeneralAllocator<THREAD_ALLOC_TABLE_SIZE, false>& get_allocator() noexcept
+#endif
 {
     // test allocator of 64 bytes in a 256-byte container
     #if TEST_MALLOC_MEM_SRC

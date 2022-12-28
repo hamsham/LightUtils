@@ -387,8 +387,17 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
             }
             else
             {
-                prev = nullptr;
-                AllocationEntry* curr = mHead;
+                AllocationEntry* curr;
+                if (prev && iter > prev)
+                {
+                    curr = prev->header.pNext;
+                }
+                else
+                {
+                    prev = nullptr;
+                    curr = mHead;
+                }
+
                 while (curr && curr < iter)
                 {
                     prev = curr;
@@ -405,14 +414,7 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
 
     if (count > blocksNeeded)
     {
-        //AllocationEntry* next = reinterpret_cast<AllocationEntry*>(iter + blocksNeeded);
-        //next->header.numBlocks = iter->header.numBlocks - blocksNeeded;
-        //next->header.pNext = iter->header.pNext;
-        //prev->header.pNext = next;
-
         AllocationEntry* temp = iter + (iter->header.numBlocks - blocksNeeded);
-        temp->header.numBlocks = blocksNeeded;
-        temp->header.pNext = nullptr;
         temp->header.allocatedBlocks = 0;
         temp->header.pSrcPool = iter;
 
@@ -422,8 +424,6 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
     else // count == blocksNeeded
     {
         AllocationEntry* next = iter->header.pNext;
-        iter->header.numBlocks = blocksNeeded;
-        iter->header.pNext = nullptr;
         iter->header.pSrcPool = nullptr;
 
         if (prev)
@@ -441,8 +441,9 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
     }
 
     // Add the allocation size to the result pointer
-    //iter->header.numBlocks = blocksNeeded;
-    //iter->header.pNext = nullptr;
+    iter->header.numBlocks = blocksNeeded;
+    iter->header.pNext = nullptr;
+
     // Offset the result pointer to ensure we track the memory allocation
     char* result = reinterpret_cast<char*>(iter) + GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
 

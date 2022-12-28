@@ -24,68 +24,71 @@ namespace utils = ls::utils;
 
 
 
-namespace
-{
-
-//constexpr unsigned main_block_size = 32u;
-constexpr unsigned main_cache_size = 3072;
-
-//constexpr unsigned tls_block_size = 32u;
-constexpr unsigned tls_cache_size = 3u*1024u*1024u;
+constexpr unsigned long long main_cache_size = 3072;
+constexpr unsigned long long tls_cache_size = 3u*1024u*1024u;
 
 typedef utils::GeneralAllocator<main_cache_size, true> CachedAllocatorType;
 typedef utils::GeneralAllocator<tls_cache_size, false> ExternalAllocatorType;
 
 
 
+namespace
+{
+
 #if defined(LS_OS_UNIX)
     struct TLSDestructorData
     {
-        pthread_key_t* pKey;
-        utils::AtomicAllocator* pAllocator;
-        ExternalAllocatorType* pData;
+        ExternalAllocatorType tlsAllocator;
+        utils::AtomicAllocator* pParentAllocator;
+        pthread_key_t key;
     };
 
-    inline ExternalAllocatorType& _get_allocator() noexcept
+    void _destroy_tls_allocator(void* pData) noexcept
+    {
+        TLSDestructorData* const pDestructorData = static_cast<TLSDestructorData*>(pData);
+        ExternalAllocatorType&   tlsAllocator    = pDestructorData->tlsAllocator;
+        utils::AtomicAllocator*  pAllocator      = pDestructorData->pParentAllocator;
+        const pthread_key_t      key             = pDestructorData->key;
+
+        tlsAllocator.~ExternalAllocatorType();
+        pAllocator->free(pDestructorData);
+        pthread_key_delete(key);
+    }
+
+    ExternalAllocatorType* _create_tls_allocator() noexcept
     {
         static utils::SystemMemorySource mallocSrc{};
         static CachedAllocatorType internalAllocator{mallocSrc};
         static utils::AtomicAllocator atomicAllocator{internalAllocator};
-        //static __thread ExternalAllocatorType allocator{atomicAllocator};
-        static __thread ExternalAllocatorType* allocator = nullptr;
 
-        static __thread pthread_key_t key = 0;
-        static __thread int result = -1;
-
-        // Setup a destructor for TLS storage
-        if (LS_UNLIKELY(!allocator))
+        TLSDestructorData* allocator = new(atomicAllocator.allocate(sizeof(TLSDestructorData))) TLSDestructorData{ExternalAllocatorType{atomicAllocator}, &atomicAllocator, 0};
+        if (LS_LIKELY(allocator != nullptr))
         {
-            allocator = new(atomicAllocator.allocate(sizeof(ExternalAllocatorType))) ExternalAllocatorType{atomicAllocator};
+            allocator->pParentAllocator = &atomicAllocator;
+            allocator->key = 0;
 
-            if (LS_UNLIKELY(result < 0))
+            const int result = pthread_key_create(&allocator->key, &_destroy_tls_allocator);
+            if (LS_LIKELY(result == 0))
             {
-                static __thread char destructBuf[sizeof(TLSDestructorData)];
-                TLSDestructorData* pDestructBuf = reinterpret_cast<TLSDestructorData*>(destructBuf);
-
-                pDestructBuf->pKey = &key;
-                pDestructBuf->pAllocator = &atomicAllocator;
-                pDestructBuf->pData = allocator;
-
-                result = pthread_key_create(&key, [](void* pData)->void {
-                    utils::AtomicAllocator* pAllocator = static_cast<TLSDestructorData*>(pData)->pAllocator;
-                    ExternalAllocatorType* pTlsAllocator = static_cast<TLSDestructorData*>(pData)->pData;
-                    pthread_key_t* pKey = static_cast<TLSDestructorData*>(pData)->pKey;
-
-                    pTlsAllocator->~ExternalAllocatorType();
-                    pAllocator->free(pTlsAllocator);
-                    pthread_key_delete(*pKey);
-                });
-
-                if (result == 0)
-                {
-                    pthread_setspecific(key, destructBuf);
-                }
+                pthread_setspecific(allocator->key, allocator);
             }
+            else
+            {
+                allocator->tlsAllocator.~ExternalAllocatorType();
+                atomicAllocator.free(allocator);
+                allocator = nullptr;
+            }
+        }
+
+        return allocator ? &allocator->tlsAllocator : nullptr;
+    }
+
+    inline LS_INLINE ExternalAllocatorType& _get_allocator() noexcept
+    {
+        static __thread ExternalAllocatorType* allocator{nullptr};
+        if (LS_UNLIKELY(allocator == nullptr))
+        {
+            allocator = _create_tls_allocator();
         }
 
         return *allocator;
