@@ -1,4 +1,5 @@
 
+#include <cstring>
 #include <iostream>
 #include <memory> // std::nothrow
 #include <thread>
@@ -54,7 +55,8 @@ template <unsigned block_size>
             return nullptr;
         }
 
-        numBytes += block_size - (numBytes % block_size);
+        size_type rem = numBytes % block_size;
+        numBytes += block_size - (rem ? rem : block_size);
         return ThreadSafeAllocator::allocate(numBytes);
     }
 
@@ -70,7 +72,8 @@ template <unsigned block_size>
             return;
         }
 
-        numBytes += block_size - (numBytes % block_size);
+        size_type rem = numBytes % block_size;
+        numBytes += block_size - (rem ? rem : block_size);
         ThreadSafeAllocator::free(pData, numBytes);
     }
 };
@@ -217,7 +220,7 @@ int test_array_allocations()
 
     for (unsigned testRuns = 0; testRuns < 5; ++testRuns)
     {
-        for (unsigned i = 0; i < max_allocations/3; ++i)
+        for (unsigned i = 0; i < max_allocations/2; ++i)
         {
             p = testAllocator.allocate(block_size * 2);
             if (!p && i < max_allocations)
@@ -266,7 +269,7 @@ int test_array_allocations()
             allocations[2] = p;
         }
 
-        p = testAllocator.allocate(block_size * 2);
+        p = testAllocator.allocate(block_size);
         if (p)
         {
             std::cerr << "Error: Allocated too many chunks!" << std::endl;
@@ -290,7 +293,7 @@ int test_array_allocations()
 static constexpr unsigned THREAD_ALLOC_TABLE_SIZE = 1024u*1024u*1024u;
 static constexpr unsigned THREAD_ALLOC_BLOCK_SIZE = 32u;
 
-#if TEST_MALLOC_MEM_SRC
+#if TEST_MALLOC_ALLOCATOR
 inline LS_INLINE MallocMemorySource2<THREAD_ALLOC_BLOCK_SIZE>& get_allocator() noexcept
 #else
 inline LS_INLINE utils::GeneralAllocator<THREAD_ALLOC_TABLE_SIZE, false>& get_allocator() noexcept
@@ -340,6 +343,10 @@ int test_threaded_allocations()
                 {
                     std::cerr << "Error: ran out of single memory blocks at allocation #" << i << std::endl;
                     return;
+                }
+                else
+                {
+                    std::memset(p, 0xD3ADB33F, THREAD_ALLOC_BLOCK_SIZE/2);
                 }
 
                 allocations[i] = p;

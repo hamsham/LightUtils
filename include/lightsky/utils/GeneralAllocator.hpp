@@ -34,36 +34,25 @@ class GeneralAllocator final : public Allocator
     typedef unsigned long long size_type;
 
   private:
-    union alignas(alignof(size_type)*4) AllocationEntry;
-
-    struct alignas(alignof(size_type)*4) AllocationHeader
+    struct alignas(alignof(size_type)*4) AllocationEntry
     {
         size_type numBlocks;
         AllocationEntry* pNext;
-        size_type allocatedBlocks;
         AllocationEntry* pSrcPool;
+        size_type allocatedBlocks;
     };
 
     enum : size_type
     {
-        header_size = sizeof(AllocationHeader),
-        block_size = sizeof(AllocationHeader),
+        header_size = sizeof(AllocationEntry),
+        block_size = sizeof(AllocationEntry),
         cache_size = CacheSize
-    };
-
-    // Use the header type for alignment. If needed we can change this to align
-    // to a SIMD-sized block.
-    union alignas(alignof(AllocationHeader)) AllocationEntry
-    {
-        AllocationHeader header;
-        char memBlock[block_size];
     };
 
     // insurance
     static_assert(cache_size % block_size == 0, "Cache Size must be a multiple of Block Size.");
-    static_assert(sizeof(AllocationHeader) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
-    static_assert(block_size == header_size, "Allocation sizes must equal sizeof(AllocationHeader).");
-    static_assert(block_size == sizeof(AllocationEntry), "Allocation entry meta data contains invalid padding.");
+    static_assert(sizeof(AllocationEntry) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
+    static_assert(alignof(AllocationEntry) == alignof(size_type)*4, "Unexpected AllocationHeader alignment.");
     static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
 
   private:
@@ -99,7 +88,7 @@ class GeneralAllocator final : public Allocator
      *
      * @return A pointer to the head block.
      */
-    void _merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) const noexcept;
+    AllocationEntry* _merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) const noexcept;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.

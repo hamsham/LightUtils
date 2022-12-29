@@ -24,7 +24,7 @@ namespace utils = ls::utils;
 
 
 
-constexpr unsigned long long main_cache_size = 3072;
+constexpr unsigned long long main_cache_size = 4096-32;
 constexpr unsigned long long tls_cache_size = 3u*1024u*1024u;
 
 typedef utils::GeneralAllocator<main_cache_size, true> CachedAllocatorType;
@@ -83,15 +83,10 @@ namespace
         return allocator ? &allocator->tlsAllocator : nullptr;
     }
 
+    static thread_local ExternalAllocatorType* _allocator = _create_tls_allocator();
     inline LS_INLINE ExternalAllocatorType& _get_allocator() noexcept
     {
-        static __thread ExternalAllocatorType* allocator{nullptr};
-        if (LS_UNLIKELY(allocator == nullptr))
-        {
-            allocator = _create_tls_allocator();
-        }
-
-        return *allocator;
+        return *_allocator;
     }
 
 #else /* LS_OS_UNIX */
