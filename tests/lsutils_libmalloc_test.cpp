@@ -25,7 +25,7 @@ namespace utils = ls::utils;
 
 
 constexpr unsigned long long main_cache_size = 4096-32;
-constexpr unsigned long long tls_cache_size = 3u*1024u*1024u;
+constexpr unsigned long long tls_cache_size = 4u*1024u*1024u-64u;
 
 typedef utils::GeneralAllocator<main_cache_size, true> CachedAllocatorType;
 typedef utils::GeneralAllocator<tls_cache_size, false> ExternalAllocatorType;
@@ -64,9 +64,6 @@ namespace
         TLSDestructorData* allocator = new(atomicAllocator.allocate(sizeof(TLSDestructorData))) TLSDestructorData{ExternalAllocatorType{atomicAllocator}, &atomicAllocator, 0};
         if (LS_LIKELY(allocator != nullptr))
         {
-            allocator->pParentAllocator = &atomicAllocator;
-            allocator->key = 0;
-
             const int result = pthread_key_create(&allocator->key, &_destroy_tls_allocator);
             if (LS_LIKELY(result == 0))
             {

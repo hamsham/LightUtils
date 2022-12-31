@@ -65,12 +65,6 @@ class GeneralAllocator final : public Allocator
     AllocationEntry* mHead;
 
     /**
-     * @brief Tracking variable to help with reserving additional memory
-     * regions for future allocations.
-     */
-    size_type mTotalBlocksAllocd;
-
-    /**
      * @brief Convenience member to track the size of the last allocation.
      */
     size_type mLastAllocSize;
@@ -98,16 +92,31 @@ class GeneralAllocator final : public Allocator
      *
      * @param reclaimed
      * A pointer to a valid AllocationEntry struct.
-     *
-     * @param blockCount
-     * The number of blocks which were freed (not number of bytes).
      */
-    void _free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept;
+    void _free_impl(AllocationEntry* reclaimed) noexcept;
 
     /**
      * @brief Refill the internal cache of memory.
      */
     AllocationEntry* _alloc_new_cache(size_type n) noexcept;
+
+    /**
+     * @brief Locate an allocation entry with at least \param numBlocksNeeded.
+     *
+     * @param numBlocksNeeded
+     * The number of blocks needed for an allocation.
+     *
+     * @param A reference to a pointer which will reference the resulting
+     * allocation block with at least \param numBlocksNeeded.
+     *
+     * @param A reference to a pointer which will reference the allocation
+     * block immediately preceeding \param pIter.
+     *
+     * @return TRUE if a sufficient number of blocks could be found or
+     * allocated This function will return FALSE otherwise, without placing the
+     * result values in \param pIter and \param pPrev.
+     */
+    bool _find_or_allocate_entry(size_type numBlocksNeeded, AllocationEntry*& pIter, AllocationEntry*& pPrev) noexcept;
 
   public:
     /**

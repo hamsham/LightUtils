@@ -30,10 +30,7 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::~GeneralAllocator() noexcept
         const size_type numBytes = numBlocks * block_size;
         if (temp->pSrcPool == temp)
         {
-            temp->numBlocks = 0;
-            temp->pNext = nullptr;
-            temp->pSrcPool = nullptr;
-            temp->allocatedBlocks = 0;
+            //*temp = AllocationEntry{0, nullptr, nullptr, 0};
             this->memory_source().free(temp, numBytes);
 
             LS_MEMTRACK_POOL_DESTROY(temp);
@@ -46,7 +43,6 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::~GeneralAllocator() noexcept
     }
 
     mHead = nullptr;
-    mTotalBlocksAllocd = 0;
     mLastAllocSize = 0;
 }
 
@@ -60,7 +56,6 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator(MemorySource& me
     //GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator{memorySource, cache_size} // delegate
     Allocator{memorySource},
     mHead{nullptr},
-    mTotalBlocksAllocd{0},
     mLastAllocSize{0}
 {
 }
@@ -74,7 +69,6 @@ template <unsigned long long CacheSize, bool OffsetFreeHeader>
 GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator(MemorySource& memorySource, size_type initialSize) noexcept :
     Allocator{memorySource},
     mHead{nullptr},
-    mTotalBlocksAllocd{0},
     mLastAllocSize{0}
 {
     ls::utils::runtime_assert(initialSize >= sizeof(size_type), ls::utils::ErrorLevel::LS_ERROR, "Allocated memory table cannot be less than sizeof(size_type).");
@@ -91,7 +85,6 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator(MemorySource& me
         mHead->numBlocks = numBlocks;
         mHead->pSrcPool = mHead;
         mHead->allocatedBlocks = numBlocks;
-        mTotalBlocksAllocd = numBlocks;
         mLastAllocSize = initialSize;
     }
 }
@@ -105,11 +98,9 @@ template <unsigned long long CacheSize, bool OffsetFreeHeader>
 GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator(GeneralAllocator&& a) noexcept :
     Allocator{std::move(a)},
     mHead{a.mHead},
-    mTotalBlocksAllocd{a.mTotalBlocksAllocd},
     mLastAllocSize{a.mLastAllocSize}
 {
     a.mHead = nullptr;
-    a.mTotalBlocksAllocd = 0;
     a.mLastAllocSize = 0;
 }
 
@@ -128,9 +119,6 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>& GeneralAllocator<CacheSize, Offse
         mHead = a.mHead;
         a.mHead = nullptr;
 
-        mTotalBlocksAllocd = a.mTotalBlocksAllocd;
-        a.mTotalBlocksAllocd = 0;
-
         mLastAllocSize = a.mLastAllocSize;
         a.mLastAllocSize = 0;
     }
@@ -145,24 +133,30 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>& GeneralAllocator<CacheSize, Offse
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
 inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry*
-GeneralAllocator<CacheSize, OffsetFreeHeader>::_merge_allocation_blocks(AllocationEntry* pHead, AllocationEntry* pBlock) const noexcept
+GeneralAllocator<CacheSize, OffsetFreeHeader>::_merge_allocation_blocks(AllocationEntry* LS_RESTRICT_PTR pHead, AllocationEntry* LS_RESTRICT_PTR pBlock) const noexcept
 {
-    // Double-free detection
-    if (LS_UNLIKELY((pHead < pBlock) && ((pHead + pHead->numBlocks) > pBlock)))
+    const size_type numBlocks = pHead->numBlocks;
+    const size_type numBytes = numBlocks * block_size;
+    const size_type diff = ((size_type)pBlock - (size_type)pHead); // expects pBlock > pHead
+
+    if (diff > numBytes)
+    {
+        pHead->pNext = pBlock;
+    }
+    else if (diff == numBytes)
+    {
+        const size_type numMergedBlocks = pBlock->numBlocks;
+        AllocationEntry* pMergedNext = pBlock->pNext;
+
+        pHead->numBlocks = numBlocks + numMergedBlocks;
+        pHead->pNext = pMergedNext;
+
+        *pBlock = AllocationEntry{0, nullptr, nullptr, 0};
+        pBlock = pHead;
+    }
+    else // Double-free detection
     {
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Double-free deallocation detected!");
-    }
-
-    if (pHead + pHead->numBlocks == pBlock)
-    {
-        pHead->numBlocks += pBlock->numBlocks;
-        pHead->pNext = pBlock->pNext;
-
-        pBlock->numBlocks = 0;
-        pBlock->pNext = nullptr;
-        pBlock->pSrcPool = nullptr;
-        pBlock->allocatedBlocks = 0;
-        pBlock = pHead;
     }
 
     return pBlock;
@@ -174,30 +168,19 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::_merge_allocation_blocks(Allocati
  * Free Memory
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* reclaimed, size_type blockCount) noexcept
+void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* LS_RESTRICT_PTR reclaimed) noexcept
 {
-    // Minor input validation. Non-sized allocations will not contain an
-    // valid block count.
-    reclaimed->numBlocks = blockCount;
-    reclaimed->pNext = nullptr;
-
-    // reset the head pointer if we're out of memory
-    if (LS_UNLIKELY(mHead == nullptr))
-    {
-        // reset the head pointer
-        mHead = reclaimed;
-        return;
-    }
-
     AllocationEntry* prev = nullptr;
     AllocationEntry* temp;
 
-    if (LS_UNLIKELY(mHead > reclaimed))
+    // reset the head pointer if we're out of memory
+    if (LS_LIKELY(!mHead || mHead > reclaimed))
     {
         // ensure the header-pointer from p points to the current "next" chunk.
         // increase the block count if possible
-        reclaimed->pNext = mHead;
-        temp = _merge_allocation_blocks(reclaimed, mHead);
+        _merge_allocation_blocks(reclaimed, mHead);
+
+        temp = reclaimed;
         mHead = reclaimed;
     }
     else // mHead < reclaimed
@@ -212,11 +195,9 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
             curr = curr->pNext;
         }
 
-        reclaimed->pNext = curr;
-        prev->pNext = reclaimed;
-
         _merge_allocation_blocks(reclaimed, curr);
         temp = _merge_allocation_blocks(prev, reclaimed);
+
         if (temp == prev)
         {
             prev = prev2;
@@ -226,8 +207,13 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
     LS_MEMTRACK_POOL_FREE(reclaimed->pSrcPool, reclaimed+1);
 
     // Prune the smallest cache when possible
-    if (temp->numBlocks == temp->allocatedBlocks && temp->pSrcPool == temp)// && temp->pNext)
+    if (temp->numBlocks == temp->allocatedBlocks)
     {
+        if (!(prev || temp->pNext))
+        {
+            return;
+        }
+
         const size_type numBlocks = temp->numBlocks;
         const size_type numBytes = numBlocks * block_size;
 
@@ -240,15 +226,9 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
             mHead = temp->pNext;
         }
 
-        mTotalBlocksAllocd -= numBlocks;
-        //mLastAllocSize = numBytes;
+        //*temp = AllocationEntry{0, nullptr, nullptr, 0};
 
-        temp->numBlocks = 0;
-        temp->pNext = nullptr;
-        temp->pSrcPool = nullptr;
-        temp->allocatedBlocks = 0;
         this->memory_source().free(temp, numBytes);
-
         LS_MEMTRACK_POOL_DESTROY(temp);
     }
 }
@@ -259,34 +239,15 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
  * Allocate Memory
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noexcept
+typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noexcept
 {
     // Any allocation larger than the block size gets rounded to the next cache
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
 
-    //const size_type minBytes = (mTotalBlocksAllocd * block_size) / 2;
-    //const size_type minBytes = mLastAllocSize;
-    //const size_type minBytes = (mLastAllocSize * 3) / 2;
-    //const size_type minBytes = (mLastAllocSize * 4) / 3;
-    const size_type minBytes = (mLastAllocSize * 2) / 3;
-    const size_type maxBytes = mLastAllocSize;
-    //const size_type maxBytes = (mLastAllocSize * 2) / 3;
-    //const size_type maxBytes = mLastAllocSize / 4;
-
-    size_type t = n;
-    //if (!OffsetFreeHeader)
-    //if (n < cache_size)
-    {
-        if (n < mLastAllocSize/2)
-        {
-            t += minBytes;
-        }
-        else
-        {
-            t += maxBytes;
-        }
-    }
+    const size_type minBytes = OffsetFreeHeader ? ((mLastAllocSize * 2) / 3) : (mLastAllocSize / 2);
+    const size_type maxBytes = OffsetFreeHeader ? mLastAllocSize : ((mLastAllocSize * 2) / 3);
+    const size_type t = n + ((n < mLastAllocSize) ? minBytes : maxBytes);
 
     size_type allocSize;
     void* pCache;
@@ -319,14 +280,10 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
     }
 
     const size_type numBlocks = allocSize / block_size;
-    mTotalBlocksAllocd += numBlocks;
     mLastAllocSize = allocSize;
 
     AllocationEntry* pCacheEntry = reinterpret_cast<AllocationEntry*>(pCache);
-    pCacheEntry->numBlocks = numBlocks;
-    pCacheEntry->pNext = nullptr;
-    pCacheEntry->pSrcPool = pCacheEntry;
-    pCacheEntry->allocatedBlocks = numBlocks;
+    *pCacheEntry = AllocationEntry{numBlocks, nullptr, pCacheEntry, numBlocks};
 
     LS_MEMTRACK_SLAB_POOL_CREATE(pCacheEntry, 0, true);
     return pCacheEntry;
@@ -335,45 +292,55 @@ inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* 
 
 
 /*-------------------------------------
- * Array Allocations
+ * Locate or Allocate
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexcept
+inline bool GeneralAllocator<CacheSize, OffsetFreeHeader>::_find_or_allocate_entry(
+    size_type numBlocksNeeded,
+    AllocationEntry*& pIter,
+    AllocationEntry*& pPrev) noexcept
 {
-    if (!n)
-    {
-        return nullptr;
-    }
-
-    n += GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
-    const size_type blocksNeeded = (n / block_size) + ((n % block_size) ? 1 : 0);
-
-    if (mHead == nullptr)
-    {
-        mHead = _alloc_new_cache(n);
-        if (mHead == nullptr)
-        {
-            return nullptr;
-        }
-    }
-
     // we're going to actually allocate "n+sizeof(size_type)" and place a header
     // in the first few bytes to keep track of the allocation size.
+    bool ret = false;
+    const size_type numBytes = numBlocksNeeded * block_size;
+
+    if (LS_UNLIKELY(mHead == nullptr))
+    {
+        mHead = _alloc_new_cache(numBytes);
+        if (LS_LIKELY(mHead != nullptr))
+        {
+            ret = true;
+            pIter = mHead;
+            pPrev = nullptr;
+        }
+
+        return ret;
+    }
+
     AllocationEntry* prev = nullptr;
     AllocationEntry* iter = mHead;
     size_type count = mHead->numBlocks;
 
-    while (count < blocksNeeded)
+    do
     {
+        if (count >= numBlocksNeeded)
+        {
+            ret = true;
+            pIter = iter;
+            pPrev = prev;
+            break;
+        }
+
         prev = iter;
         iter = iter->pNext;
 
         if (LS_UNLIKELY(!iter))
         {
-            iter = _alloc_new_cache(n);
+            iter = _alloc_new_cache(numBytes);
             if (LS_UNLIKELY(!iter))
             {
-                return nullptr;
+                break;
             }
 
             if (iter < mHead)
@@ -408,28 +375,53 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
 
         count = iter->numBlocks;
     }
+    while (true);
 
-    if (count > blocksNeeded)
+    return ret;
+}
+
+
+
+/*-------------------------------------
+ * Array Allocations
+-------------------------------------*/
+template <unsigned long long CacheSize, bool OffsetFreeHeader>
+void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexcept
+{
+    if (!n)
     {
-        AllocationEntry* temp = iter + (iter->numBlocks - blocksNeeded);
-        LS_PREFETCH(temp, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
-
-        AllocationEntry* const pSrcPool = iter->pSrcPool;
-        iter->numBlocks -= blocksNeeded;
-        iter = temp;
-
-        temp->pSrcPool = pSrcPool;
-        temp->allocatedBlocks = 0;
+        return nullptr;
     }
-    else // count == blocksNeeded
-    {
-        AllocationEntry* next = iter->pNext;
 
-        if (prev)
+    // increase the allocation size to make room for a header.
+    n += GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
+    const size_type blocksNeeded = (n / block_size) + ((n % block_size) ? 1 : 0);
+
+    AllocationEntry* pPrev = nullptr;
+    AllocationEntry* pIter = nullptr;
+
+    if (LS_UNLIKELY(!_find_or_allocate_entry(blocksNeeded, pIter, pPrev)))
+    {
+        return nullptr;
+    }
+
+    const AllocationEntry iter = *pIter;
+    const size_type newBlockCount = iter.numBlocks - blocksNeeded;
+    const bool updatePrevPtr = !newBlockCount; // FALSE if the data being allocated begins at the start of an allocation block
+    AllocationEntry* const LS_RESTRICT_PTR pResult = pIter + newBlockCount;
+    LS_PREFETCH(pResult, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+
+    pIter->numBlocks = newBlockCount;
+
+    if (LS_LIKELY(updatePrevPtr))
+    {
+        AllocationEntry* next = iter.pNext;
+
+        if (LS_LIKELY(pPrev != nullptr))
         {
-            prev->pNext = next;
+            pPrev->pNext = next;
         }
-        else if (mHead == iter)
+        else if (mHead == pIter)
         {
             mHead = next;
         }
@@ -440,13 +432,13 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
     }
 
     // Add the allocation size to the result pointer
-    iter->numBlocks = blocksNeeded;
-    iter->pNext = nullptr;
+    const AllocationEntry temp = {blocksNeeded, nullptr, iter.pSrcPool, iter.allocatedBlocks};
+    *pResult = temp; // LHS performance penalty mitigated with LS_PREFETCH
 
     // Offset the result pointer to ensure we track the memory allocation
-    char* result = reinterpret_cast<char*>(iter) + GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
-    LS_MEMTRACK_POOL_ALLOC(iter->pSrcPool, iter+1, n-header_size);
+    char* result = reinterpret_cast<char*>(pResult) + GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
 
+    LS_MEMTRACK_POOL_ALLOC(pResult->pSrcPool, pResult+1, n-header_size);
     return reinterpret_cast<void*>(result);
 }
 
@@ -583,8 +575,7 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::free(void* p) noexcep
     }
 
     // Read the input allocation size for validation
-    const size_type allocSize = reclaimed->numBlocks;
-    this->_free_impl(reclaimed, allocSize);
+    this->_free_impl(reclaimed);
 }
 
 
@@ -621,7 +612,7 @@ inline void GeneralAllocator<CacheSize, OffsetFreeHeader>::free(void* p, size_ty
         ls::utils::runtime_assert(false, ls::utils::ErrorLevel::LS_ERROR, "Invalid de-allocation size detected!");
     }
 
-    this->_free_impl(reclaimed, allocSize);
+    this->_free_impl(reclaimed);
 }
 
 
