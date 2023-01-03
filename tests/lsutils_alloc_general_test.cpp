@@ -223,9 +223,9 @@ int test_array_allocations()
         for (unsigned i = 0; i < max_allocations/2; ++i)
         {
             p = testAllocator.allocate(block_size * 2);
-            if (!p && i < max_allocations)
+            if (!p && i < max_allocations/2)
             {
-                std::cerr << "Error: ran out of memory at block " << i << '/' << (max_allocations/3) << std::endl;
+                std::cerr << "Error: ran out of memory at block " << i << '/' << (max_allocations/2) << std::endl;
                 return -1;
             }
 
@@ -269,7 +269,7 @@ int test_array_allocations()
             allocations[2] = p;
         }
 
-        p = testAllocator.allocate(block_size);
+        p = testAllocator.allocate(block_size * 2);
         if (p)
         {
             std::cerr << "Error: Allocated too many chunks!" << std::endl;
@@ -385,7 +385,7 @@ int main()
     std::cout << "Running allocator benchmark..." << std::endl;
     ticks.start();
 
-    #if 0
+    #if 1
         ret = test_single_allocations();
         if (ret != 0)
         {
@@ -393,7 +393,7 @@ int main()
         }
     #endif
 
-    #if 0
+    #if 1
         ret = test_array_allocations();
         if (ret != 0)
         {
@@ -401,7 +401,7 @@ int main()
         }
     #endif
 
-    #if 1
+    #if 0
         ret = test_threaded_allocations();
     #endif
 

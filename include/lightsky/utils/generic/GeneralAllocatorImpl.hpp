@@ -186,7 +186,8 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
     else // mHead < reclaimed
     {
         AllocationEntry* prev2 = nullptr;
-        AllocationEntry* curr = mHead;
+        AllocationEntry* curr = mHead->pNext;
+        prev = mHead;
 
         while (curr && curr < reclaimed)
         {
@@ -239,15 +240,16 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
  * Allocate Memory
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry* GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noexcept
+inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry*
+GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noexcept
 {
     // Any allocation larger than the block size gets rounded to the next cache
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
 
-    const size_type minBytes = OffsetFreeHeader ? ((mLastAllocSize * 2) / 3) : (mLastAllocSize / 2);
-    const size_type maxBytes = OffsetFreeHeader ? mLastAllocSize : ((mLastAllocSize * 2) / 3);
-    const size_type t = n + ((n < mLastAllocSize) ? minBytes : maxBytes);
+    const size_type lastAllocSize = mLastAllocSize;
+    const size_type reserveBytes = OffsetFreeHeader ? lastAllocSize : ((lastAllocSize * 2) / 3);
+    const size_type t = n + reserveBytes;
 
     size_type allocSize;
     void* pCache;
@@ -405,41 +407,86 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
         return nullptr;
     }
 
-    const AllocationEntry iter = *pIter;
-    const size_type newBlockCount = iter.numBlocks - blocksNeeded;
-    const bool updatePrevPtr = !newBlockCount; // FALSE if the data being allocated begins at the start of an allocation block
-    AllocationEntry* const LS_RESTRICT_PTR pResult = pIter + newBlockCount;
-    LS_PREFETCH(pResult, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+    char* result;
 
-    pIter->numBlocks = newBlockCount;
-
-    if (LS_LIKELY(updatePrevPtr))
+    // Sub-allocate from the beginning of a block if we're expecting large
+    // allocations to be returned
+    #if 0
     {
-        AllocationEntry* next = iter.pNext;
+        const size_type newBlockCount = pIter->numBlocks - blocksNeeded;
+        AllocationEntry* LS_RESTRICT_PTR pNext;
 
-        if (LS_LIKELY(pPrev != nullptr))
+        if (newBlockCount > 0)
         {
-            pPrev->pNext = next;
-        }
-        else if (mHead == pIter)
-        {
-            mHead = next;
+            pNext = pIter + blocksNeeded;
+            pNext->numBlocks = newBlockCount;
+            pNext->pNext = pIter->pNext;
+            pNext->pSrcPool = pIter->pSrcPool;
+            pNext->allocatedBlocks = pIter->allocatedBlocks;
         }
         else
         {
-            mHead->pNext = next;
+            pNext = pIter->pNext;
         }
+
+        if (LS_UNLIKELY(pPrev != nullptr))
+        {
+            pPrev->pNext = pNext;
+        }
+        else if (mHead == pIter)
+        {
+            mHead = pNext;
+        }
+        else
+        {
+            mHead->pNext = pNext;
+        }
+
+        pIter->numBlocks = blocksNeeded;
+        pIter->pNext = nullptr;
+
+        // Offset the result pointer to ensure we track the memory allocation
+        result = reinterpret_cast<char*>(pIter);
     }
+    #else // Sub-allocate from the end of a block to reduce fragmentation
+    {
+        const AllocationEntry iter = *pIter;
+        const size_type newBlockCount = iter.numBlocks - blocksNeeded;
+        const bool updatePrevPtr = !newBlockCount; // FALSE if the data being allocated begins at the start of an allocation block
+        AllocationEntry* const LS_RESTRICT_PTR pResult = pIter + newBlockCount;
+        LS_PREFETCH(pResult, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
 
-    // Add the allocation size to the result pointer
-    const AllocationEntry temp = {blocksNeeded, nullptr, iter.pSrcPool, iter.allocatedBlocks};
-    *pResult = temp; // LHS performance penalty mitigated with LS_PREFETCH
+        pIter->numBlocks = newBlockCount;
 
-    // Offset the result pointer to ensure we track the memory allocation
-    char* result = reinterpret_cast<char*>(pResult) + GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
+        if (LS_LIKELY(updatePrevPtr))
+        {
+            AllocationEntry* next = iter.pNext;
+
+            if (LS_LIKELY(pPrev != nullptr))
+            {
+                pPrev->pNext = next;
+            }
+            else if (mHead == pIter)
+            {
+                mHead = next;
+            }
+            else
+            {
+                mHead->pNext = next;
+            }
+        }
+
+        // Add the allocation size to the result pointer
+        const AllocationEntry temp = {blocksNeeded, nullptr, iter.pSrcPool, iter.allocatedBlocks};
+        *pResult = temp; // LHS performance penalty mitigated with LS_PREFETCH
+
+        // Offset the result pointer to ensure we track the memory allocation
+        result = reinterpret_cast<char*>(pResult);
+    }
+    #endif
 
     LS_MEMTRACK_POOL_ALLOC(pResult->pSrcPool, pResult+1, n-header_size);
-    return reinterpret_cast<void*>(result);
+    return reinterpret_cast<void*>(result + GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size);
 }
 
 

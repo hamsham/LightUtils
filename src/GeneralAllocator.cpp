@@ -9,4 +9,4 @@
 
 
 
-template class ls::utils::GeneralAllocator<4096>;
+template class ls::utils::GeneralAllocator<4096-(sizeof(unsigned long long)*4)>;

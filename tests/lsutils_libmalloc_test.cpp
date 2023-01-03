@@ -24,8 +24,8 @@ namespace utils = ls::utils;
 
 
 
-constexpr unsigned long long main_cache_size = 4096-32;
-constexpr unsigned long long tls_cache_size = 4u*1024u*1024u-64u;
+constexpr unsigned long long main_cache_size = 4096-(sizeof(unsigned long long)*4);
+constexpr unsigned long long tls_cache_size = 4u*1024u*1024u-(sizeof(unsigned long long)*8);
 
 typedef utils::GeneralAllocator<main_cache_size, true> CachedAllocatorType;
 typedef utils::GeneralAllocator<tls_cache_size, false> ExternalAllocatorType;
@@ -55,35 +55,37 @@ namespace
         pthread_key_delete(key);
     }
 
-    ExternalAllocatorType* _create_tls_allocator() noexcept
+    ExternalAllocatorType& _create_tls_allocator() noexcept
     {
         static utils::SystemMemorySource mallocSrc{};
         static CachedAllocatorType internalAllocator{mallocSrc};
         static utils::AtomicAllocator atomicAllocator{internalAllocator};
+        ExternalAllocatorType* result = nullptr;
 
         TLSDestructorData* allocator = new(atomicAllocator.allocate(sizeof(TLSDestructorData))) TLSDestructorData{ExternalAllocatorType{atomicAllocator}, &atomicAllocator, 0};
         if (LS_LIKELY(allocator != nullptr))
         {
-            const int result = pthread_key_create(&allocator->key, &_destroy_tls_allocator);
-            if (LS_LIKELY(result == 0))
+            const int statud = pthread_key_create(&allocator->key, &_destroy_tls_allocator);
+            if (LS_LIKELY(statud == 0))
             {
                 pthread_setspecific(allocator->key, allocator);
+                result = &allocator->tlsAllocator;
             }
             else
             {
                 allocator->tlsAllocator.~ExternalAllocatorType();
                 atomicAllocator.free(allocator);
-                allocator = nullptr;
+                utils::runtime_assert(false, utils::ErrorLevel::LS_ERROR, "Failed to allocate an allocator.");
             }
         }
 
-        return allocator ? &allocator->tlsAllocator : nullptr;
+        return *result;
     }
 
-    static thread_local ExternalAllocatorType* _allocator = _create_tls_allocator();
+    static thread_local ExternalAllocatorType& _allocator{_create_tls_allocator()};
     inline LS_INLINE ExternalAllocatorType& _get_allocator() noexcept
     {
-        return *_allocator;
+        return _allocator;
     }
 
 #else /* LS_OS_UNIX */

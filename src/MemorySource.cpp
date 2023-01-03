@@ -118,6 +118,7 @@ void MallocMemorySource::free(void* pData, size_type numBytes) noexcept
 -----------------------------------------------------------------------------*/
 #if defined(LS_OS_UNIX)
 
+#if 0
 class FDZero
 {
   private:
@@ -131,6 +132,7 @@ class FDZero
     FDZero& operator=(const FDZero& fd) noexcept;
     FDZero& operator=(FDZero&& fd) noexcept;
     int file_descriptor() const noexcept;
+    static FDZero& instance() noexcept;
 };
 
 inline FDZero::~FDZero() noexcept
@@ -192,6 +194,14 @@ inline int FDZero::file_descriptor() const noexcept
 {
     return mFd;
 }
+
+inline FDZero& FDZero::instance() noexcept
+{
+    static FDZero sFd{};
+    return sFd;
+}
+
+#endif
 
 #endif // LS_OS_UNIX
 
@@ -293,14 +303,16 @@ void* SystemMemorySource::allocate(size_type numBytes) noexcept
     }
 
     static const unsigned long long pageSize = page_size();
-    numBytes += pageSize - (numBytes % pageSize);
+    const unsigned long long rem = numBytes % pageSize;
+    numBytes += pageSize - (rem ? rem : pageSize);
     void* p = nullptr;
 
     #if !defined(LS_OS_UNIX)
         p = std::malloc(numBytes);
 
     #else
-        static const FDZero fdz{};
+        #if 0
+        static const FDZero& fdz = FDZero::instance();
         if (fdz.file_descriptor() != -1)
         {
             p = mmap(nullptr, numBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE, fdz.file_descriptor(), 0);
@@ -310,6 +322,17 @@ void* SystemMemorySource::allocate(size_type numBytes) noexcept
                 p = nullptr;
             }
         }
+
+        #else
+
+        p = mmap(nullptr, numBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (p == MAP_FAILED)
+        {
+            runtime_assert(false, ErrorLevel::LS_WARNING, strerror(errno));
+            p = nullptr;
+        }
+
+        #endif
     #endif
 
     return p;
@@ -343,7 +366,6 @@ void SystemMemorySource::free(void* pData, size_type numBytes) noexcept
         std::free(pData);
 
     #else
-        //int err = madvise(pData, numBytes, MADV_DONTNEED);
         const int err = munmap(pData, numBytes);
         if (err != 0)
         {
