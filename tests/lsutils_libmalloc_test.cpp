@@ -18,8 +18,14 @@ namespace utils = ls::utils;
 
 #ifdef LS_COMPILER_MSC
     #define _LSMALLOC_LINKAGE
+    #define _LSMALLOC_API LS_CCALL
+    #undef calloc
+    #undef free
+    #undef malloc
+    #undef realloc
 #else
     #define _LSMALLOC_LINKAGE extern "C"
+    #define _LSMALLOC_API LS_API
 #endif
 
 
@@ -105,26 +111,34 @@ namespace
 
 
 
-_LSMALLOC_LINKAGE void* LS_API malloc(size_t size)
+#ifdef LS_COMPILER_MSC
+    #pragma warning(disable:4273) // previous definition of malloc-based functions
+#endif
+
+_LSMALLOC_LINKAGE void* _LSMALLOC_API malloc(size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate(size);
 }
 
-_LSMALLOC_LINKAGE void* LS_API calloc(size_t num, size_t size)
+_LSMALLOC_LINKAGE void* _LSMALLOC_API calloc(size_t num, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.allocate_contiguous(num, size);
 }
 
-_LSMALLOC_LINKAGE void* LS_API realloc(void* ptr, size_t size)
+_LSMALLOC_LINKAGE void* _LSMALLOC_API realloc(void* ptr, size_t size)
 {
     ExternalAllocatorType& a = _get_allocator();
     return a.reallocate(ptr, size);
 }
 
-_LSMALLOC_LINKAGE void LS_API free(void* ptr)
+_LSMALLOC_LINKAGE void _LSMALLOC_API free(void* ptr)
 {
     ExternalAllocatorType& a = _get_allocator();
     a.free(ptr);
 }
+
+#ifdef LS_COMPILER_MSC
+    #pragma warning(default:4273) // previous definition of malloc-based functions
+#endif

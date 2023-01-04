@@ -5,6 +5,10 @@
 
 #include "lightsky/utils/Copy.h"
 
+#ifdef LS_COMPILER_MSC
+    #include <intrin.h>
+#endif
+
 #ifdef LS_ARCH_X86
     #include <immintrin.h>
 #elif defined(LS_ARM_NEON)
