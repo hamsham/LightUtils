@@ -52,6 +52,7 @@ set(LS_UTILS_SOURCES
     src/NetServer.cpp
     src/RandomNum.cpp
     src/Resource.cpp
+    src/SharedMutex.cpp
     src/SpinLock.cpp
     src/StringUtils.cpp
     src/Time.cpp
@@ -91,6 +92,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/RandomNum.h
     include/lightsky/utils/Resource.h
     include/lightsky/utils/Setup.h
+    include/lightsky/utils/SharedMutex.hpp
     include/lightsky/utils/Sort.hpp
     include/lightsky/utils/SpinLock.hpp
     include/lightsky/utils/StringUtils.h
@@ -110,6 +112,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/generic/LRUCacheImpl.hpp
     include/lightsky/utils/generic/LRU8WayCacheImpl.hpp
     include/lightsky/utils/generic/HashImpl.h
+    include/lightsky/utils/generic/SharedMutexImpl.hpp
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
     include/lightsky/utils/generic/WorkerPoolImpl.hpp
@@ -120,7 +123,6 @@ set(LS_UTILS_PLATFORM_HEADERS
     include/lightsky/utils/generic/AlignedAllocatorImpl.hpp  # Causes issues with PCH
     include/lightsky/utils/generic/LogImpl.h
     include/lightsky/utils/android/LogImpl.h
-
 )
 
 
@@ -146,7 +148,7 @@ find_package(Threads REQUIRED)
 # -------------------------------------
 # Library Setup
 # -------------------------------------
-add_library(${OUTPUT_NAME} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS} ${LS_UTILS_PLATFORM_HEADERS})
+add_library(${OUTPUT_NAME} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
 ls_configure_target(${OUTPUT_NAME})
 target_include_directories(${OUTPUT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
