@@ -176,7 +176,7 @@ int main()
         << std::endl;
 
     std::cout << "Running Test with SharedMutex..." << std::endl;
-    system_duration mutexRunTime;
+    system_duration mutexRunTime{0};
     for (unsigned i = 0; i < numTests; ++i)
     {
         mutexRunTime += run_test<utils::SharedMutex>();
@@ -184,7 +184,7 @@ int main()
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Running Test with SharedFutex..." << std::endl;
-    system_duration futexRunTime;
+    system_duration futexRunTime{0};
     for (unsigned i = 0; i < numTests; ++i)
     {
         futexRunTime += run_test<utils::SharedFutex>();
