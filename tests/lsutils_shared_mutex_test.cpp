@@ -18,6 +18,313 @@ constexpr bool ENABLE_LOGGING = false;
 
 
 
+// ----------------------------------------------------------------------------
+class SharedRWMutex
+{
+  public:
+    struct alignas(128) RWLockNode
+    {
+        utils::SpinLock lock;
+        std::atomic<RWLockNode*> pNext;
+    };
+
+    static_assert(sizeof(RWLockNode) == 128, "Misaligned locking node.");
+
+    typedef RWLockNode native_handle_type;
+
+  private:
+    RWLockNode mHead;
+    std::atomic_llong mNumUsers;
+
+    void _insert_node(RWLockNode& lock) noexcept;
+
+    bool _try_insert_node(RWLockNode& lock) noexcept;
+
+    void _lock_shared_impl(RWLockNode& lock) noexcept;
+
+    void _lock_impl(RWLockNode& lock) noexcept;
+
+  public:
+    ~SharedRWMutex() noexcept = default;
+
+    SharedRWMutex() noexcept;
+
+    SharedRWMutex(const SharedRWMutex&) noexcept = delete;
+
+    SharedRWMutex(SharedRWMutex&&) noexcept = delete;
+
+    SharedRWMutex& operator=(const SharedRWMutex&) noexcept = delete;
+
+    SharedRWMutex& operator=(SharedRWMutex&&) noexcept = delete;
+
+    void lock_shared() noexcept;
+
+    void lock() noexcept;
+
+    bool try_lock_shared() noexcept;
+
+    bool try_lock() noexcept;
+
+    void unlock_shared() noexcept;
+
+    void unlock() noexcept;
+
+    const native_handle_type& native_handle() const noexcept;
+};
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+SharedRWMutex::SharedRWMutex() noexcept :
+    mHead{{}, {nullptr}},
+    mNumUsers{0}
+{}
+
+
+
+/*-------------------------------------
+ * Enqueue Lock
+-------------------------------------*/
+void SharedRWMutex::_insert_node(RWLockNode& lock) noexcept
+{
+    RWLockNode* pHead = &mHead;
+    bool swapped;
+
+    lock.lock.lock();
+
+    do
+    {
+        swapped = false;
+        if (!pHead->lock.try_lock())
+        {
+            pHead = &mHead;
+            continue;
+        }
+
+        RWLockNode* pNext = nullptr;
+        swapped = pHead->pNext.compare_exchange_strong(pNext, &lock, std::memory_order_acq_rel, std::memory_order_relaxed);
+        pHead->lock.unlock();
+
+        pHead = pNext;
+    }
+    while (!swapped);
+
+    lock.lock.unlock();
+}
+
+
+
+/*-------------------------------------
+ * Enqueue Lock
+-------------------------------------*/
+bool SharedRWMutex::_try_insert_node(RWLockNode& lock) noexcept
+{
+    RWLockNode* pHead = &mHead;
+    RWLockNode* pNext = nullptr;
+    bool swapped = false;
+
+    lock.lock.lock();
+
+    if (pHead->lock.try_lock())
+    {
+        swapped = pHead->pNext.compare_exchange_strong(pNext, &lock, std::memory_order_acq_rel, std::memory_order_relaxed);
+        pHead->lock.unlock();
+    }
+
+    lock.lock.unlock();
+
+    return swapped;
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock
+-------------------------------------*/
+void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
+{
+    while (mHead.pNext.load() != &lock)
+    {
+        ls::setup::cpu_yield();
+    }
+
+    // wait for any remaining writes to complete
+    while (mNumUsers.load() < 0)
+    {
+        ls::setup::cpu_yield();
+    }
+
+    mNumUsers.fetch_add(1);
+
+    lock.lock.lock();
+    mHead.lock.lock();
+    mHead.pNext.store(lock.pNext.load());
+    mHead.lock.unlock();
+    lock.lock.unlock();
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock
+-------------------------------------*/
+void SharedRWMutex::_lock_impl(RWLockNode& lock) noexcept
+{
+    while (mHead.pNext.load() != &lock)
+    {
+        ls::setup::cpu_yield();
+    }
+
+    #if 1
+        // wait for any remaining writes to complete
+        while (mNumUsers.load() != 0)
+        {
+            ls::setup::cpu_yield();
+        }
+
+        // wait for all remaining reads/writes to complete
+        mNumUsers.store(-1ll);
+
+    #else
+        // wait for all remaining reads/writes to complete
+        long long writeLock = 0;
+        while (!mNumUsers.compare_exchange_strong(writeLock, -1ll, std::memory_order_acq_rel, std::memory_order_relaxed))
+        {
+            writeLock = 0;
+        }
+    #endif
+
+    lock.lock.lock();
+    mHead.lock.lock();
+    mHead.pNext.store(lock.pNext.load());
+    mHead.lock.unlock();
+    lock.lock.unlock();
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock
+-------------------------------------*/
+void SharedRWMutex::lock_shared() noexcept
+{
+    RWLockNode waitNode{{}, {nullptr}};
+
+    _insert_node(waitNode);
+    _lock_shared_impl(waitNode);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock
+-------------------------------------*/
+void SharedRWMutex::lock() noexcept
+{
+    RWLockNode waitNode{{}, {nullptr}};
+
+    _insert_node(waitNode);
+    _lock_impl(waitNode);
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock Attempt
+-------------------------------------*/
+bool SharedRWMutex::try_lock_shared() noexcept
+{
+    #if 1
+        RWLockNode waitNode{{}, {nullptr}};
+
+        if (mNumUsers.load() < 0)
+        {
+            return false;
+        }
+
+        bool acquiredLock = _try_insert_node(waitNode);
+        if (acquiredLock)
+        {
+            _lock_shared_impl(waitNode);
+        }
+
+        return acquiredLock;
+
+    #else
+        return false;
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock Attempt
+-------------------------------------*/
+bool SharedRWMutex::try_lock() noexcept
+{
+    #if 0
+        RWLockNode waitNode{{}, {nullptr}};
+
+        if (mNumUsers.load() < 0)
+        {
+            return false;
+        }
+
+        bool acquiredLock = _try_insert_node(waitNode);
+        if (acquiredLock)
+        {
+            _lock_impl(waitNode);
+        }
+
+        return acquiredLock;
+
+    #else
+        return false;
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Unlock
+-------------------------------------*/
+void SharedRWMutex::unlock_shared() noexcept
+{
+    long long amShared = mNumUsers.fetch_sub(1);
+    (void)amShared;
+    LS_DEBUG_ASSERT(amShared > 0);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Unlock
+-------------------------------------*/
+void SharedRWMutex::unlock() noexcept
+{
+    long long amExclusive = mNumUsers.exchange(0);
+    (void)amExclusive;
+    LS_DEBUG_ASSERT(amExclusive == -1);
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the internal lock
+-------------------------------------*/
+const typename SharedRWMutex::native_handle_type& SharedRWMutex::native_handle() const noexcept
+{
+    return mHead;
+}
+
+
+
+// ----------------------------------------------------------------------------
+
+
+
 inline unsigned num_test_threads() noexcept
 {
     const unsigned concurrency = (unsigned)std::thread::hardware_concurrency();
@@ -29,6 +336,7 @@ inline unsigned num_test_threads() noexcept
 
     // ensure an even number of test threads
     return concurrency - (concurrency % 2);
+    //return 4;
 }
 
 
@@ -191,10 +499,19 @@ int main()
     }
     std::cout << "\tDone." << std::endl;
 
+    std::cout << "Running Test with SharedRWMutex..." << std::endl;
+    system_duration rwLockRunTime{0};
+    for (unsigned i = 0; i < numTests; ++i)
+    {
+        rwLockRunTime += run_test<SharedRWMutex>();
+    }
+    std::cout << "\tDone." << std::endl;
+
     std::cout
         << "Results:"
         << "\n\tShared Mutex Time: " << mutexRunTime.count() << "ms"
         << "\n\tShared Futex Time: " << futexRunTime.count() << "ms"
+        << "\n\tShared Futex Time: " << rwLockRunTime.count() << "ms"
         << std::endl;
 
     return 0;
