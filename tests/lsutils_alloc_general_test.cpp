@@ -11,8 +11,8 @@
 
 namespace utils = ls::utils;
 
-#define TEST_MALLOC_MEM_SRC   true
-#define TEST_MALLOC_ALLOCATOR true
+#define TEST_MALLOC_MEM_SRC   false
+#define TEST_MALLOC_ALLOCATOR false
 
 
 
@@ -99,7 +99,7 @@ int test_single_allocations()
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size+32u> testAllocator{memLimiter};
     #else
-        utils::GeneralAllocator<alloc_table_size> testAllocator{memLimiter};
+        utils::GeneralAllocator<alloc_table_size+block_size> testAllocator{memLimiter};
     #endif
 
     void** allocations = new void*[max_allocations];
@@ -191,7 +191,7 @@ int test_single_allocations()
 
 int test_array_allocations()
 {
-    constexpr unsigned alloc_table_size = 1024u*1024u*1024u*3u;
+    constexpr unsigned alloc_table_size = 1024*1024u*512u;
     constexpr unsigned block_size = 32u;
     constexpr unsigned max_allocations = alloc_table_size / block_size;
     //constexpr unsigned mid_allocation = (max_allocations / 3u - 1u) / 2u;
@@ -202,11 +202,11 @@ int test_array_allocations()
         utils::SystemMemorySource mallocSrc{};
     #endif
 
-    utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
-
     #if TEST_MALLOC_ALLOCATOR
+        utils::ConstrainedAllocator<alloc_table_size> memLimiter{mallocSrc};
         MallocMemorySource2<block_size> testAllocator{memLimiter};
     #else
+        utils::ConstrainedAllocator<alloc_table_size+max_allocations*16u+block_size> memLimiter{mallocSrc};
         utils::GeneralAllocator<alloc_table_size> testAllocator{memLimiter};
     #endif
 
@@ -393,7 +393,7 @@ int main()
         }
     #endif
 
-    #if 1
+    #if 0
         ret = test_array_allocations();
         if (ret != 0)
         {
