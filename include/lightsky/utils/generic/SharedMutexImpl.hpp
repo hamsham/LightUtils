@@ -23,8 +23,7 @@ namespace utils
 template <typename mutex_type>
 SharedMutexType<mutex_type>::SharedMutexType() noexcept :
     mShareCount{0ull},
-    mLock{},
-    mWaitCond{}
+    mLock{}
 {}
 
 
@@ -35,32 +34,21 @@ SharedMutexType<mutex_type>::SharedMutexType() noexcept :
 template <typename mutex_type>
 void SharedMutexType<mutex_type>::lock_shared() noexcept
 {
-    unsigned long long readVal;
+    unsigned long long readVal = mShareCount.fetch_add(1ull, std::memory_order_acq_rel);
 
     do
     {
-        readVal = mShareCount.fetch_add(1ull, std::memory_order_acq_rel);
-
-        if ((readVal & LOCK_WRITE_BIT))
+        if (0 == (readVal & LOCK_WRITE_BIT))
         {
-            std::unique_lock<native_handle_type> guard{mLock};
-            mWaitCond.wait(guard, [this]() noexcept -> bool
-            {
-                return !(mShareCount.load(std::memory_order_acquire) & LOCK_WRITE_BIT);
-            });
+            break;
         }
 
+        // Lock to produce an OS-scheduled wait
+        mLock.lock();
         readVal = mShareCount.load(std::memory_order_acquire);
+        mLock.unlock();
     }
-    while (readVal & LOCK_WRITE_BIT);
-
-    if (!readVal)
-    {
-        while (!mLock.try_lock())
-        {
-            mWaitCond.notify_one();
-        }
-    }
+    while (true);
 }
 
 
@@ -71,26 +59,35 @@ void SharedMutexType<mutex_type>::lock_shared() noexcept
 template <typename mutex_type>
 void SharedMutexType<mutex_type>::lock() noexcept
 {
+    constexpr unsigned maxPauses = 32u;
+    unsigned currentPauses = 1u;
+
     do
     {
+        mLock.lock();
+
         unsigned long long writeVal = 0ull;
-        if (mShareCount.compare_exchange_strong(writeVal, LOCK_WRITE_BIT, std::memory_order_acq_rel, std::memory_order_relaxed))
+        bool amWriter = mShareCount.compare_exchange_strong(writeVal, LOCK_WRITE_BIT, std::memory_order_acq_rel, std::memory_order_relaxed);
+
+        if (amWriter)
         {
+            // maintain the lock while writing
             break;
         }
 
-        std::unique_lock<native_handle_type> guard{mLock};
-        mWaitCond.wait(guard, [this]() noexcept->bool
+        mLock.unlock();
+
+        for (unsigned i = 0u; i < currentPauses; ++i)
         {
-            return !mShareCount.load(std::memory_order_acquire);
-        });
+            ls::setup::cpu_yield();
+        }
+
+        if (currentPauses < maxPauses)
+        {
+            currentPauses <<= 1u;
+        }
     }
     while (true);
-
-    while (!mLock.try_lock())
-    {
-        mWaitCond.notify_one();
-    }
 }
 
 
@@ -101,24 +98,13 @@ void SharedMutexType<mutex_type>::lock() noexcept
 template <typename mutex_type>
 bool SharedMutexType<mutex_type>::try_lock_shared() noexcept
 {
-    bool result = false;
-    unsigned long long readVal = mShareCount.fetch_add(1ull, std::memory_order_acq_rel);
+    bool result = true;
 
+    const unsigned long long readVal = mShareCount.fetch_add(1ull, std::memory_order_acq_rel);
     if (readVal & LOCK_WRITE_BIT)
     {
+        result = false;
         mShareCount.fetch_sub(1ull, std::memory_order_acq_rel);
-    }
-    else
-    {
-        if (!readVal)
-        {
-            while (!mLock.try_lock())
-            {
-                mWaitCond.notify_one();
-            }
-        }
-
-        result = true;
     }
 
     return result;
@@ -132,20 +118,15 @@ bool SharedMutexType<mutex_type>::try_lock_shared() noexcept
 template <typename mutex_type>
 bool SharedMutexType<mutex_type>::try_lock() noexcept
 {
-    bool result = false;
-    unsigned long long writeVal = 0;
+    unsigned long long writeVal = 0ull;
+    bool amWriter = mShareCount.compare_exchange_strong(writeVal, LOCK_WRITE_BIT, std::memory_order_acq_rel, std::memory_order_relaxed);
 
-    if (mShareCount.compare_exchange_strong(writeVal, LOCK_WRITE_BIT, std::memory_order_acq_rel, std::memory_order_relaxed))
+    if (amWriter)
     {
-        while (!mLock.try_lock())
-        {
-            mWaitCond.notify_one();
-        }
-
-        result = true;
+        mLock.lock();
     }
 
-    return result;
+    return amWriter;
 }
 
 
@@ -160,9 +141,10 @@ void SharedMutexType<mutex_type>::unlock_shared() noexcept
 
     if (readState == 1ull)
     {
-        mLock.unlock();
-        mWaitCond.notify_all();
+        //mWaitCond.notify_one();
+        //mLock.unlock();
     }
+
 
     LS_DEBUG_ASSERT(readState > 0);
     LS_DEBUG_ASSERT(!(readState & LOCK_WRITE_BIT));
@@ -181,8 +163,8 @@ void SharedMutexType<mutex_type>::unlock() noexcept
 
     LS_DEBUG_ASSERT((writeVal & LOCK_WRITE_BIT) == LOCK_WRITE_BIT);
 
+    //mWaitCond.notify_one();
     mLock.unlock();
-    mWaitCond.notify_all();
 }
 
 

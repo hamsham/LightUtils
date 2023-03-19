@@ -25,29 +25,11 @@ namespace utils
 
 
 
-template <typename mutex_type>
-struct SharedCondition;
-
-template <>
-struct SharedCondition<std::mutex>
-{
-    typedef std::condition_variable condition_type;
-};
-
-template <typename mutex_type>
-struct SharedCondition
-{
-    typedef std::condition_variable_any condition_type;
-};
-
-
-
 template <typename mutex_type = ls::utils::Futex>
 class SharedMutexType
 {
   public:
     typedef mutex_type native_handle_type;
-    typedef typename SharedCondition<native_handle_type>::condition_type condition_type;
 
   private:
     enum : unsigned long long
@@ -57,7 +39,6 @@ class SharedMutexType
 
     std::atomic_ullong mShareCount;
     native_handle_type mLock;
-    condition_type mWaitCond;
 
   public:
     ~SharedMutexType() noexcept = default;
