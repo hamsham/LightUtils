@@ -22,11 +22,7 @@
         #define WIN32_LEAN_AND_MEAN
     #endif /* WIN32_LEAN_AND_MEAN */
 
-    #include <errhandlingapi.h>
-    #include <memoryapi.h>
-    #include <sysinfoapi.h>
-    #include <windef.h>
-    #include <winbase.h>
+    #include <Windows.h>
 #endif
 
 #include <cstdlib> // malloc, free
