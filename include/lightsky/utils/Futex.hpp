@@ -11,6 +11,18 @@
     #ifndef LS_UTILS_USE_LINUX_FUTEX
         #define LS_UTILS_HAVE_LINUX_FUTEX 1
     #endif
+
+#elif defined(LS_OS_WINDOWS)
+    #ifndef LS_UTILS_USE_WIN32_FUTEX
+        #define LS_UTILS_HAVE_WIN32_FUTEX 1
+    #endif
+
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif /* WIN32_LEAN_AND_MEAN */
+
+    #include <Windows.h>
+
 #endif
 
 
@@ -52,6 +64,12 @@ class alignas(64) Futex
   private:
 #if defined(LS_UTILS_HAVE_LINUX_FUTEX)
     alignas(alignof(int32_t)) int mLock;
+
+#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+    //alignas(alignof(long)) long mLock;
+    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
+
+
 #else
     alignas(alignof(int32_t)) std::atomic<int32_t> mLock;
 
@@ -59,7 +77,7 @@ class alignas(64) Futex
 
     alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
 
-    alignas(alignof(int32_t)) int32_t mPad[14];
+    alignas(alignof(int32_t)) int32_t mPad[16-(sizeof(mLock)+sizeof(FutexPauseCount))];
 
   public:
     ~Futex() noexcept;

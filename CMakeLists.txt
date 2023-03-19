@@ -137,8 +137,18 @@ if (NOT WIN32)
     else()
         message(FATAL_ERROR "Could not find libdl.so")
     endif()
+
+    set(LS_UTILS_SYSTEM_LIBS ${LS_UTILS_DL_LIB})
+
 else()
-    set(LS_UTILS_DL_LIB "")
+    find_library(LS_UTILS_SYNC_LIB NAMES Synchronization.lib Synchronization)
+    if (LS_UTILS_SYNC_LIB)
+        message("-- Found Synchronization.lib: ${LS_UTILS_SYNC_LIB}")
+    else()
+        message(FATAL_ERROR "Could not find Synchronization.lib")
+    endif()
+
+    set(LS_UTILS_SYSTEM_LIBS ${LS_UTILS_SYNC_LIB})
 endif()
 
 find_package(Threads REQUIRED)
@@ -156,7 +166,7 @@ target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
 target_link_libraries(${OUTPUT_NAME}
     PUBLIC
         LightSky::Setup
-        ${LS_UTILS_DL_LIB}
+        ${LS_UTILS_SYSTEM_LIBS}
         ${ENET_LIBRARIES}
         Threads::Threads
 )
