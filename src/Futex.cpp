@@ -24,8 +24,6 @@ Futex::~Futex() noexcept
     __atomic_store_n(&mLock, 0, __ATOMIC_RELEASE);
 
 #elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
-    //InterlockedExchange(&mLock, 0l);
-
 #else
     mLock.store(0, std::memory_order_release);
 #endif

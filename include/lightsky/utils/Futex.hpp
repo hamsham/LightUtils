@@ -66,7 +66,6 @@ class alignas(64) Futex
     alignas(alignof(int32_t)) int mLock;
 
 #elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
-    //alignas(alignof(long)) long mLock;
     alignas(alignof(SRWLOCK)) SRWLOCK mLock;
 
 

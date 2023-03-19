@@ -63,19 +63,10 @@ inline void Futex::lock() noexcept
     const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
     int32_t currentPauses = 1;
 
-    //while (0 != InterlockedCompareExchangeAcquire(&mLock, 1l, 0l))
     while (!TryAcquireSRWLockExclusive(&mLock))
     {
-        //long tmp = 0;
         if (currentPauses < maxPauses)
         {
-            /*
-            if (TRUE == WaitOnAddress(&mLock, &tmp, sizeof(long), (DWORD)currentPauses))
-            {
-                currentPauses <<= 1;
-            }
-            */
-
             for (int32_t i = 0; i < currentPauses; ++i)
             {
                 ls::setup::cpu_yield();
@@ -85,7 +76,6 @@ inline void Futex::lock() noexcept
         }
         else
         {
-            //WaitOnAddress(&mLock, &tmp, sizeof(long), INFINITE);
             AcquireSRWLockExclusive(&mLock);
             break;
         }
@@ -157,8 +147,6 @@ inline bool Futex::try_lock() noexcept
     return __atomic_compare_exchange_n(&mLock, &tmp, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 
 #elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
-    //constexpr long tmp = 0;
-    //return 0 == InterlockedCompareExchange(&mLock, 1l, tmp);
     return 0 != TryAcquireSRWLockExclusive(&mLock);
 
 #else
@@ -200,8 +188,6 @@ inline void Futex::unlock() noexcept
     syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1);
 
 #elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
-    //InterlockedExchange(&mLock, 0l);
-    //WakeByAddressSingle(&mLock);
     ReleaseSRWLockExclusive(&mLock);
 
 #else
