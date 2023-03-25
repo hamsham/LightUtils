@@ -22,18 +22,23 @@ constexpr bool ENABLE_LOGGING = false;
 class SharedRWMutex
 {
   public:
+    typedef ls::utils::SpinLock native_handle_type;
+    //typedef ls::utils::Futex native_handle_type;
+    //typedef std::mutex native_handle_type;
+
     struct alignas(128) RWLockNode
     {
-        utils::SpinLock lock;
+        native_handle_type mLock;
+        std::atomic<native_handle_type*> mNextLock;
         std::atomic<RWLockNode*> pNext;
+        std::atomic<RWLockNode*> pPrev;
     };
 
     static_assert(sizeof(RWLockNode) == 128, "Misaligned locking node.");
 
-    typedef RWLockNode native_handle_type;
-
   private:
     RWLockNode mHead;
+    RWLockNode mTail;
     std::atomic_llong mNumUsers;
 
     void _insert_node(RWLockNode& lock) noexcept;
@@ -78,9 +83,13 @@ class SharedRWMutex
  * Constructor
 -------------------------------------*/
 SharedRWMutex::SharedRWMutex() noexcept :
-    mHead{{}, {nullptr}},
+    mHead{{}, {nullptr}, {nullptr}, {nullptr}},
+    mTail{{}, {nullptr}, {nullptr}, {&mHead}},
     mNumUsers{0}
-{}
+{
+    mHead.mNextLock = &mTail.mLock;
+    mHead.pNext.store(&mTail);
+}
 
 
 
@@ -89,29 +98,24 @@ SharedRWMutex::SharedRWMutex() noexcept :
 -------------------------------------*/
 void SharedRWMutex::_insert_node(RWLockNode& lock) noexcept
 {
-    RWLockNode* pHead = &mHead;
-    bool swapped;
+    RWLockNode* const pTail = &mTail;
+    RWLockNode* pPrev;
 
-    lock.lock.lock();
+    lock.mNextLock.store(&pTail->mLock, std::memory_order_relaxed);
+    lock.pNext.store(pTail, std::memory_order_release);
 
-    do
-    {
-        swapped = false;
-        if (!pHead->lock.try_lock())
-        {
-            pHead = &mHead;
-            continue;
-        }
+    pTail->mLock.lock();
+    lock.mLock.lock();
 
-        RWLockNode* pNext = nullptr;
-        swapped = pHead->pNext.compare_exchange_strong(pNext, &lock, std::memory_order_acq_rel, std::memory_order_relaxed);
-        pHead->lock.unlock();
+    pPrev = pTail->pPrev.load(std::memory_order_acquire);
+    lock.pPrev.store(pPrev, std::memory_order_release);
+    pTail->pPrev.store(&lock, std::memory_order_release);
 
-        pHead = pNext;
-    }
-    while (!swapped);
+    pPrev->pNext.store(&lock, std::memory_order_release);
+    pPrev->mNextLock.store(&lock.mLock, std::memory_order_relaxed);
 
-    lock.lock.unlock();
+    lock.mLock.unlock();
+    pTail->mLock.unlock();
 }
 
 
@@ -121,21 +125,28 @@ void SharedRWMutex::_insert_node(RWLockNode& lock) noexcept
 -------------------------------------*/
 bool SharedRWMutex::_try_insert_node(RWLockNode& lock) noexcept
 {
-    RWLockNode* pHead = &mHead;
-    RWLockNode* pNext = nullptr;
-    bool swapped = false;
+    RWLockNode* const pTail = &mTail;
+    RWLockNode* pPrev;
 
-    lock.lock.lock();
-
-    if (pHead->lock.try_lock())
+    bool haveLock = pTail->mLock.try_lock();
+    if (haveLock)
     {
-        swapped = pHead->pNext.compare_exchange_strong(pNext, &lock, std::memory_order_acq_rel, std::memory_order_relaxed);
-        mHead.lock.unlock();
+        lock.mLock.lock();
+        lock.mNextLock.store(&pTail->mLock, std::memory_order_relaxed);
+        lock.pNext.store(pTail, std::memory_order_release);
+
+        pPrev = pTail->pPrev.load(std::memory_order_acquire);
+        lock.pPrev.store(pPrev, std::memory_order_release);
+        pTail->pPrev.store(&lock, std::memory_order_release);
+
+        pPrev->pNext.store(&lock, std::memory_order_release);
+        pPrev->mNextLock.store(&lock.mLock, std::memory_order_relaxed);
+
+        lock.mLock.unlock();
+        pTail->mLock.unlock();
     }
 
-    lock.lock.unlock();
-
-    return swapped;
+    return haveLock;
 }
 
 
@@ -145,24 +156,31 @@ bool SharedRWMutex::_try_insert_node(RWLockNode& lock) noexcept
 -------------------------------------*/
 void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
 {
-    while (mHead.pNext.load() != &lock)
+    do
     {
-        ls::setup::cpu_yield();
+        if (mHead.pNext.load(std::memory_order_acquire) == &lock)
+        {
+            if (mNumUsers.load(std::memory_order_acquire) >= 0)
+            {
+                mNumUsers.fetch_add(1, std::memory_order_acq_rel);
+                break;
+            }
+        }
     }
+    while (true);
 
-    // wait for any remaining writes to complete
-    while (mNumUsers.load() < 0)
-    {
-        ls::setup::cpu_yield();
-    }
+    RWLockNode* pNext;
+    native_handle_type* mtx = lock.mNextLock.load(std::memory_order_relaxed);
 
-    mNumUsers.fetch_add(1);
+    mtx->lock();
 
-    lock.lock.lock();
-    mHead.lock.lock();
-    mHead.pNext.store(lock.pNext.load());
-    mHead.lock.unlock();
-    lock.lock.unlock();
+    pNext = lock.pNext.load(std::memory_order_acquire);
+    pNext->pPrev.store(&mHead, std::memory_order_release);
+
+    mHead.mNextLock.store(mtx, std::memory_order_relaxed);
+    mHead.pNext.store(pNext, std::memory_order_release);
+
+    mtx->unlock();
 }
 
 
@@ -172,35 +190,31 @@ void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
 -------------------------------------*/
 void SharedRWMutex::_lock_impl(RWLockNode& lock) noexcept
 {
-    while (mHead.pNext.load() != &lock)
+    do
     {
-        ls::setup::cpu_yield();
+        if (mHead.pNext.load(std::memory_order_acquire) == &lock)
+        {
+            if (mNumUsers.load(std::memory_order_acquire) == 0)
+            {
+                mNumUsers.store(-1, std::memory_order_release);
+                break;
+            }
+        }
     }
+    while (true);
 
-    #if 1
-        // wait for any remaining writes to complete
-        while (mNumUsers.load() != 0)
-        {
-            ls::setup::cpu_yield();
-        }
+    RWLockNode* pNext;
+    native_handle_type* mtx = lock.mNextLock.load(std::memory_order_relaxed);
 
-        // wait for all remaining reads/writes to complete
-        mNumUsers.store(-1ll);
+    mtx->lock();
 
-    #else
-        // wait for all remaining reads/writes to complete
-        long long writeLock = 0;
-        while (!mNumUsers.compare_exchange_strong(writeLock, -1ll, std::memory_order_acq_rel, std::memory_order_relaxed))
-        {
-            writeLock = 0;
-        }
-    #endif
+    pNext = lock.pNext.load(std::memory_order_acquire);
+    pNext->pPrev.store(&mHead, std::memory_order_release);
 
-    lock.lock.lock();
-    mHead.lock.lock();
-    mHead.pNext.store(lock.pNext.load());
-    mHead.lock.unlock();
-    lock.lock.unlock();
+    mHead.mNextLock.store(mtx, std::memory_order_relaxed);
+    mHead.pNext.store(pNext, std::memory_order_release);
+
+    mtx->unlock();
 }
 
 
@@ -210,7 +224,7 @@ void SharedRWMutex::_lock_impl(RWLockNode& lock) noexcept
 -------------------------------------*/
 void SharedRWMutex::lock_shared() noexcept
 {
-    RWLockNode waitNode{{}, {nullptr}};
+    RWLockNode waitNode{{}, {nullptr}, {nullptr}, {nullptr}};
 
     _insert_node(waitNode);
     _lock_shared_impl(waitNode);
@@ -223,7 +237,7 @@ void SharedRWMutex::lock_shared() noexcept
 -------------------------------------*/
 void SharedRWMutex::lock() noexcept
 {
-    RWLockNode waitNode{{}, {nullptr}};
+    RWLockNode waitNode{{}, {nullptr}, {nullptr}, {nullptr}};
 
     _insert_node(waitNode);
     _lock_impl(waitNode);
@@ -237,17 +251,16 @@ void SharedRWMutex::lock() noexcept
 bool SharedRWMutex::try_lock_shared() noexcept
 {
     #if 1
-        RWLockNode waitNode{{}, {nullptr}};
+        RWLockNode waitNode{{}, {nullptr}, {nullptr}, {nullptr}};
+        bool acquiredLock = false;
 
-        if (mNumUsers.load() < 0)
+        if (mNumUsers.load(std::memory_order_relaxed) == 0)
         {
-            return false;
-        }
-
-        bool acquiredLock = _try_insert_node(waitNode);
-        if (acquiredLock)
-        {
-            _lock_shared_impl(waitNode);
+            acquiredLock = _try_insert_node(waitNode);
+            if (acquiredLock)
+            {
+                _lock_shared_impl(waitNode);
+            }
         }
 
         return acquiredLock;
@@ -264,18 +277,17 @@ bool SharedRWMutex::try_lock_shared() noexcept
 -------------------------------------*/
 bool SharedRWMutex::try_lock() noexcept
 {
-    #if 0
-        RWLockNode waitNode{{}, {nullptr}};
+    #if 1
+        RWLockNode waitNode{{}, {nullptr}, {nullptr}, {nullptr}};
+        bool acquiredLock = false;
 
-        if (mNumUsers.load() != 0)
+        if (mNumUsers.load(std::memory_order_relaxed) == 0)
         {
-            return false;
-        }
-
-        bool acquiredLock = _try_insert_node(waitNode);
-        if (acquiredLock)
-        {
-            _lock_impl(waitNode);
+            acquiredLock = _try_insert_node(waitNode);
+            if (acquiredLock)
+            {
+                _lock_impl(waitNode);
+            }
         }
 
         return acquiredLock;
@@ -292,7 +304,7 @@ bool SharedRWMutex::try_lock() noexcept
 -------------------------------------*/
 void SharedRWMutex::unlock_shared() noexcept
 {
-    long long amShared = mNumUsers.fetch_sub(1);
+    long long amShared = mNumUsers.fetch_sub(1, std::memory_order_acq_rel);
     (void)amShared;
     LS_DEBUG_ASSERT(amShared > 0);
 }
@@ -304,9 +316,8 @@ void SharedRWMutex::unlock_shared() noexcept
 -------------------------------------*/
 void SharedRWMutex::unlock() noexcept
 {
-    long long amExclusive = mNumUsers.exchange(0);
-    (void)amExclusive;
-    LS_DEBUG_ASSERT(amExclusive == -1);
+    LS_DEBUG_ASSERT(-1 == mNumUsers.load(std::memory_order_acquire));
+    mNumUsers.store(0, std::memory_order_release);
 }
 
 
@@ -316,7 +327,7 @@ void SharedRWMutex::unlock() noexcept
 -------------------------------------*/
 const typename SharedRWMutex::native_handle_type& SharedRWMutex::native_handle() const noexcept
 {
-    return mHead;
+    return mHead.mLock;
 }
 
 
@@ -485,26 +496,32 @@ int main()
 
     std::cout << "Running Test with SharedMutex..." << std::endl;
     system_duration mutexRunTime{0};
-    for (unsigned i = 0; i < numTests; ++i)
-    {
-        mutexRunTime += run_test<utils::SharedMutex>();
-    }
+    #if 1
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            mutexRunTime += run_test<utils::SharedMutex>();
+        }
+    #endif
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Running Test with SharedFutex..." << std::endl;
     system_duration futexRunTime{0};
-    for (unsigned i = 0; i < numTests; ++i)
-    {
-        futexRunTime += run_test<utils::SharedFutex>();
-    }
+    #if 1
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            futexRunTime += run_test<utils::SharedFutex>();
+        }
+    #endif
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Running Test with SharedRWMutex..." << std::endl;
     system_duration rwLockRunTime{0};
-    //for (unsigned i = 0; i < numTests; ++i)
-    //{
-    //    rwLockRunTime += run_test<SharedRWMutex>();
-    //}
+    #if 1
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            rwLockRunTime += run_test<SharedRWMutex>();
+        }
+    #endif
     std::cout << "\tDone." << std::endl;
 
     std::cout
