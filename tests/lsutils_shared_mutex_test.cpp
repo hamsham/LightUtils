@@ -12,9 +12,8 @@ namespace utils = ls::utils;
 typedef std::chrono::system_clock::time_point system_time_point;
 typedef std::chrono::duration<long double, std::milli> system_duration;
 
-constexpr std::chrono::milliseconds::rep THREAD_PAUSE_TIME = 1;
-
 constexpr bool ENABLE_LOGGING = false;
+constexpr unsigned LOCK_CONTENTION_COUNT = 1000;
 
 
 
@@ -22,8 +21,8 @@ constexpr bool ENABLE_LOGGING = false;
 class SharedRWMutex
 {
   public:
-    typedef ls::utils::SpinLock native_handle_type;
-    //typedef ls::utils::Futex native_handle_type;
+    //typedef ls::utils::SpinLock native_handle_type;
+    typedef ls::utils::Futex native_handle_type;
     //typedef std::mutex native_handle_type;
 
     struct alignas(128) RWLockNode
@@ -156,8 +155,10 @@ bool SharedRWMutex::_try_insert_node(RWLockNode& lock) noexcept
 -------------------------------------*/
 void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
 {
+    bool lockedNext = false;
     do
     {
+
         if (mHead.pNext.load(std::memory_order_acquire) == &lock)
         {
             if (mNumUsers.load(std::memory_order_acquire) >= 0)
@@ -166,13 +167,29 @@ void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
                 break;
             }
         }
+
+        if (!lockedNext)
+        {
+            native_handle_type* pNextLock = lock.mNextLock.load(std::memory_order_relaxed);
+            if (pNextLock != &mTail.mLock)
+            {
+                pNextLock->lock();
+                lockedNext = true;
+            }
+        }
+
+        lock.mLock.lock();
+        lock.mLock.unlock();
     }
     while (true);
 
     RWLockNode* pNext;
     native_handle_type* mtx = lock.mNextLock.load(std::memory_order_relaxed);
 
-    mtx->lock();
+    if (!lockedNext)
+    {
+        mtx->lock();
+    }
 
     pNext = lock.pNext.load(std::memory_order_acquire);
     pNext->pPrev.store(&mHead, std::memory_order_release);
@@ -190,8 +207,10 @@ void SharedRWMutex::_lock_shared_impl(RWLockNode& lock) noexcept
 -------------------------------------*/
 void SharedRWMutex::_lock_impl(RWLockNode& lock) noexcept
 {
+    bool lockedNext = false;
     do
     {
+
         if (mHead.pNext.load(std::memory_order_acquire) == &lock)
         {
             if (mNumUsers.load(std::memory_order_acquire) == 0)
@@ -200,13 +219,29 @@ void SharedRWMutex::_lock_impl(RWLockNode& lock) noexcept
                 break;
             }
         }
+
+        if (!lockedNext)
+        {
+            native_handle_type* pNextLock = lock.mNextLock.load(std::memory_order_relaxed);
+            if (pNextLock != &mTail.mLock)
+            {
+                pNextLock->lock();
+                lockedNext = true;
+            }
+        }
+
+        lock.mLock.lock();
+        lock.mLock.unlock();
     }
     while (true);
 
     RWLockNode* pNext;
     native_handle_type* mtx = lock.mNextLock.load(std::memory_order_relaxed);
 
-    mtx->lock();
+    if (!lockedNext)
+    {
+        mtx->lock();
+    }
 
     pNext = lock.pNext.load(std::memory_order_acquire);
     pNext->pPrev.store(&mHead, std::memory_order_release);
@@ -333,9 +368,8 @@ const typename SharedRWMutex::native_handle_type& SharedRWMutex::native_handle()
 
 
 // ----------------------------------------------------------------------------
-
-
-
+// Gather the number of threads to test with
+// ----------------------------------------------------------------------------
 inline unsigned num_test_threads() noexcept
 {
     const unsigned concurrency = (unsigned)std::thread::hardware_concurrency();
@@ -352,6 +386,9 @@ inline unsigned num_test_threads() noexcept
 
 
 
+// ----------------------------------------------------------------------------
+// Debug Logging
+// ----------------------------------------------------------------------------
 inline void log_lock_state(utils::SpinLock& ioLock, const char* msg, const std::thread::id& id)
 {
     if (ENABLE_LOGGING)
@@ -363,82 +400,176 @@ inline void log_lock_state(utils::SpinLock& ioLock, const char* msg, const std::
 
 
 
+// ----------------------------------------------------------------------------
+// Test for exclusive locking of a mutex
+// ----------------------------------------------------------------------------
+template <typename MutexType>
+void mutex_lock_func(
+    MutexType& rwLock,
+    utils::SpinLock& ioLock,
+    std::condition_variable& cv,
+    std::atomic_uint& numThreadsRunning)
+{
+    for (unsigned j = 0; j < LOCK_CONTENTION_COUNT; ++j)
+    {
+        rwLock.lock();
+        log_lock_state(ioLock, "MTX exclusive lock: ", std::this_thread::get_id());
+
+        LS_ASSERT(!rwLock.try_lock());
+
+        rwLock.unlock();
+        log_lock_state(ioLock, "MTX exclusive unlock: ", std::this_thread::get_id());
+
+        if (rwLock.try_lock())
+        {
+            log_lock_state(ioLock, "MTX try_lock: ", std::this_thread::get_id());
+
+            rwLock.unlock();
+            log_lock_state(ioLock, "MTX unlock try_lock: ", std::this_thread::get_id());
+        }
+    }
+
+    unsigned threadId = numThreadsRunning.fetch_sub(1u);
+    if (threadId == 1)
+    {
+        cv.notify_one();
+    }
+}
+
+
+
+// ----------------------------------------------------------------------------
+// Test for exclusive locking of a rw lock
+// ----------------------------------------------------------------------------
 template <typename SharedMutexType>
 void exclusive_lock_func(
     SharedMutexType& rwLock,
     utils::SpinLock& ioLock,
-    std::atomic_uint& numThreadsWaiting,
-    std::atomic_uint& numThreadsFinished)
+    std::condition_variable& cv,
+    std::atomic_uint& numThreadsRunning)
 {
-    constexpr std::chrono::milliseconds pauseTime{THREAD_PAUSE_TIME};
-
-    numThreadsWaiting.fetch_sub(1u);
-    while (numThreadsWaiting.load() > 0); // spin
-
-    for (unsigned j = 0; j < 3; ++j)
+    for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
         rwLock.lock();
         log_lock_state(ioLock, "exclusive lock: ", std::this_thread::get_id());
-        std::this_thread::sleep_for(pauseTime);
-        log_lock_state(ioLock, "exclusive unlock: ", std::this_thread::get_id());
 
         LS_ASSERT(!rwLock.try_lock_shared());
+        log_lock_state(ioLock, "exclusive unlock: ", std::this_thread::get_id());
 
         rwLock.unlock();
 
         if (rwLock.try_lock_shared())
         {
             log_lock_state(ioLock, "try_lock_shared: ", std::this_thread::get_id());
+
             rwLock.unlock_shared();
+            log_lock_state(ioLock, "unlock try_lock_shared: ", std::this_thread::get_id());
         }
     }
 
-    numThreadsFinished.fetch_add(1u);
+    unsigned threadId = numThreadsRunning.fetch_sub(1u);
+    if (threadId == 1)
+    {
+        cv.notify_one();
+    }
 }
 
 
 
+// ----------------------------------------------------------------------------
+// Test for shared locking of a rw lock
+// ----------------------------------------------------------------------------
 template <typename SharedMutexType>
 void shared_lock_func(
     SharedMutexType& rwLock,
     utils::SpinLock& ioLock,
-    std::atomic_uint& numThreadsWaiting,
-    std::atomic_uint& numThreadsFinished)
+    std::condition_variable& cv,
+    std::atomic_uint& numThreadsRunning)
 {
-    constexpr std::chrono::milliseconds pauseTime{THREAD_PAUSE_TIME};
-
-    numThreadsWaiting.fetch_sub(1u);
-    while (numThreadsWaiting.load() > 0); // spin
-
-    for (unsigned j = 0; j < 3; ++j)
+    for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
         rwLock.lock_shared();
         log_lock_state(ioLock, "shared lock: ", std::this_thread::get_id());
-        std::this_thread::sleep_for(pauseTime);
-        log_lock_state(ioLock, "shared unlock: ", std::this_thread::get_id());
 
         LS_ASSERT(!rwLock.try_lock());
 
         rwLock.unlock_shared();
+        log_lock_state(ioLock, "shared unlock: ", std::this_thread::get_id());
 
         if (rwLock.try_lock())
         {
             log_lock_state(ioLock, "try_lock: ", std::this_thread::get_id());
+
             rwLock.unlock();
+            log_lock_state(ioLock, "unlock try_lock: ", std::this_thread::get_id());
         }
     }
 
-    numThreadsFinished.fetch_add(1u);
+    unsigned threadId = numThreadsRunning.fetch_sub(1u);
+    if (threadId == 1)
+    {
+        cv.notify_one();
+    }
 }
 
 
 
-template <typename SharedMutexType>
-system_duration run_test()
+// ----------------------------------------------------------------------------
+// Launch threads to test an exclusive lock
+// ----------------------------------------------------------------------------
+template <typename MutexType>
+system_duration run_mtx_test()
 {
     const unsigned concurrency = num_test_threads();
-    std::atomic_uint numThreadsWaiting{concurrency};
-    std::atomic_uint numThreadsFinished{0};
+    std::atomic_uint numThreadsRunning{concurrency};
+    std::condition_variable cv;
+    std::mutex mtx;
+    std::vector<std::thread> threads;
+    utils::SpinLock ioLock;
+    MutexType rwLock;
+
+    threads.reserve(concurrency);
+
+    for (unsigned i = 0; i < concurrency; ++i)
+    {
+        threads.emplace_back(
+            mutex_lock_func<MutexType>,
+            std::ref(rwLock),
+            std::ref(ioLock),
+            std::ref(cv),
+            std::ref(numThreadsRunning));
+    }
+
+    const system_time_point&& startTime = std::chrono::system_clock::now();
+
+    std::unique_lock<std::mutex> lk{mtx};
+    while (numThreadsRunning.load(std::memory_order_relaxed) > 0)
+    {
+        cv.wait(lk);
+    }
+
+    const system_duration&& runTime = system_duration{std::chrono::system_clock::now() - startTime};
+
+    for (std::thread& t : threads)
+    {
+        t.join();
+    }
+
+    return runTime;
+}
+
+
+
+// ----------------------------------------------------------------------------
+// Launch threads to test a shared lock
+// ----------------------------------------------------------------------------
+template <typename SharedMutexType>
+system_duration run_rw_test()
+{
+    const unsigned concurrency = num_test_threads();
+    std::atomic_uint numThreadsRunning{concurrency};
+    std::condition_variable cv;
+    std::mutex mtx;
     std::vector<std::thread> threads;
     utils::SpinLock ioLock;
     SharedMutexType rwLock;
@@ -453,8 +584,8 @@ system_duration run_test()
                 exclusive_lock_func<SharedMutexType>,
                 std::ref(rwLock),
                 std::ref(ioLock),
-                std::ref(numThreadsWaiting),
-                std::ref(numThreadsFinished));
+                std::ref(cv),
+                std::ref(numThreadsRunning));
         }
         else
         {
@@ -462,21 +593,27 @@ system_duration run_test()
                 shared_lock_func<SharedMutexType>,
                 std::ref(rwLock),
                 std::ref(ioLock),
-                std::ref(numThreadsWaiting),
-                std::ref(numThreadsFinished));
+                std::ref(cv),
+                std::ref(numThreadsRunning));
         }
     }
 
-    std::this_thread::yield();
-
     const system_time_point&& startTime = std::chrono::system_clock::now();
+
+    std::unique_lock<std::mutex> lk{mtx};
+    while (numThreadsRunning.load(std::memory_order_relaxed) > 0)
+    {
+        cv.wait(lk);
+    }
+
+    const system_duration&& runTime = system_duration{std::chrono::system_clock::now() - startTime};
 
     for (std::thread& t : threads)
     {
         t.join();
     }
 
-    return system_duration{std::chrono::system_clock::now() - startTime};
+    return runTime;
 }
 
 
@@ -494,41 +631,86 @@ int main()
         << "\n\tWrite Threads: " << (concurrency/2)
         << std::endl;
 
-    std::cout << "Running Test with SharedMutex..." << std::endl;
+    /*
+     * Exclusive-lock benchmarks
+     */
+    std::cout << "Running Test with std::mutex..." << std::endl;
     system_duration mutexRunTime{0};
-    #if 1
+    if (1)
+    {
         for (unsigned i = 0; i < numTests; ++i)
         {
-            mutexRunTime += run_test<utils::SharedMutex>();
+            mutexRunTime += run_mtx_test<std::mutex>();
         }
-    #endif
+    }
+    std::cout << "\tDone." << std::endl;
+
+    std::cout << "Running Test with utils::Futex..." << std::endl;
+    system_duration futexRunTime{0};
+    if (1)
+    {
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            futexRunTime += run_mtx_test<utils::Futex>();
+        }
+    }
+    std::cout << "\tDone." << std::endl;
+
+    std::cout << "Running Test with utils::SpinLock..." << std::endl;
+    system_duration spinlockRunTime{0};
+    if (1)
+    {
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            spinlockRunTime += run_mtx_test<utils::SpinLock>();
+        }
+    }
+    std::cout << "\tDone." << std::endl;
+
+    /*
+     * Shared-lock benchmarks
+     */
+    std::cout << "Running Test with SharedMutex..." << std::endl;
+    system_duration rwMutexRunTime{0};
+    if (1)
+    {
+        for (unsigned i = 0; i < numTests; ++i)
+        {
+            rwMutexRunTime += run_rw_test<utils::SharedMutex>();
+        }
+    }
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Running Test with SharedFutex..." << std::endl;
-    system_duration futexRunTime{0};
-    #if 1
+    system_duration rwFutexRunTime{0};
+    if (1)
+    {
         for (unsigned i = 0; i < numTests; ++i)
         {
-            futexRunTime += run_test<utils::SharedFutex>();
+            rwFutexRunTime += run_rw_test<utils::SharedFutex>();
         }
-    #endif
+    }
     std::cout << "\tDone." << std::endl;
 
     std::cout << "Running Test with SharedRWMutex..." << std::endl;
     system_duration rwLockRunTime{0};
-    #if 1
+    if (1)
+    {
         for (unsigned i = 0; i < numTests; ++i)
         {
-            rwLockRunTime += run_test<SharedRWMutex>();
+            rwLockRunTime += run_rw_test<SharedRWMutex>();
         }
-    #endif
+    }
     std::cout << "\tDone." << std::endl;
 
     std::cout
         << "Results:"
-        << "\n\tShared Mutex Time: " << mutexRunTime.count() << "ms"
-        << "\n\tShared Futex Time: " << futexRunTime.count() << "ms"
-        << "\n\tShared Futex Time: " << rwLockRunTime.count() << "ms"
+        << "\n\tstd::mutex Time:      " << mutexRunTime.count() << "ms"
+        << "\n\tutils::Futex Time:    " << futexRunTime.count() << "ms"
+        << "\n\tutils::SpinLock Time: " << spinlockRunTime.count() << "ms"
+        << "\n\tShared Mutex Time:    " << rwMutexRunTime.count() << "ms"
+        << "\n\tShared Futex Time:    " << rwFutexRunTime.count() << "ms"
+        << "\n\tShared RWLock Time:   " << rwLockRunTime.count() << "ms"
         << std::endl;
 
     return 0;
