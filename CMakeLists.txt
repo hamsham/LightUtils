@@ -142,9 +142,9 @@ if (NOT WIN32)
 
 else()
     if (MINGW)
-        find_library(LS_UTILS_SYNC_LIB NAMES ws2_32.lib ws2_32)
-    else()
         find_library(LS_UTILS_SYNC_LIB NAMES Synchronization.lib Synchronization)
+    else()
+        find_library(LS_UTILS_SYNC_LIB NAMES ws2_32.lib ws2_32)
     endif()
 
     if (LS_UTILS_SYNC_LIB)
