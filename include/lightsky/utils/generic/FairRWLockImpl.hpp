@@ -126,7 +126,7 @@ void FairRWLockType<MutexType>::_pop_node_impl(RWLockNode& lock, bool lockedNext
  * Wait in the Queue
 -------------------------------------*/
 template <typename MutexType>
-bool __attribute__((noinline)) FairRWLockType<MutexType>::_wait_impl(RWLockNode& lock) noexcept
+bool FairRWLockType<MutexType>::_wait_impl(RWLockNode& lock) noexcept
 {
     bool lockedNext = false;
     const RWLockNode* const pHead = &mHead;
