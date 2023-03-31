@@ -3,7 +3,7 @@
 
 #include "lightsky/utils/Futex.hpp"
 
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     extern "C"
     {
         #include <linux/futex.h>
@@ -31,10 +31,10 @@ Futex::~Futex() noexcept
 {
     (void)mPad;
 
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     __atomic_store_n(&mLock, 0, __ATOMIC_RELEASE);
 
-#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
 #else
     mLock.store(0, std::memory_order_release);
 #endif
@@ -46,13 +46,13 @@ Futex::~Futex() noexcept
  * Constructor
 -------------------------------------*/
 Futex::Futex(FutexPauseCount maxPauses) noexcept :
-#if !defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#if !defined(LS_UTILS_USE_WINDOWS_FUTEX)
     mLock{0},
 #endif
     mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses},
     mPad{0}
 {
-    #if defined(LS_UTILS_HAVE_WIN32_FUTEX)
+    #if defined(LS_UTILS_USE_WINDOWS_FUTEX)
         InitializeSRWLock(&mLock);
     #endif
 }
@@ -64,7 +64,7 @@ Futex::Futex(FutexPauseCount maxPauses) noexcept :
 -------------------------------------*/
 void Futex::lock() noexcept
 {
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
     int32_t currentPauses = 1;
 
@@ -99,7 +99,7 @@ void Futex::lock() noexcept
     }
     while (true);
 
-#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
     int32_t currentPauses = 1;
 
@@ -182,11 +182,11 @@ void Futex::lock() noexcept
 -------------------------------------*/
 bool Futex::try_lock() noexcept
 {
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     int32_t tmp = 0;
     return __atomic_compare_exchange_n(&mLock, &tmp, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 
-#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     return 0 != TryAcquireSRWLockExclusive(&mLock);
 
 #else
@@ -203,11 +203,11 @@ bool Futex::try_lock() noexcept
 -------------------------------------*/
 void Futex::unlock() noexcept
 {
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     __atomic_store_n(&mLock, 0, __ATOMIC_RELEASE);
     syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1u);
 
-#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     ReleaseSRWLockExclusive(&mLock);
 
 #else

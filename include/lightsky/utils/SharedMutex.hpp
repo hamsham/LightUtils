@@ -15,6 +15,7 @@
 #include "lightsky/setup/Macros.h"
 
 #include "lightsky/utils/Futex.hpp"
+#include "lightsky/utils/SpinLock.hpp"
 
 
 
@@ -72,6 +73,7 @@ class SharedMutexType
 
 LS_DECLARE_CLASS_TYPE(SharedMutex, SharedMutexType, std::mutex);
 LS_DECLARE_CLASS_TYPE(SharedFutex, SharedMutexType, ls::utils::Futex);
+LS_DECLARE_CLASS_TYPE(SharedSpinLock, SharedMutexType, ls::utils::SpinLock);
 
 
 

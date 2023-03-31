@@ -8,19 +8,24 @@
 #include "lightsky/setup/Compiler.h"
 
 #if defined(LS_OS_LINUX) && defined(LS_COMPILER_GNU)
-    #ifndef LS_UTILS_USE_FALLBACK_FUTEX
-        #define LS_UTILS_HAVE_LINUX_FUTEX 1
+    #ifndef LS_UTILS_USE_LINUX_FUTEX
+        #define LS_UTILS_USE_LINUX_FUTEX 1
     #endif
 
 #elif defined(LS_OS_WINDOWS)
-    #ifndef LS_UTILS_USE_FALLBACK_FUTEX
+    #ifndef LS_UTILS_USE_WINDOWS_FUTEX
         #ifndef WIN32_LEAN_AND_MEAN
             #define WIN32_LEAN_AND_MEAN
         #endif /* WIN32_LEAN_AND_MEAN */
 
+        // Typycal windows bullshit
+        #ifndef NOMINMAX
+            #define NOMINMAX
+        #endif /* NOMINMAX */
+
         #include <Windows.h>
 
-        #define LS_UTILS_HAVE_WIN32_FUTEX 1
+        #define LS_UTILS_USE_WINDOWS_FUTEX 1
     #endif
 
 #endif
@@ -62,10 +67,10 @@ enum class FutexPauseCount : int32_t
 class alignas(64) Futex
 {
   private:
-#if defined(LS_UTILS_HAVE_LINUX_FUTEX)
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
     alignas(alignof(int32_t)) int mLock;
 
-#elif defined(LS_UTILS_HAVE_WIN32_FUTEX)
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     alignas(alignof(SRWLOCK)) SRWLOCK mLock;
 
 
