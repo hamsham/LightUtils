@@ -22,18 +22,18 @@ class SharedRWMutex
 {
   public:
     //typedef ls::utils::SpinLock native_handle_type;
-    typedef ls::utils::Futex native_handle_type;
-    //typedef std::mutex native_handle_type;
+    //typedef ls::utils::Futex native_handle_type;
+    typedef std::mutex native_handle_type;
 
-    struct alignas(128) RWLockNode
+    struct alignas(64) RWLockNode
     {
-        native_handle_type mLock;
-        std::atomic<native_handle_type*> mNextLock;
+        alignas(64) native_handle_type mLock;
+        alignas(64) std::atomic<native_handle_type*> mNextLock;
         std::atomic<RWLockNode*> pNext;
         std::atomic<RWLockNode*> pPrev;
     };
 
-    static_assert(sizeof(RWLockNode) == 128, "Misaligned locking node.");
+    static_assert(alignof(RWLockNode) == 64, "Misaligned locking node.");
 
   private:
     RWLockNode mHead;
@@ -45,6 +45,8 @@ class SharedRWMutex
     bool _try_insert_node(RWLockNode& lock) noexcept;
 
     void _pop_node_impl(RWLockNode& lock, bool lockedNextNode) noexcept;
+
+    bool _wait_impl(RWLockNode& lock) noexcept;
 
   public:
     ~SharedRWMutex() noexcept = default;
@@ -178,6 +180,52 @@ void SharedRWMutex::_pop_node_impl(RWLockNode& lock, bool lockedNextNode) noexce
 
 
 /*-------------------------------------
+ * Wait in the Queue
+-------------------------------------*/
+bool __attribute__((noinline)) SharedRWMutex::_wait_impl(RWLockNode& lock) noexcept
+{
+    bool lockedNext = false;
+    const RWLockNode* const pHead = &mHead;
+    const RWLockNode* const pTail = &mTail;
+    native_handle_type& mtx = lock.mLock;
+
+    RWLockNode* const pNext = lock.pNext.load(std::memory_order_acquire);
+    if (LS_LIKELY(pNext != pTail))
+    {
+        lockedNext = pNext->mLock.try_lock();
+    }
+
+    bool amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
+    unsigned spinCount = 1;
+    constexpr unsigned maxLoops = (unsigned)ls::utils::FutexPauseCount::FUTEX_PAUSE_COUNT_32 - 1u;
+
+    while (!amFree && (spinCount & maxLoops))
+    {
+        unsigned i = spinCount;
+        while (i--)
+        {
+            ls::setup::cpu_yield();
+            ls::setup::cpu_yield();
+        }
+
+        spinCount <<= 1u;
+        amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
+    }
+
+    while (!amFree)
+    {
+        mtx.lock();
+        mtx.unlock();
+
+        amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
+    }
+
+    return lockedNext;
+}
+
+
+
+/*-------------------------------------
  * Non-Exclusive Lock
 -------------------------------------*/
 void SharedRWMutex::lock_shared() noexcept
@@ -185,31 +233,9 @@ void SharedRWMutex::lock_shared() noexcept
     RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
     _insert_node(lock);
 
-    const RWLockNode* const pHead = &mHead;
-
-    while (lock.pPrev.load(std::memory_order_relaxed) != pHead)
-    {
-        ls::setup::cpu_yield();
-    }
-
-    bool lockedNext = false;
-    const RWLockNode* const pTail = &mTail;
-
+    bool lockedNext = _wait_impl(lock);
     while (mNumUsers.load(std::memory_order_relaxed) < 0)
     {
-        if (LS_UNLIKELY(!lockedNext))
-        {
-            RWLockNode* const pNext = lock.pNext.load(std::memory_order_relaxed);
-            if (pNext != pTail)
-            {
-                lockedNext = pNext->mLock.try_lock();
-            }
-        }
-        else
-        {
-            lock.mLock.lock();
-            lock.mLock.unlock();
-        }
     }
 
     mNumUsers.fetch_add(1, std::memory_order_acq_rel);
@@ -226,31 +252,9 @@ void SharedRWMutex::lock() noexcept
     RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
     _insert_node(lock);
 
-    const RWLockNode* const pHead = &mHead;
-
-    while (lock.pPrev.load(std::memory_order_relaxed) != pHead)
-    {
-        ls::setup::cpu_yield();
-    }
-
-    bool lockedNext = false;
-    const RWLockNode* const pTail = &mTail;
-
+    bool lockedNext = _wait_impl(lock);
     while (mNumUsers.load(std::memory_order_relaxed) != 0)
     {
-        if (LS_UNLIKELY(!lockedNext))
-        {
-            RWLockNode* const pNext = lock.pNext.load(std::memory_order_relaxed);
-            if (pNext != pTail)
-            {
-                lockedNext = pNext->mLock.try_lock();
-            }
-        }
-        else
-        {
-            lock.mLock.lock();
-            lock.mLock.unlock();
-        }
     }
 
     mNumUsers.store(-1, std::memory_order_release);
@@ -269,19 +273,13 @@ bool SharedRWMutex::try_lock_shared() noexcept
 
     if (acquiredLock)
     {
-        const RWLockNode* const pHead = &mHead;
-
-        while (lock.pPrev.load(std::memory_order_relaxed) != pHead)
-        {
-        }
-
+        bool lockedNext = _wait_impl(lock);
         while (mNumUsers.load(std::memory_order_relaxed) < 0)
         {
-            ls::setup::cpu_yield();
         }
 
         mNumUsers.fetch_add(1, std::memory_order_release);
-        _pop_node_impl(lock, false);
+        _pop_node_impl(lock, lockedNext);
     }
 
     return acquiredLock;
@@ -299,19 +297,13 @@ bool SharedRWMutex::try_lock() noexcept
 
     if (acquiredLock)
     {
-        const RWLockNode* const pHead = &mHead;
-
-        while (lock.pPrev.load(std::memory_order_relaxed) != pHead)
-        {
-        }
-
+        bool lockedNext = _wait_impl(lock);
         while (mNumUsers.load(std::memory_order_relaxed) != 0)
         {
-            ls::setup::cpu_yield();
         }
 
         mNumUsers.store(-1, std::memory_order_release);
-        _pop_node_impl(lock, false);
+        _pop_node_impl(lock, lockedNext);
     }
 
     return acquiredLock;
@@ -443,12 +435,12 @@ void exclusive_lock_func(
 
         rwLock.unlock();
 
-        if (rwLock.try_lock_shared())
+        if (rwLock.try_lock())
         {
-            log_lock_state(ioLock, "try_lock_shared: ", std::this_thread::get_id());
+            log_lock_state(ioLock, "try_lock: ", std::this_thread::get_id());
 
-            rwLock.unlock_shared();
-            log_lock_state(ioLock, "unlock try_lock_shared: ", std::this_thread::get_id());
+            rwLock.unlock();
+            log_lock_state(ioLock, "unlock try_lock: ", std::this_thread::get_id());
         }
     }
 
@@ -481,12 +473,12 @@ void shared_lock_func(
         rwLock.unlock_shared();
         log_lock_state(ioLock, "shared unlock: ", std::this_thread::get_id());
 
-        if (rwLock.try_lock())
+        if (rwLock.try_lock_shared())
         {
-            log_lock_state(ioLock, "try_lock: ", std::this_thread::get_id());
+            log_lock_state(ioLock, "try_lock_shared: ", std::this_thread::get_id());
 
-            rwLock.unlock();
-            log_lock_state(ioLock, "unlock try_lock: ", std::this_thread::get_id());
+            rwLock.unlock_shared();
+            log_lock_state(ioLock, "unlock try_lock_shared: ", std::this_thread::get_id());
         }
     }
 

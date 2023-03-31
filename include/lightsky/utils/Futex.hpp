@@ -8,20 +8,20 @@
 #include "lightsky/setup/Compiler.h"
 
 #if defined(LS_OS_LINUX) && defined(LS_COMPILER_GNU)
-    #ifndef LS_UTILS_USE_LINUX_FUTEX
+    #ifndef LS_UTILS_USE_FALLBACK_FUTEX
         #define LS_UTILS_HAVE_LINUX_FUTEX 1
     #endif
 
 #elif defined(LS_OS_WINDOWS)
-    #ifndef LS_UTILS_USE_WIN32_FUTEX
+    #ifndef LS_UTILS_USE_FALLBACK_FUTEX
+        #ifndef WIN32_LEAN_AND_MEAN
+            #define WIN32_LEAN_AND_MEAN
+        #endif /* WIN32_LEAN_AND_MEAN */
+
+        #include <Windows.h>
+
         #define LS_UTILS_HAVE_WIN32_FUTEX 1
     #endif
-
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif /* WIN32_LEAN_AND_MEAN */
-
-    #include <Windows.h>
 
 #endif
 
