@@ -141,18 +141,7 @@ if (NOT WIN32)
     set(LS_UTILS_SYSTEM_LIBS ${LS_UTILS_DL_LIB})
 
 else()
-    if (MINGW)
-        find_library(LS_UTILS_SYNC_LIB NAMES Synchronization.lib Synchronization)
-    else()
-        find_library(LS_UTILS_SYNC_LIB NAMES ws2_32.lib ws2_32)
-    endif()
-
-    if (LS_UTILS_SYNC_LIB)
-        message("-- Found Synchronization.lib: ${LS_UTILS_SYNC_LIB}")
-    else()
-        message(FATAL_ERROR "Could not find Synchronization.lib")
-    endif()
-
+    set(LS_UTILS_SYNC_LIB ws2_32.lib)
     set(LS_UTILS_SYSTEM_LIBS ${LS_UTILS_SYNC_LIB})
 endif()
 
