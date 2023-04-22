@@ -63,8 +63,8 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
         uint32x4_t val       = vdupq_n_u32(key);
         uint32x4_t lo        = vld1q_u32(map);
         uint32x4_t hi        = vld1q_u32(map+4);
-        uint32x4_t loMask    = vandq_u32(loIndices, vceqq_s32(val, lo));
-        uint32x4_t hiMask    = vandq_u32(hiIndices, vceqq_s32(val, hi));
+        uint32x4_t loMask    = vandq_u32(loIndices, vceqq_u32(val, lo));
+        uint32x4_t hiMask    = vandq_u32(hiIndices, vceqq_u32(val, hi));
         uint32x4_t mask4     = vorrq_u32(loMask, hiMask);
         int32_t ret          = vmaxvq_s32(vreinterpretq_s32_u32(mask4));
         return ret - 1;
@@ -76,8 +76,8 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
         uint32x4_t val       = vdupq_n_u32(key);
         uint32x4_t lo        = vld1q_u32(map);
         uint32x4_t hi        = vld1q_u32(map+4);
-        uint32x4_t loMask    = vandq_u32(loIndices, vceqq_s32(val, lo));
-        uint32x4_t hiMask    = vandq_u32(hiIndices, vceqq_s32(val, hi));
+        uint32x4_t loMask    = vandq_u32(loIndices, vceqq_u32(val, lo));
+        uint32x4_t hiMask    = vandq_u32(hiIndices, vceqq_u32(val, hi));
         uint32x4_t mask4     = vorrq_u32(loMask, hiMask);
         uint32x2_t mask2     = vorr_u32(vget_low_u32(mask4), vget_high_u32(mask4));
         uint32_t mask        = vget_lane_u32(mask2, 0) | vget_lane_u32(mask2, 1);
