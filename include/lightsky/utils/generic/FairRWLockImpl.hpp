@@ -22,8 +22,8 @@ namespace utils
 -------------------------------------*/
 template <typename MutexType>
 FairRWLockType<MutexType>::FairRWLockType() noexcept :
-    mHead{{}, {nullptr}, {nullptr}, {nullptr}},
-    mTail{{}, {nullptr}, {nullptr}, {&mHead}},
+    mHead{{nullptr}, {nullptr}, {}, {false}, {nullptr}},
+    mTail{{nullptr}, {&mHead}, {}, {false}, {nullptr}},
     mNumUsers{0}
 {
     mHead.mNextLock = &mTail.mLock;
@@ -41,7 +41,7 @@ void FairRWLockType<MutexType>::_insert_node(RWLockNode& lock) noexcept
     RWLockNode* const pTail = &mTail;
     RWLockNode* pPrev;
 
-    lock.mNextLock.store(&pTail->mLock, std::memory_order_relaxed);
+    lock.mNextLock.store(&pTail->mLock, std::memory_order_release);
     lock.pNext.store(pTail, std::memory_order_release);
 
     pTail->mLock.lock();
@@ -52,7 +52,7 @@ void FairRWLockType<MutexType>::_insert_node(RWLockNode& lock) noexcept
     pTail->pPrev.store(&lock, std::memory_order_release);
 
     pPrev->pNext.store(&lock, std::memory_order_release);
-    pPrev->mNextLock.store(&lock.mLock, std::memory_order_relaxed);
+    pPrev->mNextLock.store(&lock.mLock, std::memory_order_release);
 
     lock.mLock.unlock();
     pTail->mLock.unlock();
@@ -70,12 +70,12 @@ bool FairRWLockType<MutexType>::_try_insert_node(RWLockNode& lock) noexcept
     RWLockNode* const pTail = &mTail;
     RWLockNode* pPrev;
 
-    if (mNumUsers.load(std::memory_order_relaxed) == 0)
+    if (mNumUsers.load(std::memory_order_acquire) == 0)
     {
         if (pTail->mLock.try_lock())
         {
             lock.mLock.lock();
-            lock.mNextLock.store(&pTail->mLock, std::memory_order_relaxed);
+            lock.mNextLock.store(&pTail->mLock, std::memory_order_release);
             lock.pNext.store(pTail, std::memory_order_release);
 
             pPrev = pTail->pPrev.load(std::memory_order_acquire);
@@ -83,7 +83,7 @@ bool FairRWLockType<MutexType>::_try_insert_node(RWLockNode& lock) noexcept
             pTail->pPrev.store(&lock, std::memory_order_release);
 
             pPrev->pNext.store(&lock, std::memory_order_release);
-            pPrev->mNextLock.store(&lock.mLock, std::memory_order_relaxed);
+            pPrev->mNextLock.store(&lock.mLock, std::memory_order_release);
 
             lock.mLock.unlock();
             pTail->mLock.unlock();
@@ -104,7 +104,7 @@ template <typename MutexType>
 void FairRWLockType<MutexType>::_pop_node_impl(RWLockNode& lock, bool lockedNextNode) noexcept
 {
     RWLockNode* pNext;
-    native_handle_type* mtx = lock.mNextLock.load(std::memory_order_relaxed);
+    native_handle_type* mtx = lock.mNextLock.load(std::memory_order_acquire);
 
     if (!lockedNextNode)
     {
@@ -114,7 +114,7 @@ void FairRWLockType<MutexType>::_pop_node_impl(RWLockNode& lock, bool lockedNext
     pNext = lock.pNext.load(std::memory_order_acquire);
     pNext->pPrev.store(&mHead, std::memory_order_release);
 
-    mHead.mNextLock.store(mtx, std::memory_order_relaxed);
+    mHead.mNextLock.store(mtx, std::memory_order_release);
     mHead.pNext.store(pNext, std::memory_order_release);
 
     mtx->unlock();
@@ -128,43 +128,67 @@ void FairRWLockType<MutexType>::_pop_node_impl(RWLockNode& lock, bool lockedNext
 template <typename MutexType>
 bool FairRWLockType<MutexType>::_wait_impl(RWLockNode& lock) noexcept
 {
-    bool lockedNext = false;
     const RWLockNode* const pHead = &mHead;
     const RWLockNode* const pTail = &mTail;
-    native_handle_type& mtx = lock.mLock;
+    const RWLockNode* pPrev;
 
-    RWLockNode* const pNext = lock.pNext.load(std::memory_order_acquire);
-    if (LS_LIKELY(pNext != pTail))
+    // Spin control
+    constexpr unsigned maxPauses = (unsigned)ls::utils::FutexPauseCount::FUTEX_PAUSE_COUNT_32;
+    unsigned currentPauses = 1u;
+
+    // Lock control
+    bool lockedNextNode = false;
+    bool amLocked = false;
+
+    do
     {
-        lockedNext = pNext->mLock.try_lock();
-    }
+        pPrev = lock.pPrev.load(std::memory_order_acquire);
 
-    bool amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
-    unsigned spinCount = 1;
-    constexpr unsigned maxLoops = (unsigned)ls::utils::FutexPauseCount::FUTEX_PAUSE_COUNT_32 - 1u;
-
-    while (!amFree && (spinCount & maxLoops))
-    {
-        unsigned i = spinCount;
-        while (i--)
+        if (pPrev == pHead)
         {
-            ls::setup::cpu_yield();
-            ls::setup::cpu_yield();
+            break;
         }
 
-        spinCount <<= 1u;
-        amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
+        if (currentPauses < maxPauses)
+        {
+            unsigned i = currentPauses;
+            do
+            {
+                ls::setup::cpu_yield();
+            }
+            while (--i);
+
+            currentPauses <<= 1u;
+        }
+        else
+        {
+            if (!amLocked)
+            {
+                amLocked = lock.amLocked.load(std::memory_order_acquire);
+            }
+            else
+            {
+                if (!lockedNextNode)
+                {
+                    RWLockNode* const pNext = lock.pNext.load(std::memory_order_acquire);
+                    if (pTail != pNext)
+                    {
+                        lockedNextNode = pNext->mLock.try_lock();
+                        if (lockedNextNode)
+                        {
+                            pNext->amLocked.store(true, std::memory_order_release);
+                        }
+                    }
+                }
+
+                lock.mLock.lock();
+                lock.mLock.unlock();
+            }
+        }
     }
+    while (true);
 
-    while (!amFree)
-    {
-        mtx.lock();
-        mtx.unlock();
-
-        amFree = lock.pPrev.load(std::memory_order_relaxed) == pHead;
-    }
-
-    return lockedNext;
+    return lockedNextNode;
 }
 
 
@@ -175,8 +199,11 @@ bool FairRWLockType<MutexType>::_wait_impl(RWLockNode& lock) noexcept
 template <typename MutexType>
 void FairRWLockType<MutexType>::lock_shared() noexcept
 {
-    RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
-    _insert_node(lock);
+    RWLockNode lock{{nullptr}, {nullptr}, {}, {false}, {nullptr}};
+    if (!_try_insert_node(lock))
+    {
+        _insert_node(lock);
+    }
 
     bool lockedNext = _wait_impl(lock);
     while (mNumUsers.load(std::memory_order_relaxed) < 0)
@@ -195,8 +222,11 @@ void FairRWLockType<MutexType>::lock_shared() noexcept
 template <typename MutexType>
 void FairRWLockType<MutexType>::lock() noexcept
 {
-    RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
-    _insert_node(lock);
+    RWLockNode lock{{nullptr}, {nullptr}, {}, {false}, {nullptr}};
+    if (!_try_insert_node(lock))
+    {
+        _insert_node(lock);
+    }
 
     bool lockedNext = _wait_impl(lock);
     while (mNumUsers.load(std::memory_order_relaxed) != 0)
@@ -215,7 +245,7 @@ void FairRWLockType<MutexType>::lock() noexcept
 template <typename MutexType>
 bool FairRWLockType<MutexType>::try_lock_shared() noexcept
 {
-    RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
+    RWLockNode lock{{nullptr}, {nullptr}, {}, {false}, {nullptr}};
     bool acquiredLock = _try_insert_node(lock);
 
     if (acquiredLock)
@@ -240,7 +270,7 @@ bool FairRWLockType<MutexType>::try_lock_shared() noexcept
 template <typename MutexType>
 bool FairRWLockType<MutexType>::try_lock() noexcept
 {
-    RWLockNode lock{{}, {nullptr}, {nullptr}, {nullptr}};
+    RWLockNode lock{{nullptr}, {nullptr}, {}, {false}, {nullptr}};
     bool acquiredLock = _try_insert_node(lock);
 
     if (acquiredLock)

@@ -30,10 +30,11 @@ class FairRWLockType
 
     struct alignas(64) RWLockNode
     {
-        alignas(64) native_handle_type mLock;
+        alignas(64) std::atomic<RWLockNode*> pNext;
+        alignas(64) std::atomic<RWLockNode*> pPrev;
+        native_handle_type mLock;
+        std::atomic_bool amLocked;
         alignas(64) std::atomic<native_handle_type*> mNextLock;
-        std::atomic<RWLockNode*> pNext;
-        std::atomic<RWLockNode*> pPrev;
     };
 
     static_assert(alignof(RWLockNode) == 64, "Misaligned locking node.");
