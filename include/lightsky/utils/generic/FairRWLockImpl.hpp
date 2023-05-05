@@ -72,7 +72,9 @@ bool FairRWLockType<MutexType>::_try_insert_node(RWLockNode& lock) noexcept
 
     if (mNumUsers.load(std::memory_order_acquire) == 0)
     {
-        if (pTail->mLock.try_lock())
+        haveLock = pTail->mLock.try_lock();
+
+        if (haveLock)
         {
             lock.mLock.lock();
             lock.mNextLock.store(&pTail->mLock, std::memory_order_release);
@@ -87,8 +89,6 @@ bool FairRWLockType<MutexType>::_try_insert_node(RWLockNode& lock) noexcept
 
             lock.mLock.unlock();
             pTail->mLock.unlock();
-
-            haveLock = true;
         }
     }
 
