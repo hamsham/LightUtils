@@ -28,13 +28,21 @@ class FairRWLockType
   public:
     typedef MutexType native_handle_type;
 
-    struct alignas(64) RWLockNode
+    enum RWLockBits : unsigned
+    {
+        SENTINEL = 0x00,
+        READER   = 0x1,
+        WRITER   = 0x02,
+        LOCKED   = 0x80,
+    };
+
+    struct alignas(64) RWLockNode final
     {
         alignas(64) std::atomic<RWLockNode*> pNext;
+        alignas(64) std::atomic_uint lockBits;
+        alignas(64) native_handle_type mtx;
+        alignas(64) std::atomic<native_handle_type*> pNextMtx;
         alignas(64) std::atomic<RWLockNode*> pPrev;
-        native_handle_type mLock;
-        std::atomic_bool amLocked;
-        alignas(64) std::atomic<native_handle_type*> mNextLock;
     };
 
     static_assert(alignof(RWLockNode) == 64, "Misaligned locking node.");
