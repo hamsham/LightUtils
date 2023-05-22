@@ -157,7 +157,7 @@ find_package(Threads REQUIRED)
 # -------------------------------------
 add_library(${OUTPUT_NAME} ${LS_UTILS_SOURCES} ${LS_UTILS_HEADERS})
 
-ls_configure_target(${OUTPUT_NAME})
+ls_configure_cxx_target(${OUTPUT_NAME})
 target_include_directories(${OUTPUT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 target_include_directories(${OUTPUT_NAME} PRIVATE ${ENET_INCLUDE_DIR})
 target_link_libraries(${OUTPUT_NAME}

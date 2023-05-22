@@ -25,7 +25,7 @@ find_package(Threads REQUIRED)
 function(LS_UTILS_ADD_TARGET target sources)
     add_executable(${target} ${sources} ${ARGN})
 	target_link_libraries(${target} LightSky::Utils LightSky::Setup Threads::Threads)
-	ls_configure_target(${target})
+	ls_configure_cxx_target(${target})
 
 	# Precompiled Headers
 	if (LIGHTSKY_ENABLE_PCH)
@@ -59,7 +59,7 @@ add_library(lsmalloc
 )
 
 target_compile_definitions(lsmalloc PRIVATE -DLS_BUILD_SHARED=1)
-ls_configure_target(lsmalloc)
+ls_configure_cxx_target(lsmalloc)
 target_link_libraries(lsmalloc LightSky::Utils LightSky::Setup Threads::Threads)
 
 if (ENABLE_VALGRIND_TRACKING)
