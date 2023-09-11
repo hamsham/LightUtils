@@ -15,6 +15,45 @@ namespace ls
 namespace utils
 {
 
+namespace
+{
+
+template <typename CharType>
+constexpr unsigned long long _str_length(const CharType* str, unsigned long long len) noexcept
+{
+    return *str ? _str_length<CharType>(str+1, len+1) : len;
+}
+
+} // end anonymous namespace
+
+
+
+constexpr unsigned long long str_length(const char* str) noexcept
+{
+    return _str_length<char>(str, 0);
+}
+
+
+
+constexpr unsigned long long str_length(const wchar_t* str) noexcept
+{
+    return _str_length<wchar_t>(str, 0);
+}
+
+
+
+constexpr unsigned long long str_length(const char16_t* str) noexcept
+{
+    return _str_length<char16_t>(str, 0);
+}
+
+
+
+constexpr unsigned long long str_length(const char32_t* str) noexcept
+{
+    return _str_length<char32_t>(str, 0);
+}
+
 
 
 /**
