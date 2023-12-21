@@ -105,8 +105,8 @@ else()
             TRUE
         GIT_PROGRESS
             TRUE
-        UPDATE_COMMAND
-            ${GIT_EXECUTABLE} pull origin ${ENET_BRANCH}
+        GIT_REMOTE_UPDATE_STRATEGY
+            CHECKOUT
         CMAKE_GENERATOR
             "${CMAKE_GENERATOR}"
         CMAKE_COMMAND
