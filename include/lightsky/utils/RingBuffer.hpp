@@ -5,8 +5,8 @@
  * Created on Dec 22, 2023 at 12:04 AM
  */
 
-#ifndef LS_UTILS__RING_BUFFER_HPP
-#define LS_UTILS__RING_BUFFER_HPP
+#ifndef LS_UTILS_RING_BUFFER_HPP
+#define LS_UTILS_RING_BUFFER_HPP
 
 #include "lightsky/utils/Pointer.h"
 
@@ -23,6 +23,12 @@ namespace utils
 template <typename T>
 class RingBuffer
 {
+public:
+    typedef T value_type;
+    typedef unsigned long long size_type;
+    typedef T& reference;
+    typedef const T& const_reference;
+
 private:
     unsigned long long mHead;
     unsigned long long mTail;
@@ -30,18 +36,17 @@ private:
     unsigned long long mPad;
     ls::utils::Pointer<T[]> mData;
 
-public:
-    typedef T value_type;
-    typedef unsigned long long size_type;
-    typedef T& reference;
-    typedef const T& const_reference;
+private:
+    unsigned long long _realloc_size() const noexcept;
+
+    bool _resize_if_needed() noexcept;
 
 public:
-    ~RingBuffer() noexcept;
+    ~RingBuffer() noexcept = default;
 
     constexpr RingBuffer() noexcept;
 
-    RingBuffer(unsigned long long requestedCapacity) noexcept;
+    RingBuffer(size_type requestedCapacity) noexcept;
 
     RingBuffer(const RingBuffer&) noexcept;
 
@@ -51,34 +56,45 @@ public:
 
     RingBuffer& operator=(RingBuffer&& buffer) noexcept;
 
-    bool reserve(unsigned long long requestedCapacity) noexcept;
+    bool reserve(size_type requestedCapacity) noexcept;
 
     bool empty() const noexcept;
 
     bool full() const noexcept;
 
-    unsigned long long size() const noexcept;
+    size_type size() const noexcept;
 
-    unsigned long long capacity() const noexcept;
+    size_type capacity() const noexcept;
 
     void clear() noexcept;
 
     void shrink_to_fit() noexcept;
 
-    void push(const T& val) noexcept;
+    void push_unchecked(const_reference val) noexcept;
 
-    void push(T&& val) noexcept;
+    void push_unchecked(T&& val) noexcept;
 
-    void emplace() noexcept;
+    void emplace_unchecked() noexcept;
 
     template <typename... ArgsType>
-    void emplace(ArgsType&&... args) noexcept;
+    void emplace_unchecked(ArgsType&&... args) noexcept;
 
-    T pop() noexcept;
+    value_type pop_unchecked() noexcept;
 
-    const T& front() const noexcept;
+    bool push(const_reference val) noexcept;
 
-    const T& back() const noexcept;
+    bool push(T&& val) noexcept;
+
+    bool emplace() noexcept;
+
+    template <typename... ArgsType>
+    bool emplace(ArgsType&&... args) noexcept;
+
+    bool pop(reference& result) noexcept;
+
+    const_reference front() const noexcept;
+
+    const_reference back() const noexcept;
 };
 
 
@@ -88,4 +104,4 @@ public:
 
 #include "lightsky/utils/generic/RingBufferImpl.hpp"
 
-#endif /* LS_UTILS__RING_BUFFER_HPP */
+#endif /* LS_UTILS_RING_BUFFER_HPP */

@@ -22,15 +22,17 @@ int main()
     LS_ASSERT(!buffer.full());
     LS_ASSERT(buffer.empty());
 
-    buffer.push(0u);
-    buffer.push(1u);
-    buffer.push(2u);
+    buffer.push_unchecked(0u);
+    buffer.push_unchecked(1u);
+    buffer.push_unchecked(2u);
     LS_ASSERT(buffer.size() == 3);
     LS_ASSERT(buffer.capacity() == 3);
     LS_ASSERT(buffer.full());
     LS_ASSERT(!buffer.empty());
 
-    unsigned val = buffer.pop();
+    unsigned val;
+
+    val = buffer.pop_unchecked();
     LS_ASSERT(val == 0u);
     LS_ASSERT(buffer.front() == 1u);
     LS_ASSERT(buffer.back() == 2u);
@@ -38,7 +40,7 @@ int main()
     LS_ASSERT(!buffer.full());
     LS_ASSERT(!buffer.empty());
 
-    val = buffer.pop();
+    val = buffer.pop_unchecked();
     LS_ASSERT(val == 1u);
     LS_ASSERT(buffer.front() == 2u);
     LS_ASSERT(buffer.back() == 2u);
@@ -60,7 +62,7 @@ int main()
     LS_ASSERT(buffer.full());
     LS_ASSERT(!buffer.empty());
 
-    val = buffer.pop();
+    val = buffer.pop_unchecked();
     LS_ASSERT(val == 2u);
     LS_ASSERT(buffer.front() == 0u);
     LS_ASSERT(buffer.back() == 1u);
@@ -68,7 +70,7 @@ int main()
     LS_ASSERT(!buffer.full());
     LS_ASSERT(!buffer.empty());
 
-    val = buffer.pop();
+    val = buffer.pop_unchecked();
     LS_ASSERT(val == 0u);
     LS_ASSERT(buffer.front() == 1u);
     LS_ASSERT(buffer.back() == 1u);
@@ -84,7 +86,7 @@ int main()
     LS_ASSERT(buffer.full());
     LS_ASSERT(!buffer.empty());
 
-    val = buffer.pop();
+    val = buffer.pop_unchecked();
     LS_ASSERT(val == 1u);
     LS_ASSERT(buffer.size() == 0);
     LS_ASSERT(!buffer.full());

@@ -5,8 +5,8 @@
  * Created on Dec 22, 2023 at 12:03 AM
  */
 
-#ifndef LS_UTILS__RING_BUFFER_IMPL_HPP
-#define LS_UTILS__RING_BUFFER_IMPL_HPP
+#ifndef LS_UTILS_RING_BUFFER_IMPL_HPP
+#define LS_UTILS_RING_BUFFER_IMPL_HPP
 
 #include "lightsky/utils/Assertions.h"
 
@@ -14,16 +14,6 @@ namespace ls
 {
 namespace utils
 {
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-template <typename T>
-RingBuffer<T>::~RingBuffer() noexcept
-{
-}
 
 
 
@@ -46,7 +36,7 @@ constexpr RingBuffer<T>::RingBuffer() noexcept :
  *
 -------------------------------------*/
 template <typename T>
-RingBuffer<T>::RingBuffer(unsigned long long requestedCapacity) noexcept :
+RingBuffer<T>::RingBuffer(size_type requestedCapacity) noexcept :
     RingBuffer{}
 {
     reserve(requestedCapacity);
@@ -163,7 +153,36 @@ RingBuffer<T>& RingBuffer<T>::operator=(RingBuffer&& buffer) noexcept
  *
 -------------------------------------*/
 template <typename T>
-bool RingBuffer<T>::reserve(unsigned long long requestedCapacity) noexcept
+inline unsigned long long RingBuffer<T>::_realloc_size() const noexcept
+{
+    const unsigned long long cap = capacity();
+    return (cap * 3ull) / 2ull;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+inline bool RingBuffer<T>::_resize_if_needed() noexcept
+{
+    if (full())
+    {
+        const unsigned long long newSize = _realloc_size();
+        return reserve(newSize);
+    }
+
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+bool RingBuffer<T>::reserve(size_type requestedCapacity) noexcept
 {
     if (!requestedCapacity)
     {
@@ -237,7 +256,7 @@ inline bool RingBuffer<T>::full() const noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline unsigned long long RingBuffer<T>::size() const noexcept
+inline typename RingBuffer<T>::size_type RingBuffer<T>::size() const noexcept
 {
     return (mTail - mHead) % mCapacity;
 }
@@ -248,7 +267,7 @@ inline unsigned long long RingBuffer<T>::size() const noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline unsigned long long RingBuffer<T>::capacity() const noexcept
+inline typename RingBuffer<T>::size_type RingBuffer<T>::capacity() const noexcept
 {
     return mCapacity - 1ull;
 }
@@ -285,7 +304,7 @@ inline void RingBuffer<T>::shrink_to_fit() noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline void RingBuffer<T>::push(const T& val) noexcept
+inline void RingBuffer<T>::push_unchecked(const T& val) noexcept
 {
     LS_DEBUG_ASSERT(!full());
 
@@ -299,7 +318,7 @@ inline void RingBuffer<T>::push(const T& val) noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline void RingBuffer<T>::push(T&& val) noexcept
+inline void RingBuffer<T>::push_unchecked(T&& val) noexcept
 {
     LS_DEBUG_ASSERT(!full());
 
@@ -313,7 +332,7 @@ inline void RingBuffer<T>::push(T&& val) noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline void RingBuffer<T>::emplace() noexcept
+inline void RingBuffer<T>::emplace_unchecked() noexcept
 {
     LS_DEBUG_ASSERT(!full());
 
@@ -328,7 +347,7 @@ inline void RingBuffer<T>::emplace() noexcept
 -------------------------------------*/
 template <typename T>
 template <typename... ArgsType>
-inline void RingBuffer<T>::emplace(ArgsType&&... args) noexcept
+inline void RingBuffer<T>::emplace_unchecked(ArgsType&&... args) noexcept
 {
     LS_DEBUG_ASSERT(!full());
 
@@ -342,7 +361,7 @@ inline void RingBuffer<T>::emplace(ArgsType&&... args) noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline T RingBuffer<T>::pop() noexcept
+inline typename RingBuffer<T>::value_type RingBuffer<T>::pop_unchecked() noexcept
 {
     LS_DEBUG_ASSERT(!empty());
 
@@ -358,7 +377,93 @@ inline T RingBuffer<T>::pop() noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline const T& RingBuffer<T>::front() const noexcept
+bool RingBuffer<T>::push(const T& val) noexcept
+{
+    if (!_resize_if_needed())
+    {
+        return false;
+    }
+
+    push_unchecked(val);
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+bool RingBuffer<T>::push(T&& val) noexcept
+{
+    if (!_resize_if_needed())
+    {
+        return false;
+    }
+
+    push_unchecked(std::forward<T>(val));
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+bool RingBuffer<T>::emplace() noexcept
+{
+    if (!_resize_if_needed())
+    {
+        return false;
+    }
+
+    emplace_unchecked();
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+template <typename... ArgsType>
+bool RingBuffer<T>::emplace(ArgsType&&... args) noexcept
+{
+    if (!_resize_if_needed())
+    {
+        return false;
+    }
+
+    emplace_unchecked(std::forward<ArgsType>(args)...);
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+inline bool RingBuffer<T>::pop(reference result) noexcept
+{
+    if (empty())
+    {
+        return false;
+    }
+
+    result = std::move(pop_unchecked());
+    return true;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+template <typename T>
+inline typename RingBuffer<T>::const_reference RingBuffer<T>::front() const noexcept
 {
     LS_DEBUG_ASSERT(!empty());
     return mData[mHead];
@@ -370,11 +475,10 @@ inline const T& RingBuffer<T>::front() const noexcept
  *
 -------------------------------------*/
 template <typename T>
-inline const T& RingBuffer<T>::back() const noexcept
+inline typename RingBuffer<T>::const_reference RingBuffer<T>::back() const noexcept
 {
     LS_DEBUG_ASSERT(!empty());
-    const unsigned long long index = mTail != 0ull ? mTail : mCapacity;
-    return mData[index-1ull];
+    return mData[(mTail - 1ull) % mCapacity];
 }
 
 
@@ -382,4 +486,4 @@ inline const T& RingBuffer<T>::back() const noexcept
 } // end utils namespace
 } // end ls namespace
 
-#endif /* LS_UTILS__RING_BUFFER_IMPL_HPP */
+#endif /* LS_UTILS_RING_BUFFER_IMPL_HPP */
