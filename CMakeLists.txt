@@ -93,6 +93,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Pointer.h
     include/lightsky/utils/RandomNum.h
     include/lightsky/utils/Resource.h
+    include/lightsky/utils/RingBuffer.hpp
     include/lightsky/utils/Setup.h
     include/lightsky/utils/SharedMutex.hpp
     include/lightsky/utils/Sort.hpp
@@ -115,6 +116,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/generic/LRUCacheImpl.hpp
     include/lightsky/utils/generic/LRU8WayCacheImpl.hpp
     include/lightsky/utils/generic/HashImpl.h
+    include/lightsky/utils/generic/RingBufferImpl.hpp
     include/lightsky/utils/generic/SharedMutexImpl.hpp
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
