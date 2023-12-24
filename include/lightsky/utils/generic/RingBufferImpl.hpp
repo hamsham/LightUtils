@@ -306,8 +306,6 @@ inline void RingBuffer<T>::shrink_to_fit() noexcept
 template <typename T>
 inline void RingBuffer<T>::push_unchecked(const T& val) noexcept
 {
-    LS_DEBUG_ASSERT(!full());
-
     mData[mTail] = val;
     mTail = (mTail + 1ull) % mCapacity;
 }
@@ -320,9 +318,7 @@ inline void RingBuffer<T>::push_unchecked(const T& val) noexcept
 template <typename T>
 inline void RingBuffer<T>::push_unchecked(T&& val) noexcept
 {
-    LS_DEBUG_ASSERT(!full());
-
-    mData[mTail] = std::move(val);
+    mData[mTail] = std::forward<T>(val);
     mTail = (mTail + 1ull) % mCapacity;
 }
 
@@ -334,8 +330,6 @@ inline void RingBuffer<T>::push_unchecked(T&& val) noexcept
 template <typename T>
 inline void RingBuffer<T>::emplace_unchecked() noexcept
 {
-    LS_DEBUG_ASSERT(!full());
-
     mData[mTail] = T{};
     mTail = (mTail + 1ull) % mCapacity;
 }
@@ -349,8 +343,6 @@ template <typename T>
 template <typename... ArgsType>
 inline void RingBuffer<T>::emplace_unchecked(ArgsType&&... args) noexcept
 {
-    LS_DEBUG_ASSERT(!full());
-
     mData[mTail] = T{std::forward<ArgsType>(args)...};
     mTail = (mTail + 1ull) % mCapacity;
 }
@@ -363,8 +355,6 @@ inline void RingBuffer<T>::emplace_unchecked(ArgsType&&... args) noexcept
 template <typename T>
 inline typename RingBuffer<T>::value_type RingBuffer<T>::pop_unchecked() noexcept
 {
-    LS_DEBUG_ASSERT(!empty());
-
     T&& result = std::move(mData[mHead]);
     mHead = (mHead + 1ull) % mCapacity;
 
