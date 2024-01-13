@@ -106,7 +106,7 @@ struct AlignedDeleter
  * Single Pointer Type
  * --------------------------------------------------------------------------*/
 template<typename data_t, class Deleter = PointerDeleter<data_t>>
-class Pointer
+class alignas(alignof(data_t*)) Pointer
 {
 
     // public typedefs
@@ -117,7 +117,7 @@ class Pointer
     /**
      * @brief pData represents a Pointer to some data within an application
      */
-    mutable data_t* pData;
+    alignas(alignof(data_t*)) mutable data_t* pData;
 
     /**
      * @brief Clear *this of any data/resources.
@@ -547,7 +547,7 @@ class Pointer
  * (Specialized in order to allow for array-types)
  * --------------------------------------------------------------------------*/
 template<typename data_t, class Deleter>
-class Pointer<data_t[], Deleter>
+class alignas(alignof(data_t*)) Pointer<data_t[], Deleter>
 {
 
     // public typedefs
@@ -558,7 +558,7 @@ class Pointer<data_t[], Deleter>
     /**
      * pData represents a Pointer to some data within an application
      */
-    mutable data_t* pData;
+    alignas(alignof(data_t*)) mutable data_t* pData;
 
     /**
      * Clear *this of any data/resources.
