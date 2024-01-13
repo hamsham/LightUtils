@@ -16,20 +16,37 @@ namespace utils
  * Execute the tasks in the queue.
 -------------------------------------*/
 template <class WorkerTaskType>
-void WorkerPool<WorkerTaskType>::execute_tasks(size_t id, int currentBufferId) noexcept
+void WorkerPool<WorkerTaskType>::execute_tasks() noexcept
 {
-    // Exit the thread if mCurrentBuffer is less than 0.
-    if (currentBufferId >= 0)
-    {
-        currentBufferId = (currentBufferId + 1) % 2;
-        std::vector<WorkerTaskType>& inputQueue = mTasks[currentBufferId][id];
+    mThreadsRunning.fetch_add(1, std::memory_order_acq_rel);
 
-        for (WorkerTaskType& pTask : inputQueue)
+    // only run while there are tasks.
+    while (true)
+    {
+        mPushLock.lock();
+        if (mTasks.empty())
         {
-            pTask();
+            mPushLock.unlock();
+            break;
         }
 
-        mTasks[currentBufferId][id].clear();
+        WorkerTaskType&& task = mTasks.pop_unchecked();
+        mPushLock.unlock();
+
+        task();
+    }
+
+    // Pause the current thread again.
+    if (mThreadsRunning.fetch_sub(1, std::memory_order_acq_rel) == 1)
+    {
+        std::lock_guard <std::mutex> waitLock{mWaitMtx};
+        std::lock_guard<utils::SpinLock> pushLock{mPushLock};
+
+        if (mTasks.empty())
+        {
+            mIsPaused.store(true, std::memory_order_release);
+            mWaitCond.notify_all();
+        }
     }
 }
 
@@ -41,70 +58,35 @@ void WorkerPool<WorkerTaskType>::execute_tasks(size_t id, int currentBufferId) n
 template <class WorkerTaskType>
 void WorkerPool<WorkerTaskType>::thread_loop() noexcept
 {
-    while (mCurrentBuffer >= 0)
+    while (true)
     {
-        // Busy waiting can be disabled at any time, but waiting on the
-        // condition variable will remain in-place until the next flush.
-        if (mIsPaused.load(std::memory_order_acquire))
+        bool amDone;
+        bool outOfTasks;
+
         {
-            if (mBusyWait.load(std::memory_order_acquire))
-            {
-                continue;
-            }
-            else
+            std::lock_guard<utils::SpinLock> pushLock{mPushLock};
+            amDone = mTasks.capacity() == 0;
+            outOfTasks = mTasks.empty();
+        }
+
+        if (amDone)
+        {
+            break;
+        }
+
+        if (outOfTasks || mIsPaused.load(std::memory_order_acquire))
+        {
+            // Busy waiting can be disabled at any time, but waiting on the
+            // condition variable will remain in-place until the next flush.
+            if (!mBusyWait.load(std::memory_order_acquire))
             {
                 std::unique_lock<std::mutex> cvLock{mWaitMtx};
-                mExecCond.wait(cvLock, [this]()->bool
-                {
-                    return !mIsPaused.load(std::memory_order_acquire) || mCurrentBuffer < 0;
-                });
+                mExecCond.wait(cvLock);
             }
-        }
-
-        // The current I/O buffers were swapped when "flush()" was
-        // called. Swap again to read and write to the buffers used on
-        // this thread.
-        int currentBufferId;
-        mPushLock.lock();
-        currentBufferId = mCurrentBuffer;
-        mPushLock.unlock();
-
-        if (currentBufferId < 0)
-        {
-            return;
-        }
-
-        size_t id = mActiveThreads.fetch_add(1, std::memory_order_acq_rel);
-        while (mActiveThreads.load(std::memory_order_consume) < mThreads.size())
-        {
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #endif
-        }
-
-        if (!id)
-        {
-            mWaitMtx.lock();
-        }
-
-        execute_tasks(id, currentBufferId);
-
-        // last thread unlocks
-        id = mActiveThreads.fetch_add(1, std::memory_order_acq_rel);
-        if (id == mThreads.size()*2-1)
-        {
-            mIsPaused.store(true, std::memory_order_release);
-            mActiveThreads.store(0, std::memory_order_release);
-            mWaitMtx.unlock();
         }
         else
         {
-            while (!mIsPaused.load(std::memory_order_consume))
-            {
-                #if defined(LS_ARCH_X86)
-                    _mm_pause();
-                #endif
-            }
+            execute_tasks();
         }
     }
 }
@@ -115,24 +97,44 @@ void WorkerPool<WorkerTaskType>::thread_loop() noexcept
  * Destructor
 -------------------------------------*/
 template <class WorkerTaskType>
-WorkerPool<WorkerTaskType>::~WorkerPool() noexcept
+void WorkerPool<WorkerTaskType>::stop_threads() noexcept
 {
-    wait();
+    while (!ready())
+    {
+    }
 
-    mPushLock.lock();
-    mCurrentBuffer = -1;
-    mPushLock.unlock();
+    {
+        std::lock_guard<std::mutex> waitLock{mWaitMtx};
+        {
+            std::lock_guard<utils::SpinLock> pushLock{mPushLock};
+            mTasks.clear();
+            mTasks.shrink_to_fit();
+        }
 
-    mWaitMtx.lock();
-    mBusyWait.store(true, std::memory_order_release);
-    mIsPaused.store(false, std::memory_order_release);
-    mExecCond.notify_all();
-    mWaitMtx.unlock();
+        mIsPaused.store(false, std::memory_order_release);
+        mExecCond.notify_all();
+        mWaitMtx.unlock();
+    }
 
     for (std::thread& t : mThreads)
     {
         t.join();
     }
+
+    mThreads.clear();
+    mIsPaused.store(true, std::memory_order_release);
+    mThreadsRunning.store(0, std::memory_order_release);
+}
+
+
+
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+template <class WorkerTaskType>
+WorkerPool<WorkerTaskType>::~WorkerPool() noexcept
+{
+    stop_threads();
 }
 
 
@@ -141,19 +143,22 @@ WorkerPool<WorkerTaskType>::~WorkerPool() noexcept
  * Constructor
 -------------------------------------*/
 template <class WorkerTaskType>
-WorkerPool<WorkerTaskType>::WorkerPool(size_t inNumThreads) noexcept :
+WorkerPool<WorkerTaskType>::WorkerPool(size_t inNumThreads) :
     mBusyWait{false},
     mIsPaused{true},
-    mActiveThreads{0},
-    mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
+    mThreadsRunning{0},
     mPushLock{},
-    mTasks{},
+    mTasks{2},
     mWaitMtx{},
     mWaitCond{},
     mExecCond{},
     mThreads{}
 {
-    concurrency(inNumThreads);
+    mThreads.reserve(inNumThreads);
+    for (std::size_t threadId = 0; threadId < inNumThreads; ++threadId)
+    {
+        mThreads.emplace_back(&WorkerPool::thread_loop, this);
+    }
 }
 
 
@@ -163,16 +168,7 @@ WorkerPool<WorkerTaskType>::WorkerPool(size_t inNumThreads) noexcept :
 -------------------------------------*/
 template <class WorkerTaskType>
 WorkerPool<WorkerTaskType>::WorkerPool(const WorkerPool& w) noexcept :
-    mBusyWait{false},
-    mIsPaused{true},
-    mActiveThreads{0},
-    mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
-    mPushLock{},
-    mTasks{},
-    mWaitMtx{},
-    mWaitCond{},
-    mExecCond{},
-    mThreads{}
+    WorkerPool{} // delegate constructor
 {
     *this = w;
 }
@@ -184,16 +180,7 @@ WorkerPool<WorkerTaskType>::WorkerPool(const WorkerPool& w) noexcept :
 -------------------------------------*/
 template <class WorkerTaskType>
 WorkerPool<WorkerTaskType>::WorkerPool(WorkerPool&& w) noexcept :
-    mBusyWait{false},
-    mIsPaused{true},
-    mActiveThreads{0},
-    mCurrentBuffer{0}, // must be greater than or equal to 0 for *this to run.
-    mPushLock{},
-    mTasks{},
-    mWaitMtx{},
-    mWaitCond{},
-    mExecCond{},
-    mThreads{}
+    WorkerPool{} // delegate constructor
 {
     *this = std::move(w);
 }
@@ -212,18 +199,19 @@ WorkerPool<WorkerTaskType>& WorkerPool<WorkerTaskType>::operator=(const WorkerPo
     }
 
     w.wait();
+    wait();
 
-    concurrency(w.concurrency());
-    mIsPaused.store(true, std::memory_order_release);
+    stop_threads();
 
     mBusyWait.store(w.mBusyWait.load(std::memory_order_consume), std::memory_order_release);
+    mTasks = w.mTasks;
 
-    mCurrentBuffer = w.mCurrentBuffer;
+    std::size_t numThreads = w.mThreads.size();
+    mThreads.reserve(numThreads);
 
-    for (size_t i = mThreads.size(); i--;)
+    for (std::size_t threadId = 0; threadId < numThreads; ++threadId)
     {
-        mTasks[0][i] = w.mTasks[0][i];
-        mTasks[1][i] = w.mTasks[1][i];
+        mThreads.emplace_back(&WorkerPool::thread_loop, this);
     }
 
     return *this;
@@ -243,19 +231,20 @@ WorkerPool<WorkerTaskType>& WorkerPool<WorkerTaskType>::operator=(WorkerPool&& w
     }
 
     w.wait();
+    wait();
 
-    concurrency(w.concurrency());
-    mIsPaused.store(true, std::memory_order_release);
+    std::size_t numThreads = w.mThreads.size();
+    stop_threads();
 
-    mBusyWait.store(w.mBusyWait.load(std::memory_order_acquire), std::memory_order_release);
+    mBusyWait.store(w.mBusyWait.load(std::memory_order_consume), std::memory_order_release);
+    w.mBusyWait.store(false, std::memory_order_release);
 
-    mCurrentBuffer = w.mCurrentBuffer;
-    w.mCurrentBuffer = -1;
+    mTasks = std::move(w.mTasks);
+    mThreads.reserve(numThreads);
 
-    for (size_t i = mThreads.size(); i--;)
+    for (std::size_t threadId = 0; threadId < numThreads; ++threadId)
     {
-        mTasks[0][i] = w.mTasks[0][i];
-        mTasks[1][i] = w.mTasks[1][i];
+        mThreads.emplace_back(&WorkerPool::thread_loop, this);
     }
 
     return *this;
@@ -268,10 +257,10 @@ WorkerPool<WorkerTaskType>& WorkerPool<WorkerTaskType>::operator=(WorkerPool&& w
  * called after a flush).
 -------------------------------------*/
 template <class WorkerTaskType>
-inline const std::vector<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks(size_t threadId) const noexcept
+inline const ls::utils::RingBuffer<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks() const noexcept
 {
     std::lock_guard<utils::SpinLock> lock{mPushLock};
-    return mTasks[mCurrentBuffer][threadId];
+    return mTasks;
 }
 
 
@@ -281,10 +270,10 @@ inline const std::vector<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks(size
  * called after a flush).
 -------------------------------------*/
 template <class WorkerTaskType>
-inline std::vector<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks(size_t threadId) noexcept
+inline ls::utils::RingBuffer<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks() noexcept
 {
     std::lock_guard<utils::SpinLock> lock{mPushLock};
-    return mTasks[mCurrentBuffer][threadId];
+    return mTasks;
 }
 
 
@@ -293,10 +282,10 @@ inline std::vector<WorkerTaskType>& WorkerPool<WorkerTaskType>::tasks(size_t thr
  * Get the number of tasks currently queued
 -------------------------------------*/
 template <class WorkerTaskType>
-inline std::size_t WorkerPool<WorkerTaskType>::num_pending(size_t threadId) const noexcept
+inline std::size_t WorkerPool<WorkerTaskType>::num_pending() const noexcept
 {
     std::lock_guard<utils::SpinLock> lock{mPushLock};
-    return mTasks[mCurrentBuffer][threadId].size();
+    return mTasks.size();
 }
 
 
@@ -305,10 +294,10 @@ inline std::size_t WorkerPool<WorkerTaskType>::num_pending(size_t threadId) cons
  * Get the number of tasks currently queued
 -------------------------------------*/
 template <class WorkerTaskType>
-inline bool WorkerPool<WorkerTaskType>::have_pending(size_t threadId) const noexcept
+inline bool WorkerPool<WorkerTaskType>::have_pending() const noexcept
 {
     std::lock_guard<utils::SpinLock> lock{mPushLock};
-    return !mTasks[mCurrentBuffer][threadId].empty();
+    return !mTasks.empty();
 }
 
 
@@ -317,10 +306,10 @@ inline bool WorkerPool<WorkerTaskType>::have_pending(size_t threadId) const noex
  * Clear the currently pending tasks
 -------------------------------------*/
 template <class WorkerTaskType>
-inline void WorkerPool<WorkerTaskType>::clear_pending(size_t threadId) noexcept
+inline void WorkerPool<WorkerTaskType>::clear_pending() noexcept
 {
     std::lock_guard<utils::SpinLock> lock{mPushLock};
-    mTasks[mCurrentBuffer][threadId].clear();
+    mTasks.clear();
 }
 
 
@@ -329,11 +318,10 @@ inline void WorkerPool<WorkerTaskType>::clear_pending(size_t threadId) noexcept
  * Push a task to the pending task queue (copy).
 -------------------------------------*/
 template <class WorkerTaskType>
-inline void WorkerPool<WorkerTaskType>::push(const WorkerTaskType& task, size_t threadId) noexcept
+inline void WorkerPool<WorkerTaskType>::push(const WorkerTaskType& task) noexcept
 {
-    mPushLock.lock();
-    mTasks[mCurrentBuffer][threadId].push_back(task);
-    mPushLock.unlock();
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    mTasks.push(task);
 }
 
 
@@ -342,11 +330,10 @@ inline void WorkerPool<WorkerTaskType>::push(const WorkerTaskType& task, size_t 
  * Push a task to the pending task queue (move).
 -------------------------------------*/
 template <class WorkerTaskType>
-inline void WorkerPool<WorkerTaskType>::emplace(WorkerTaskType&& task, size_t threadId) noexcept
+inline void WorkerPool<WorkerTaskType>::emplace(WorkerTaskType&& task) noexcept
 {
-    mPushLock.lock();
-    mTasks[mCurrentBuffer][threadId].emplace_back(std::move(task));
-    mPushLock.unlock();
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
+    mTasks.emplace(std::forward<WorkerTaskType>(task));
 }
 
 
@@ -357,27 +344,32 @@ inline void WorkerPool<WorkerTaskType>::emplace(WorkerTaskType&& task, size_t th
 template <class WorkerTaskType>
 inline bool WorkerPool<WorkerTaskType>::ready() const noexcept
 {
-    return mIsPaused.load(std::memory_order_consume);
+    return mIsPaused.load(std::memory_order_acquire);
 }
 
 
 
 /*-------------------------------------
  * Flush the current thread and swap I/O buffers (must only be called after
- * ready() returns true).
+ * this->ready() returns true).
 -------------------------------------*/
 template <class WorkerTaskType>
 void WorkerPool<WorkerTaskType>::flush() noexcept
 {
-    mPushLock.lock();
-    const int currentBuffer = mCurrentBuffer;
-    mCurrentBuffer = (currentBuffer + 1) & 1;
-    mPushLock.unlock();
+    bool haveTasks;
 
-    mWaitMtx.lock();
-    mIsPaused.store(false, std::memory_order_release);
-    mExecCond.notify_all();
-    mWaitMtx.unlock();
+    {
+        std::lock_guard<utils::SpinLock> pushLock{mPushLock};
+        haveTasks = !mTasks.empty();
+    }
+
+    // Don't bother waking up the thread if there's nothing to do.
+    if (haveTasks)
+    {
+        std::lock_guard<std::mutex> waitLock{mWaitMtx};
+        mIsPaused.store(false, std::memory_order_release);
+        mExecCond.notify_all();
+    }
 }
 
 
@@ -390,35 +382,23 @@ inline void WorkerPool<WorkerTaskType>::wait() const noexcept
 {
     // Own the worker's mutex until the intended thread pauses. This should
     // effectively block the current thread of execution.
-
-    #if 0
-        if (mBusyWait.load(std::memory_order_consume))
-        {
-            while (!mIsPaused.load(std::memory_order_consume))
-            {
-                #if defined(LS_ARCH_X86)
-                    _mm_pause();
-                #endif
-            }
-        }
-        else
-        {
-            std::unique_lock<std::mutex> cvLock{mWaitMtx};
-            mWaitCond.wait(cvLock, [this]()->bool
-            {
-                return mIsPaused.load(std::memory_order_acquire);
-            });
-        }
-
-    #else
-        while (!mIsPaused.load(std::memory_order_consume) && mActiveThreads.load(std::memory_order_consume) != 0)
+    if (mBusyWait.load(std::memory_order_consume))
+    {
+        while (!mIsPaused.load(std::memory_order_consume))
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #endif
         }
-
-    #endif
+    }
+    else
+    {
+        std::unique_lock<std::mutex> cvLock{mWaitMtx};
+        mWaitCond.wait(cvLock, [this]()->bool
+        {
+            return mIsPaused.load(std::memory_order_acquire);
+        });
+    }
 }
 
 
@@ -429,7 +409,7 @@ inline void WorkerPool<WorkerTaskType>::wait() const noexcept
 template <class WorkerTaskType>
 inline bool WorkerPool<WorkerTaskType>::busy_waiting() const noexcept
 {
-    return mBusyWait.load(std::memory_order_consume);
+    return mBusyWait.load(std::memory_order_acquire);
 }
 
 
@@ -451,42 +431,28 @@ inline void WorkerPool<WorkerTaskType>::busy_waiting(bool useBusyWait) noexcept
 template <class WorkerTaskType>
 size_t WorkerPool<WorkerTaskType>::concurrency(size_t inNumThreads) noexcept
 {
+    if (inNumThreads == mThreads.size())
+    {
+        return inNumThreads;
+    }
+
     wait();
+    stop_threads();
 
-    mPushLock.lock();
-    int lastBuffer = mCurrentBuffer;
-    mCurrentBuffer = -1;
-    mPushLock.unlock();
-
-    mWaitMtx.lock();
-    bool busyWaiting = mBusyWait.load(std::memory_order_consume);
-    mBusyWait.store(true, std::memory_order_release);
-    mIsPaused.store(false, std::memory_order_release);
-    mWaitCond.notify_all();
-    mWaitMtx.unlock();
-
-    for (std::thread& t : mThreads)
+    if (!inNumThreads)
     {
-        t.join();
+        return 0;
     }
 
-    mThreads.clear();
-    mBusyWait.store(busyWaiting, std::memory_order_release);
+    mTasks.reserve(2);
+    mThreads.reserve(inNumThreads);
 
-    mTasks[0].resize(inNumThreads, std::vector<WorkerTaskType>{});
-    mTasks[1].resize(inNumThreads, std::vector<WorkerTaskType>{});
-
-    mIsPaused.store(true, std::memory_order_release);
-    mCurrentBuffer = lastBuffer;
-
-    mWaitMtx.lock();
-    for (size_t i = inNumThreads; i--;)
+    for (std::size_t threadId = 0; threadId < inNumThreads; ++threadId)
     {
-        mThreads.emplace_back(&WorkerPool<WorkerTaskType>::thread_loop, this);
+        mThreads.emplace_back(&WorkerPool::thread_loop, this);
     }
-    mWaitMtx.unlock();
 
-    return mThreads.size();
+    return inNumThreads;
 }
 
 
@@ -500,6 +466,27 @@ inline size_t WorkerPool<WorkerTaskType>::concurrency() const noexcept
     return mThreads.size();
 }
 
+
+
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+const std::vector<std::thread>& WorkerPool<WorkerTaskType>::threads() const noexcept
+{
+    return mThreads;
+}
+
+
+
+/*-------------------------------------
+ * Thread count
+-------------------------------------*/
+template <class WorkerTaskType>
+std::vector<std::thread>& WorkerPool<WorkerTaskType>::threads() noexcept
+{
+    return mThreads;
+}
 
 
 } // end utils namespace

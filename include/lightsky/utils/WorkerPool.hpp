@@ -16,9 +16,10 @@
 
 #include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
+#include "lightsky/setup/OS.h" // LS_OS_WINDOWS
 
 #include "lightsky/utils/SpinLock.hpp"
-#include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/RingBuffer.hpp"
 
 
 
@@ -44,13 +45,11 @@ class WorkerPool
 
     std::atomic_bool mIsPaused;
 
-    std::atomic_size_t mActiveThreads;
+    std::atomic<size_t> mThreadsRunning;
 
-    int mCurrentBuffer;
+    mutable utils::SpinLock mPushLock;
 
-    mutable ls::utils::SpinLock mPushLock;
-
-    std::vector<std::vector<WorkerTaskType>> mTasks[2];
+    utils::RingBuffer<WorkerTaskType> mTasks;
 
     mutable std::mutex mWaitMtx;
 
@@ -60,14 +59,16 @@ class WorkerPool
 
     std::vector<std::thread> mThreads;
 
-    void execute_tasks(size_t id, int bufferId) noexcept;
+    void execute_tasks() noexcept;
 
     void thread_loop() noexcept;
+
+    void stop_threads() noexcept;
 
   public:
     ~WorkerPool() noexcept;
 
-    WorkerPool(size_t numThreads = 1) noexcept;
+    WorkerPool(size_t numThreads = 1);
 
     WorkerPool(const WorkerPool&) noexcept;
 
@@ -77,19 +78,19 @@ class WorkerPool
 
     WorkerPool& operator=(WorkerPool&&) noexcept;
 
-    const std::vector<WorkerTaskType>& tasks(size_t threadId) const noexcept;
+    const utils::RingBuffer<WorkerTaskType>& tasks() const noexcept;
 
-    std::vector<WorkerTaskType>& tasks(size_t threadId) noexcept;
+    utils::RingBuffer<WorkerTaskType>& tasks() noexcept;
 
-    std::size_t num_pending(size_t threadId) const noexcept;
+    std::size_t num_pending() const noexcept;
 
-    bool have_pending(size_t threadId) const noexcept;
+    bool have_pending() const noexcept;
 
-    void clear_pending(size_t threadId) noexcept;
+    void clear_pending() noexcept;
 
-    void push(const WorkerTaskType& task, size_t threadIndex) noexcept;
+    void push(const WorkerTaskType& task) noexcept;
 
-    void emplace(WorkerTaskType&& task, size_t threadIndex) noexcept;
+    void emplace(WorkerTaskType&& task) noexcept;
 
     bool ready() const noexcept;
 
@@ -104,6 +105,10 @@ class WorkerPool
     size_t concurrency(size_t inNumThreads) noexcept;
 
     size_t concurrency() const noexcept;
+
+    const std::vector<std::thread>& threads() const noexcept;
+
+    std::vector<std::thread>& threads() noexcept;
 };
 
 

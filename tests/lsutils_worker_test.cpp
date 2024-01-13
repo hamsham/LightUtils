@@ -38,13 +38,19 @@ void test_single_worker()
     thread.push(SampleTask());
     thread.flush();
 
+    unsigned count = 2;
+
     while (!thread.ready())
     {
         std::cout << "Waiting for the worker thread to finish..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds{1000});
 
         // push tasks while waiting for the test to complete
-        thread.push(SampleTask());
+        if (count)
+        {
+            thread.push(SampleTask());
+            --count;
+        }
     }
 
     thread.flush();
@@ -67,7 +73,7 @@ void test_single_worker()
 
 void test_pooled_worker()
 {
-    std::cout << "Testing a single worker" << std::endl;
+    std::cout << "Testing a pool of workers" << std::endl;
 
     {
         WorkerPool<SampleTask> thread0{1};
@@ -75,21 +81,17 @@ void test_pooled_worker()
     }
 
     WorkerPool<SampleTask> thread{3};
-    thread.emplace(SampleTask(), 0);
-    thread.emplace(SampleTask(), 1);
-    thread.emplace(SampleTask(), 2);
+    for (unsigned i = 0; i < 16; ++i)
+    {
+        thread.emplace(SampleTask());
+    }
+
     thread.flush();
 
     while (!thread.ready())
     {
         std::cout << "Waiting for the worker thread to finish..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds{1000});
-
-        // push tasks while waiting for the test to complete
-        for (size_t i = thread.concurrency(); i--;)
-        {
-            thread.push(SampleTask(), i);
-        }
     }
 
     thread.flush();
@@ -123,8 +125,8 @@ int main()
         << "\n\tWorker (MT): " << sizeof(ls::utils::DefaultWorkerPool)
         << std::endl;
 
-    test_single_worker();
-    //test_pooled_worker();
+    //test_single_worker();
+    test_pooled_worker();
 
     return 0;
 }

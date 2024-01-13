@@ -12,7 +12,6 @@
 #include <mutex> // std::mutex, std::lock_guard
 #include <thread>
 #include <utility> // std::move
-#include <vector>
 
 #include "lightsky/setup/Arch.h" // LS_ARCH_X86
 #include "lightsky/setup/Macros.h" // LS_DECLARE_CLASS_TYPE()
@@ -39,7 +38,7 @@
 #endif /* LS_UTILS_USE_WINDOWS_THREADS */
 
 #include "lightsky/utils/SpinLock.hpp"
-#include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/RingBuffer.hpp"
 
 
 
@@ -76,11 +75,9 @@ class WorkerThread
 
     std::atomic_bool mIsPaused;
 
-    int mCurrentBuffer;
+    mutable utils::SpinLock mPushLock;
 
-    mutable ls::utils::SpinLock mPushLock;
-
-    std::vector<WorkerTaskType> mTasks[2];
+    utils::RingBuffer<WorkerTaskType> mTasks;
 
 #ifndef LS_UTILS_USE_WINDOWS_THREADS
     mutable std::mutex mWaitMtx;
@@ -115,9 +112,9 @@ class WorkerThread
 
     WorkerThread& operator=(WorkerThread&&) noexcept;
 
-    const std::vector<WorkerTaskType>& tasks() const noexcept;
+    const utils::RingBuffer<WorkerTaskType>& tasks() const noexcept;
 
-    std::vector<WorkerTaskType>& tasks() noexcept;
+    utils::RingBuffer<WorkerTaskType>& tasks() noexcept;
 
     std::size_t num_pending() const noexcept;
 
