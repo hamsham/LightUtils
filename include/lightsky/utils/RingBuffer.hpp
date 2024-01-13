@@ -21,7 +21,7 @@ namespace utils
  * Generic Bing Buffer Type
  */
 template <typename T>
-class RingBuffer
+class alignas(alignof(void*)*4) RingBuffer
 {
 public:
     typedef T value_type;
@@ -30,11 +30,10 @@ public:
     typedef const T& const_reference;
 
 private:
-    unsigned long long mHead;
-    unsigned long long mTail;
-    unsigned long long mCapacity;
-    unsigned long long mPad;
-    ls::utils::Pointer<T[]> mData;
+    alignas(alignof(void*)) unsigned long long mHead;
+    alignas(alignof(void*)) unsigned long long mTail;
+    alignas(alignof(void*)) unsigned long long mCapacity;
+    alignas(alignof(void*)) ls::utils::Pointer<T[]> mData;
 
 private:
     unsigned long long _realloc_size() const noexcept;

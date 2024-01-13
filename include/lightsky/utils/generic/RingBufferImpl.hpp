@@ -25,7 +25,6 @@ constexpr RingBuffer<T>::RingBuffer() noexcept :
     mHead{0},
     mTail{0},
     mCapacity{1},
-    mPad{0},
     mData{nullptr}
 {
 }
@@ -80,7 +79,6 @@ RingBuffer<T>::RingBuffer(RingBuffer&& buffer) noexcept :
     mHead{buffer.mHead},
     mTail{buffer.mTail},
     mCapacity{buffer.mCapacity},
-    mPad{0},
     mData{std::move(buffer.mData)}
 {
     buffer.mHead = 0;
@@ -247,7 +245,7 @@ inline bool RingBuffer<T>::empty() const noexcept
 template <typename T>
 inline bool RingBuffer<T>::full() const noexcept
 {
-    return mHead == ((mTail + 1ull) % mCapacity);
+    return mData && capacity() == size();
 }
 
 
