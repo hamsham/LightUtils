@@ -92,5 +92,11 @@ int main()
     LS_ASSERT(!buffer.full());
     LS_ASSERT(buffer.empty());
 
+    buffer.shrink_to_fit();
+    LS_ASSERT(buffer.size() == 0);
+    LS_ASSERT(buffer.capacity() == 0);
+    LS_ASSERT(!buffer.full());
+    LS_ASSERT(buffer.empty());
+
     return 0;
 }
