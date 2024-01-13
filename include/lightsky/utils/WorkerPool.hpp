@@ -55,6 +55,8 @@ class WorkerPool
 
     mutable std::condition_variable mWaitCond;
 
+    std::mutex mExecMtx;
+
     std::condition_variable mExecCond;
 
     std::vector<std::thread> mThreads;

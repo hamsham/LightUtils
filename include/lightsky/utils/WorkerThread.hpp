@@ -84,11 +84,15 @@ class WorkerThread
 
     mutable std::condition_variable mWaitCond;
 
+    std::mutex mExecMtx;
+
     std::condition_variable mExecCond;
 #else
     mutable CRITICAL_SECTION mWaitMtx;
 
     mutable CONDITION_VARIABLE mWaitCond;
+
+    CRITICAL_SECTION mExecMtx;
 
     CONDITION_VARIABLE mExecCond;
 #endif

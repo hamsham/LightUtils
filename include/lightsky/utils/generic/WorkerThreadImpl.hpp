@@ -79,19 +79,19 @@ void WorkerThread<WorkerTaskType>::thread_loop() noexcept
             else
             {
                 #ifndef LS_UTILS_USE_WINDOWS_THREADS
-                    std::unique_lock<std::mutex> cvLock{this->mWaitMtx};
+                    std::unique_lock<std::mutex> cvLock{this->mExecMtx};
                     this->mExecCond.wait(cvLock, [this]()->bool
                     {
                         return !this->mIsPaused.load(std::memory_order_acquire);
                     });
 
                 #else
-                    EnterCriticalSection(&mWaitMtx);
+                    EnterCriticalSection(&mExecMtx);
                     while (this->mIsPaused.load(std::memory_order_acquire))
                     {
-                        SleepConditionVariableCS(&mExecCond, &mWaitMtx, (DWORD)0xFFFFFFFFFFFFFFFF); // INFINITE
+                        SleepConditionVariableCS(&mExecCond, &mExecMtx, (DWORD)0xFFFFFFFFFFFFFFFF); // INFINITE
                     }
-                    LeaveCriticalSection(&mWaitMtx);
+                    LeaveCriticalSection(&mExecMtx);
 
                 #endif
             }
@@ -119,20 +119,20 @@ WorkerThread<WorkerTaskType>::~WorkerThread() noexcept
     this->mPushLock.unlock();
 
     #ifndef LS_UTILS_USE_WINDOWS_THREADS
-        this->mWaitMtx.lock();
+        this->mExecMtx.lock();
         this->mIsPaused.store(false, std::memory_order_release);
-        this->mWaitMtx.unlock();
         this->mExecCond.notify_all();
+        this->mExecMtx.unlock();
         this->mThread.join();
 
     #else
-        EnterCriticalSection(&mWaitMtx);
+        EnterCriticalSection(&mExecMtx);
         this->mIsPaused.store(false, std::memory_order_release);
-        LeaveCriticalSection(&mWaitMtx);
         WakeConditionVariable(&mExecCond);
+        LeaveCriticalSection(&mExecMtx);
 
         this->mThread.join();
-        DeleteCriticalSection(&mWaitMtx);
+        DeleteCriticalSection(&mExecMtx);
 
     #endif /* LS_UTILS_USE_WINDOWS_THREADS */
 }
@@ -151,6 +151,7 @@ WorkerThread<WorkerTaskType>::WorkerThread(unsigned affinity) noexcept :
     #ifndef LS_UTILS_USE_WINDOWS_THREADS
         mWaitMtx{},
         mWaitCond{},
+        mExecMtx{},
         mExecCond{},
     #endif
     mThread{}
@@ -160,6 +161,7 @@ WorkerThread<WorkerTaskType>::WorkerThread(unsigned affinity) noexcept :
     #ifdef LS_UTILS_USE_WINDOWS_THREADS
         InitializeCriticalSectionAndSpinCount(&mWaitMtx, 1);
         InitializeConditionVariable(&mWaitCond);
+        InitializeCriticalSectionAndSpinCount(&mExecMtx, 1);
         InitializeConditionVariable(&mExecCond);
     #endif
 
@@ -356,15 +358,15 @@ void WorkerThread<WorkerTaskType>::flush() noexcept
     if (haveTasks)
     {
         #ifndef LS_UTILS_USE_WINDOWS_THREADS
-            this->mWaitMtx.lock();
+            this->mExecMtx.lock();
             this->mIsPaused.store(false, std::memory_order_release);
             this->mExecCond.notify_one();
-            this->mWaitMtx.unlock();
+            this->mExecMtx.unlock();
         #else
-            EnterCriticalSection(&mWaitMtx);
+            EnterCriticalSection(&mExecMtx);
             this->mIsPaused.store(false, std::memory_order_release);
             WakeConditionVariable(&mExecCond);
-            LeaveCriticalSection(&mWaitMtx);
+            LeaveCriticalSection(&mExecMtx);
         #endif
     }
 }

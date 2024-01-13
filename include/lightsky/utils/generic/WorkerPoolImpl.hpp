@@ -80,7 +80,7 @@ void WorkerPool<WorkerTaskType>::thread_loop() noexcept
             // condition variable will remain in-place until the next flush.
             if (!mBusyWait.load(std::memory_order_acquire))
             {
-                std::unique_lock<std::mutex> cvLock{mWaitMtx};
+                std::unique_lock<std::mutex> cvLock{mExecMtx};
                 mExecCond.wait(cvLock);
             }
         }
@@ -104,7 +104,7 @@ void WorkerPool<WorkerTaskType>::stop_threads() noexcept
     }
 
     {
-        std::lock_guard<std::mutex> waitLock{mWaitMtx};
+        std::lock_guard<std::mutex> waitLock{mExecMtx};
         {
             std::lock_guard<utils::SpinLock> pushLock{mPushLock};
             mTasks.clear();
@@ -113,7 +113,6 @@ void WorkerPool<WorkerTaskType>::stop_threads() noexcept
 
         mIsPaused.store(false, std::memory_order_release);
         mExecCond.notify_all();
-        mWaitMtx.unlock();
     }
 
     for (std::thread& t : mThreads)
@@ -151,6 +150,7 @@ WorkerPool<WorkerTaskType>::WorkerPool(size_t inNumThreads) :
     mTasks{2},
     mWaitMtx{},
     mWaitCond{},
+    mExecMtx{},
     mExecCond{},
     mThreads{}
 {
@@ -366,7 +366,7 @@ void WorkerPool<WorkerTaskType>::flush() noexcept
     // Don't bother waking up the thread if there's nothing to do.
     if (haveTasks)
     {
-        std::lock_guard<std::mutex> waitLock{mWaitMtx};
+        std::lock_guard<std::mutex> waitLock{mExecMtx};
         mIsPaused.store(false, std::memory_order_release);
         mExecCond.notify_all();
     }
