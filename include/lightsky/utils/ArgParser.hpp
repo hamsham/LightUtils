@@ -13,7 +13,34 @@ namespace utils
 namespace argparse
 {
 
+
+
+/*-----------------------------------------------------------------------------
+ * Forward declarations
+-----------------------------------------------------------------------------*/
 class Argument;
+
+
+
+
+/*-----------------------------------------------------------------------------
+ * Enums
+-----------------------------------------------------------------------------*/
+enum class ArgErrCode : int
+{
+    SUCCESS = 0,
+    INTERNAL_NO_FLAG_VALUE_SET = -1,
+    INTERNAL_CONST_ARG_COUNT_MISMATCH = -2,
+    INTERNAL_CONST_ARG_TYPE_MISMATCH = -3,
+    NO_DEFAULT_VALUE_AVAILABLE = -4,
+    NO_CONST_VALUE_AVAILABLE = -5,
+    NO_VALUES_AVAILABLE = -6,
+    NO_SINGLE_VALUE_AVAILABLE = -7,
+    INSUFFICIENT_NUM_VALUES = -8,
+    TOO_MANY_VALUES = -9,
+    UNKNOWN_ARG = -10,
+    INVALID_ARG_TYPE
+};
 
 
 
