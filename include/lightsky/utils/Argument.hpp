@@ -15,7 +15,7 @@ namespace argparse
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Enums
 -----------------------------------------------------------------------------*/
 enum class ArgCount : size_t
 {
@@ -26,10 +26,7 @@ enum class ArgCount : size_t
 
 
 
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
-enum class ArgType
+enum class ArgType : uint8_t
 {
     STRING,
     CHAR,
@@ -40,7 +37,7 @@ enum class ArgType
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Container to store data from parsed command-line arguments
 -----------------------------------------------------------------------------*/
 class Argument
 {
@@ -70,6 +67,8 @@ class Argument
     static void value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept;
 
   public:
+    ~Argument() noexcept;
+
     Argument() = delete;
 
     Argument(const std::string& longOpt, char shortOpt = '\0') noexcept;
@@ -141,27 +140,7 @@ class Argument
 
 
 /*-------------------------------------
- *
--------------------------------------*/
-inline const std::string& Argument::long_name() const noexcept
-{
-    return mLongOpt;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-inline char Argument::short_name() const noexcept
-{
-    return mShortOpt;
-}
-
-
-
-/*-------------------------------------
- *
+ * Set a value for an argument
 -------------------------------------*/
 template <typename StringableArg>
 void Argument::value_push(std::vector<std::string>& argList, const StringableArg& defaultVal) noexcept
@@ -172,7 +151,7 @@ void Argument::value_push(std::vector<std::string>& argList, const StringableArg
 
 
 /*-------------------------------------
- *
+ * Set values for an argument list
 -------------------------------------*/
 template <typename StringableArg, typename... StringableArgs>
 void Argument::value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept
@@ -184,7 +163,7 @@ void Argument::value_push(std::vector<std::string>& argList, const StringableArg
 
 
 /*-------------------------------------
- *
+ * value returned if there's no key+value pair
 -------------------------------------*/
 template <typename... StringableArgs>
 Argument& Argument::default_value(const StringableArgs&... defaultVals) noexcept
@@ -198,7 +177,7 @@ Argument& Argument::default_value(const StringableArgs&... defaultVals) noexcept
 
 
 /*-------------------------------------
- *
+ * value returned if there's no key+value pair
 -------------------------------------*/
 template <typename StringableArg>
 Argument& Argument::default_value(const StringableArg& defaultVal) noexcept
@@ -212,7 +191,7 @@ Argument& Argument::default_value(const StringableArg& defaultVal) noexcept
 
 
 /*-------------------------------------
- *
+ * Value returned if a key has no value
 -------------------------------------*/
 template <typename... StringableArgs>
 Argument& Argument::const_value(const StringableArgs&... constVals) noexcept
@@ -225,7 +204,7 @@ Argument& Argument::const_value(const StringableArgs&... constVals) noexcept
 
 
 /*-------------------------------------
- *
+ * Value returned if a key has no value
 -------------------------------------*/
 template <typename StringableArg>
 Argument& Argument::const_value(const StringableArg& constVal) noexcept
@@ -240,18 +219,5 @@ Argument& Argument::const_value(const StringableArg& constVal) noexcept
 } // end argparse namespace
 } // end utils namespace
 } // end ls namespace
-
-
-
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
-namespace std
-{
-    template <>
-    struct hash<ls::utils::argparse::Argument>;
-}
-
-
 
 #endif /* ARGPARSE_ARGUMENT_HPP */

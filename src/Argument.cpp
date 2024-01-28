@@ -9,7 +9,7 @@
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Anonymous helper functions
 -----------------------------------------------------------------------------*/
 namespace
 {
@@ -19,7 +19,7 @@ namespace argparse = ls::utils::argparse;
 
 
 /*-------------------------------------
- *
+ * Fast hash to store command-line args
 -------------------------------------*/
 constexpr uint32_t ArgHash_FNV1a_32(const char* str, uint32_t hash = 2166136261) noexcept
 {
@@ -28,8 +28,12 @@ constexpr uint32_t ArgHash_FNV1a_32(const char* str, uint32_t hash = 2166136261)
 
 
 
+/*-------------------------------------
+ * Convert an enum to an integral
+-------------------------------------*/
 template <typename EnumType>
-constexpr auto _enum_to_value(typename std::enable_if<std::is_enum<EnumType>::value, EnumType>::type x) noexcept -> typename std::underlying_type<EnumType>::type
+constexpr typename std::underlying_type<EnumType>::type _enum_to_value(
+    typename std::enable_if<std::is_enum<EnumType>::value, EnumType>::type x) noexcept
 {
     return static_cast<typename std::underlying_type<EnumType>::type>(x);
 }
@@ -37,33 +41,6 @@ constexpr auto _enum_to_value(typename std::enable_if<std::is_enum<EnumType>::va
 
 
 } // end anonymous namespace
-
-
-
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
-namespace std
-{
-
-
-
-template <>
-struct hash<argparse::Argument>
-{
-    typedef argparse::Argument argument_type;
-    typedef std::size_t result_type;
-
-    inline result_type operator()(const argparse::Argument& arg) noexcept
-    {
-        return arg.hash();
-
-    }
-};
-
-
-
-} // end std namespace
 
 
 
@@ -80,7 +57,16 @@ namespace argparse
 
 
 /*-------------------------------------
- *
+ * Destructor
+-------------------------------------*/
+Argument::~Argument() noexcept
+{
+}
+
+
+
+/*-------------------------------------
+ * Constructor
 -------------------------------------*/
 Argument::Argument(const std::string& longOpt, char shortOpt) noexcept :
     mLongOpt{longOpt},
@@ -97,7 +83,7 @@ Argument::Argument(const std::string& longOpt, char shortOpt) noexcept :
 
 
 /*-------------------------------------
- *
+ * Copy Constructor
 -------------------------------------*/
 Argument::Argument(const Argument& arg) noexcept :
     mLongOpt{arg.mLongOpt},
@@ -114,7 +100,7 @@ Argument::Argument(const Argument& arg) noexcept :
 
 
 /*-------------------------------------
- *
+ * Move Constructor
 -------------------------------------*/
 Argument::Argument(Argument&& arg) noexcept :
     mLongOpt{std::move(arg.mLongOpt)},
@@ -136,7 +122,7 @@ Argument::Argument(Argument&& arg) noexcept :
 
 
 /*-------------------------------------
- *
+ * Copy Operator
 -------------------------------------*/
 Argument& Argument::operator=(const Argument& arg) noexcept
 {
@@ -156,7 +142,7 @@ Argument& Argument::operator=(const Argument& arg) noexcept
 
 
 /*-------------------------------------
- *
+ * Move Operator
 -------------------------------------*/
 Argument& Argument::operator=(Argument&& arg) noexcept
 {
@@ -186,8 +172,28 @@ Argument& Argument::operator=(Argument&& arg) noexcept
 }
 
 
+
 /*-------------------------------------
- *
+ * Get eh long version of an argument's name
+-------------------------------------*/
+const std::string& Argument::long_name() const noexcept
+{
+    return mLongOpt;
+}
+
+
+
+/*-------------------------------------
+ * Get eh long version of an argument's name
+-------------------------------------*/
+char Argument::short_name() const noexcept
+{
+    return mShortOpt;
+}
+
+
+/*-------------------------------------
+ * Get the hash for *this
 -------------------------------------*/
 size_t Argument::hash() const noexcept
 {
@@ -197,7 +203,7 @@ size_t Argument::hash() const noexcept
 
 
 /*-------------------------------------
- *
+ * Get the hash of an argument based on its long name
 -------------------------------------*/
 size_t Argument::hash_for_name(const std::string& longName) noexcept
 {
@@ -207,7 +213,7 @@ size_t Argument::hash_for_name(const std::string& longName) noexcept
 
 
 /*-------------------------------------
- *
+ * Get the hash of an argument based on its short name
 -------------------------------------*/
 size_t Argument::hash_for_name(char shortName) noexcept
 {
@@ -217,7 +223,7 @@ size_t Argument::hash_for_name(char shortName) noexcept
 
 
 /*-------------------------------------
- *
+ * Get the hash of an argument
 -------------------------------------*/
 size_t Argument::hash_for_name(const std::string& longName, char shortName) noexcept
 {
@@ -232,7 +238,7 @@ size_t Argument::hash_for_name(const std::string& longName, char shortName) noex
 
 
 /*-------------------------------------
- *
+ * value returned if there's no key+value pair
 -------------------------------------*/
 Argument& Argument::default_value(const char* defaultVal) noexcept
 {
@@ -245,7 +251,7 @@ Argument& Argument::default_value(const char* defaultVal) noexcept
 
 
 /*-------------------------------------
- *
+ * value returned if there's no key+value pair
 -------------------------------------*/
 const std::vector<std::string>& Argument::default_value() const noexcept
 {
@@ -255,7 +261,7 @@ const std::vector<std::string>& Argument::default_value() const noexcept
 
 
 /*-------------------------------------
- *
+ * Value returned if a key has no value
 -------------------------------------*/
 Argument& Argument::const_value(const char* constVal) noexcept
 {
@@ -266,7 +272,7 @@ Argument& Argument::const_value(const char* constVal) noexcept
 
 
 /*-------------------------------------
- *
+ * Value returned if a key has no value
 -------------------------------------*/
 const std::vector<std::string>& Argument::const_value() const noexcept
 {
@@ -276,7 +282,7 @@ const std::vector<std::string>& Argument::const_value() const noexcept
 
 
 /*-------------------------------------
- *
+ * Set the argument description
 -------------------------------------*/
 Argument& Argument::description(const std::string& shortDesc) noexcept
 {
@@ -287,7 +293,7 @@ Argument& Argument::description(const std::string& shortDesc) noexcept
 
 
 /*-------------------------------------
- *
+ * Get the argument description
 -------------------------------------*/
 const std::string& Argument::description() const noexcept
 {
@@ -297,7 +303,7 @@ const std::string& Argument::description() const noexcept
 
 
 /*-------------------------------------
- *
+ * Set an argument's help message
 -------------------------------------*/
 Argument& Argument::help_text(const std::string& help) noexcept
 {
@@ -308,7 +314,7 @@ Argument& Argument::help_text(const std::string& help) noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve an argument's help message
 -------------------------------------*/
 const std::string& Argument::help_text() const noexcept
 {
@@ -318,7 +324,7 @@ const std::string& Argument::help_text() const noexcept
 
 
 /*-------------------------------------
- *
+ * Require an arg needs 0, 1, or 1+ values
 -------------------------------------*/
 Argument& Argument::num_required(ArgCount numParams) noexcept
 {
@@ -329,7 +335,7 @@ Argument& Argument::num_required(ArgCount numParams) noexcept
 
 
 /*-------------------------------------
- *
+ * Require an arg needs multiple parameters
 -------------------------------------*/
 Argument& Argument::num_required(size_t numParams) noexcept
 {
@@ -340,7 +346,7 @@ Argument& Argument::num_required(size_t numParams) noexcept
 
 
 /*-------------------------------------
- *
+ * Get the number of required values for an argument
 -------------------------------------*/
 size_t Argument::num_required() const noexcept
 {
@@ -350,7 +356,7 @@ size_t Argument::num_required() const noexcept
 
 
 /*-------------------------------------
- *
+ * Set that an arg must have a user-provided value
 -------------------------------------*/
 Argument& Argument::required(bool isRequired) noexcept
 {
@@ -361,7 +367,7 @@ Argument& Argument::required(bool isRequired) noexcept
 
 
 /*-------------------------------------
- *
+ * Get if an arg must have a user-provided value
 -------------------------------------*/
 bool Argument::required() const noexcept
 {
@@ -371,7 +377,7 @@ bool Argument::required() const noexcept
 
 
 /*-------------------------------------
- *
+ * Set an argument's type
 -------------------------------------*/
 Argument& Argument::type(ArgType dataType) noexcept
 {
@@ -382,14 +388,12 @@ Argument& Argument::type(ArgType dataType) noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve an argument's type
 -------------------------------------*/
 ArgType Argument::type() const noexcept
 {
     return mType;
 }
-
-
 
 
 

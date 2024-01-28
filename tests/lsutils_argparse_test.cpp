@@ -70,41 +70,41 @@ int main(int argc, char* argv[])
 
     parser.parse(argc, argv);
 
-    if (parser.have_value('h'))
+    if (parser.value_exists('h'))
     {
         std::cout << "Found help option" << std::endl;
     }
 
-    if (parser.have_value('a'))
+    if (parser.value_exists('a'))
     {
         std::cout << "Found 'a'" << std::endl;
         print_vector(parser.value("test1"));
     }
 
-    if (parser.have_value('b'))
+    if (parser.value_exists('b'))
     {
         std::cout << "Found 'b'" << std::endl;
         print_vector(parser.value("test2"));
     }
 
-    if (parser.have_value("test3"))
+    if (parser.value_exists("test3"))
     {
         std::cout << "Found \"test3\"" << std::endl;
         print_vector(parser.value("test3"));
     }
 
-    if (parser.have_value("test4"))
+    if (parser.value_exists("test4"))
     {
         std::cout << "Found \"test4\"" << std::endl;
         print_vector(parser.value("test4"));
     }
 
-    if (parser.have_value("test5"))
+    if (parser.value_exists("test5"))
     {
         std::cout << "Found \"test5\"" << std::endl;
     }
 
-    if (parser.have_value("test6"))
+    if (parser.value_exists("test6"))
     {
         std::cout << "Found \"test6\"" << std::endl;
         print_vector(parser.value('6'));

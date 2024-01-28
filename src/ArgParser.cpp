@@ -36,10 +36,16 @@ enum class ArgUsage
 
 
 /*-------------------------------------
- *
+ * Check if a value is an integer
 -------------------------------------*/
 bool param_is_integral(const char* pOpt) noexcept
 {
+    // negativity check
+    if (pOpt[0] == '-')
+    {
+        ++pOpt;
+    }
+
     while (*pOpt)
     {
         if (!std::isdigit(*pOpt))
@@ -56,7 +62,7 @@ bool param_is_integral(const char* pOpt) noexcept
 
 
 /*-------------------------------------
- *
+ * Check if a value is a floating-point type
 -------------------------------------*/
 bool param_is_real(const char* pOpt) noexcept
 {
@@ -69,41 +75,7 @@ bool param_is_real(const char* pOpt) noexcept
 
 
 /*-------------------------------------
- *
--------------------------------------*/
-ArgUsage parse_arg_type(const char* pOpt, int* numFlags = nullptr) noexcept
-{
-    size_t len = std::strlen(pOpt);
-
-    if (len >= 3 && pOpt[0] == '-' && pOpt[1] == '-')
-    {
-        if (numFlags)
-        {
-            *numFlags = 1;
-        }
-        return ArgUsage::LONG_ARG;
-    }
-    else if (len >= 2 && pOpt[0] == '-')
-    {
-        const size_t numSubOpts = std::strlen(pOpt+1);
-        if (numFlags)
-        {
-            *numFlags = (int)(numSubOpts < (size_t)std::numeric_limits<int>::max() ? numSubOpts : (size_t)std::numeric_limits<int>::max());
-        }
-        return (numSubOpts > 1) ? ArgUsage::SHORT_FLAGS : ArgUsage::SHORT_ARG;
-    }
-
-    if (numFlags)
-    {
-        *numFlags = 1;
-    }
-    return ArgUsage::PARAMETER;
-}
-
-
-
-/*-------------------------------------
- *
+ * Validate data types
 -------------------------------------*/
 bool param_matches_type(const char* pOpt, argparse::ArgType type) noexcept
 {
@@ -137,7 +109,41 @@ bool param_matches_type(const char* pOpt, argparse::ArgType type) noexcept
 
 
 /*-------------------------------------
- *
+ * Load a single argument
+-------------------------------------*/
+ArgUsage parse_arg_type(const char* pOpt, int* numFlags = nullptr) noexcept
+{
+    size_t len = std::strlen(pOpt);
+
+    if (len >= 3 && pOpt[0] == '-' && pOpt[1] == '-')
+    {
+        if (numFlags)
+        {
+            *numFlags = 1;
+        }
+        return ArgUsage::LONG_ARG;
+    }
+    else if (len >= 2 && pOpt[0] == '-')
+    {
+        const size_t numSubOpts = std::strlen(pOpt+1);
+        if (numFlags)
+        {
+            *numFlags = (int)(numSubOpts < (size_t)std::numeric_limits<int>::max() ? numSubOpts : (size_t)std::numeric_limits<int>::max());
+        }
+        return (numSubOpts > 1) ? ArgUsage::SHORT_FLAGS : ArgUsage::SHORT_ARG;
+    }
+
+    if (numFlags)
+    {
+        *numFlags = 1;
+    }
+    return ArgUsage::PARAMETER;
+}
+
+
+
+/*-------------------------------------
+ * Get the description of a type
 -------------------------------------*/
 std::string param_type_str(argparse::ArgType type) noexcept
 {
@@ -165,7 +171,7 @@ std::string param_type_str(argparse::ArgType type) noexcept
 
 
 /*-------------------------------------
- *
+ * Build a help message and quit
 -------------------------------------*/
 [[noreturn]]
 void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCode = 0) noexcept
@@ -179,7 +185,7 @@ void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCod
 
         if (!arg.required())
         {
-            std::cout << "[ ";
+            std::cout << '[';
         }
 
         if (!arg.long_name().empty() && arg.short_name() != '\0') {
@@ -194,22 +200,22 @@ void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCod
 
         if (!arg.required())
         {
-            std::cout << " ]";
+            std::cout << ']';
         }
 
         if (arg.num_required() == 1)
         {
-            std::cout << " [ param ]";
+            std::cout << " [value]";
         }
         else if (arg.num_required() == static_cast<size_t>(argparse::ArgCount::LEAST_ONE))
         {
-            std::cout << " [ param_1 [ param_2 [ ... ] ]";
+            std::cout << " [value1[, value2[, ...]]]";
             if (!arg.const_value().empty())
             {
                 std::cout << "\n\tDefault Value[s] (if flag enabled):";
                 for (size_t c = 0; c < arg.const_value().size(); ++c)
                 {
-                    std::cout << " [ param_" << (c+1) << '=' << arg.const_value()[c] << " ]";
+                    std::cout << " [value" << (c+1) << '=' << arg.const_value()[c] << ']';
                 }
             }
         }
@@ -217,14 +223,14 @@ void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCod
         {
             for (size_t c = 0; c < arg.num_required(); ++c)
             {
-                std::cout << " [ param_" << (c+1);
+                std::cout << " [value" << (c+1);
                 if (!arg.const_value().empty())
                 {
-                    std::cout << '=' << arg.const_value()[c] << " ]";
+                    std::cout << '=' << arg.const_value()[c] << ']';
                 }
                 else
                 {
-                    std::cout << " ]";
+                    std::cout << ']';
                 }
             }
         }
@@ -236,7 +242,7 @@ void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCod
             std::cout << "\n\tDefault Value[s] (if flag not enabled): ";
             for (size_t v = 0; v < arg.default_value().size(); ++v)
             {
-                std::cout << " [ param_" << (v+1) << '=' << arg.default_value()[v] << " ]";
+                std::cout << " [param" << (v+1) << '=' << arg.default_value()[v] << ']';
             }
         }
 
@@ -254,13 +260,16 @@ void print_help_and_quit(const std::vector<argparse::Argument>& args, int errCod
 
 
 /*-------------------------------------
- *
+ * Build an error message, print help, then quit
 -------------------------------------*/
 [[noreturn]]
-void print_err_and_quit(const std::string& errMsg, int errCode) noexcept
+void print_err_and_quit(
+    const std::vector<argparse::Argument>& args,
+    const std::string& errMsg,
+    int errCode) noexcept
 {
     std::cerr << errMsg << std::endl;
-    std::exit(errCode);
+    print_help_and_quit(args, errCode);
 }
 
 
@@ -270,7 +279,7 @@ void print_err_and_quit(const std::string& errMsg, int errCode) noexcept
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Argument Parser
 -----------------------------------------------------------------------------*/
 namespace ls
 {
@@ -278,11 +287,8 @@ namespace utils
 {
 namespace argparse
 {
-
-
-
 /*-------------------------------------
- *
+ * Destructor
 -------------------------------------*/
 ArgParser::~ArgParser() noexcept
 {
@@ -291,7 +297,7 @@ ArgParser::~ArgParser() noexcept
 
 
 /*-------------------------------------
- *
+ * Constructor
 -------------------------------------*/
 ArgParser::ArgParser() noexcept :
     mLongOptToIndices{},
@@ -305,7 +311,7 @@ ArgParser::ArgParser() noexcept :
 
 
 /*-------------------------------------
- *
+ * Copy Constructor
 -------------------------------------*/
 ArgParser::ArgParser(const ArgParser& parser) noexcept :
     mLongOptToIndices{parser.mLongOptToIndices},
@@ -319,7 +325,7 @@ ArgParser::ArgParser(const ArgParser& parser) noexcept :
 
 
 /*-------------------------------------
- *
+ * Move Constructor
 -------------------------------------*/
 ArgParser::ArgParser(ArgParser&& parser) noexcept :
     mLongOptToIndices{std::move(parser.mLongOptToIndices)},
@@ -333,7 +339,7 @@ ArgParser::ArgParser(ArgParser&& parser) noexcept :
 
 
 /*-------------------------------------
- *
+ * Copy Operator
 -------------------------------------*/
 ArgParser& ArgParser::operator=(const ArgParser& parser) noexcept
 {
@@ -350,7 +356,7 @@ ArgParser& ArgParser::operator=(const ArgParser& parser) noexcept
 
 
 /*-------------------------------------
- *
+ * Move Operator
 -------------------------------------*/
 ArgParser& ArgParser::operator=(ArgParser&& parser) noexcept
 {
@@ -367,7 +373,7 @@ ArgParser& ArgParser::operator=(ArgParser&& parser) noexcept
 
 
 /*-------------------------------------
- *
+ * Assign an argument by name
 -------------------------------------*/
 Argument& ArgParser::set_argument(const std::string &longName, char shortName) noexcept
 {
@@ -401,9 +407,9 @@ Argument& ArgParser::set_argument(const std::string &longName, char shortName) n
 
 
 /*-------------------------------------
- *
+ * Arg Count validation
 -------------------------------------*/
-void ArgParser::validate_internal() const noexcept
+void ArgParser::_validate_arg_counts() const noexcept
 {
     for (const Argument& arg : mArgs)
     {
@@ -419,7 +425,10 @@ void ArgParser::validate_internal() const noexcept
 
         if (!(constValidation0 || constValidation1 || constValidation2))
         {
-            print_err_and_quit("Internal error: Constant argument count does not match number of required arguments.", -1);
+            print_err_and_quit(
+                mArgs,
+                "Internal error: Constant argument count does not match number of required arguments.",
+                -1);
         }
         else
         {
@@ -434,7 +443,7 @@ void ArgParser::validate_internal() const noexcept
                     err += std::string{"\" does not match expected data type: "};
                     err += param_type_str(arg.type());
 
-                    print_err_and_quit(err, -3);
+                    print_err_and_quit(mArgs, err, -3);
                 }
             }
         }
@@ -444,9 +453,9 @@ void ArgParser::validate_internal() const noexcept
 
 
 /*-------------------------------------
- *
+ * Validate arg values
 -------------------------------------*/
-void ArgParser::validate_args(int argc, char* const* argv) const noexcept
+void ArgParser::_validate_args(int argc, char* const* argv) const noexcept
 {
     const char* pOpt = nullptr;
     int i = 1;
@@ -463,13 +472,19 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
         if (arg.num_required() && !numArgsForOpt && arg.const_value().empty())
         {
             const std::string msgParam = !currentOpt.empty() ? currentOpt : std::string{currentFlag};
-            print_err_and_quit(std::string{"No parameters provided for argument \""} + msgParam + '\"', -4);
+            print_err_and_quit(
+                mArgs,
+                std::string{"No parameters provided for argument \""} + msgParam + '\"',
+                -4);
         }
 
         if (arg.num_required() == static_cast<size_t>(ArgCount::LEAST_ONE) && !numArgsForOpt && arg.const_value().empty())
         {
             const std::string msgParam = !currentOpt.empty() ? currentOpt : std::string{currentFlag};
-            print_err_and_quit(std::string{"Argument \""} + msgParam + std::string{"\" requires at least one parameter."}, -5);
+            print_err_and_quit(
+                mArgs,
+                std::string{"Argument \""} + msgParam + std::string{"\" requires at least one parameter."},
+                -5);
         }
         else if (arg.num_required() != static_cast<size_t>(ArgCount::LEAST_ONE) && arg.num_required() > numArgsForOpt)
         {
@@ -481,7 +496,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
             err.append(" of ");
             err.append(std::to_string(arg.num_required()));
             err.append(" parameters.");
-            print_err_and_quit(err, -6);
+            print_err_and_quit(mArgs, err, -6);
         }
         else if (arg.num_required() < numArgsForOpt)
         {
@@ -493,7 +508,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
             err.append(" of ");
             err.append(std::to_string(arg.num_required()));
             err.append(" parameters.");
-            print_err_and_quit(err, -7);
+            print_err_and_quit(mArgs, err, -7);
         }
     };
 
@@ -522,7 +537,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
 
             if (!mLongOptToIndices.count(currentHash))
             {
-                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -8);
+                print_err_and_quit(mArgs, std::string{"Unknown option: "} + currentOpt, -8);
             }
 
             if (currentOpt == "help")
@@ -544,7 +559,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
 
                 if (!mShortOptToIndices.count(currentHash))
                 {
-                    print_err_and_quit(std::string{"Unknown option: "} + pOpt[j], -9);
+                    print_err_and_quit(mArgs, std::string{"Unknown option: "} + pOpt[j], -9);
                 }
 
                 if (pOpt[j] == 'h')
@@ -564,7 +579,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
         {
             if (currentHash == ~(size_t)0)
             {
-                print_err_and_quit(std::string{"Unknown option: "} + currentOpt, -10);
+                print_err_and_quit(mArgs, std::string{"Unknown option: "} + currentOpt, -10);
             }
 
             size_t lastArgIndex = currentOpt.empty() ? mShortOptToIndices.at(currentHash) : mLongOptToIndices.at(currentHash);
@@ -578,7 +593,7 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
                 err += std::string{"\" does not match expected type: "};
                 err += param_type_str(type);
 
-                print_err_and_quit(err, -11);
+                print_err_and_quit(mArgs, err, -11);
             }
 
             ++numArgsForOpt;
@@ -598,9 +613,9 @@ void ArgParser::validate_args(int argc, char* const* argv) const noexcept
 
 
 /*-------------------------------------
- *
+ * Load arguments usign their long names
 -------------------------------------*/
-int ArgParser::parse_long_opt(const std::string& currentOpt, int argId, int argc, char* const* argv) noexcept
+int ArgParser::_parse_long_opt(const std::string& currentOpt, int argId, int argc, char* const* argv) noexcept
 {
     int numFlags = 0;
     int i = argId+1;
@@ -628,9 +643,9 @@ int ArgParser::parse_long_opt(const std::string& currentOpt, int argId, int argc
 
 
 /*-------------------------------------
- *
+ * Get arguments using their short names
 -------------------------------------*/
-int ArgParser::parse_short_opts(const char* pFlags, char lastFlag, int argId, int argc, char* const* argv) noexcept
+int ArgParser::_parse_short_opts(const char* pFlags, char lastFlag, int argId, int argc, char* const* argv) noexcept
 {
     int numFlags = 0;
     int i = argId+1;
@@ -665,12 +680,12 @@ int ArgParser::parse_short_opts(const char* pFlags, char lastFlag, int argId, in
 
 
 /*-------------------------------------
- *
+ * Parse data
 -------------------------------------*/
 bool ArgParser::parse(int argc, char* const*argv) noexcept
 {
-    validate_internal();
-    validate_args(argc, argv);
+    _validate_arg_counts();
+    _validate_args(argc, argv);
 
     const char* pOpt = nullptr;
     int i = 1;
@@ -692,7 +707,7 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
                 pOpt += 2;
                 currentFlag = '\0';
                 currentOpt = pOpt;
-                i += parse_long_opt(currentOpt, i, argc, argv);
+                i += _parse_long_opt(currentOpt, i, argc, argv);
                 break;
 
             case ArgUsage::SHORT_FLAGS:
@@ -700,7 +715,7 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
                 pOpt += 1;
                 currentFlag = pOpt[numFlags-1];
                 currentOpt.clear();
-                i += parse_short_opts(pOpt, currentFlag, i, argc, argv);
+                i += _parse_short_opts(pOpt, currentFlag, i, argc, argv);
                 break;
 
             // Should be skipped anyway
@@ -717,12 +732,22 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
         size_t idx = mLongOptToIndices.count(hash) ? mLongOptToIndices.at(hash) : mShortOptToIndices.at(arg.short_name());
         if (!mFoundOpts[idx])
         {
+            if (arg.required() && arg.num_required() != 0 && arg.default_value().empty())
+            {
+                print_err_and_quit(mArgs, std::string{"No default value provided for argument \""} + arg.long_name() + "\".", -1);
+            }
+
             mValues[idx] = arg.default_value();
         }
         else
         {
             if (mValues[idx].empty())
             {
+                if (arg.required() && arg.const_value().empty())
+                {
+                    print_err_and_quit(mArgs, std::string{"No const value provided for argument \""} + arg.long_name() + "\".", -1);
+                }
+
                 mValues[idx] = arg.const_value();
             }
         }
@@ -735,9 +760,19 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
 
 
 /*-------------------------------------
- *
+ * Main file name
 -------------------------------------*/
-bool ArgParser::have_value(const std::string& longName) const noexcept
+const std::string& ArgParser::main_file_path() const noexcept
+{
+    return mMainFile;
+}
+
+
+
+/*-------------------------------------
+ * Check if a value was set (long version)
+-------------------------------------*/
+bool ArgParser::value_exists(const std::string& longName) const noexcept
 {
     size_t hash = Argument::hash_for_name(longName);
     if (!mLongOptToIndices.count(hash))
@@ -752,9 +787,9 @@ bool ArgParser::have_value(const std::string& longName) const noexcept
 
 
 /*-------------------------------------
- *
+ * Check if a value was set (short version)
 -------------------------------------*/
-bool ArgParser::have_value(char shortName) const noexcept
+bool ArgParser::value_exists(char shortName) const noexcept
 {
     if (!mShortOptToIndices.count(shortName))
     {
@@ -768,7 +803,7 @@ bool ArgParser::have_value(char shortName) const noexcept
 
 
 /*-------------------------------------
- *
+ * Get a value as a string
 -------------------------------------*/
 const std::vector<std::string>& ArgParser::value(const std::string& longName) const
 {
@@ -780,13 +815,198 @@ const std::vector<std::string>& ArgParser::value(const std::string& longName) co
 
 
 /*-------------------------------------
- *
+ * Get a value as a string
 -------------------------------------*/
 const std::vector<std::string>& ArgParser::value(char shortName) const
 {
     size_t hash = Argument::hash_for_name(shortName);
     size_t idx = mShortOptToIndices.at(hash);
     return mValues[idx];
+}
+
+
+/*-------------------------------------
+ * Get the first integral argument referenced by its command-line name
+-------------------------------------*/
+long long int ArgParser::value_as_int(const std::string& longName) const
+{
+    const std::string& argVal = this->value_as_string(longName);
+    return std::atoll(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the first integral argument referenced by its command-line name
+-------------------------------------*/
+long long int ArgParser::value_as_int(char shortName) const
+{
+    const std::string& argVal = this->value_as_string(shortName);
+    return std::atoll(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the first character argument referenced by its command-line name
+-------------------------------------*/
+char ArgParser::value_as_char(const std::string& longName) const
+{
+    const std::string& argVal = this->value_as_string(longName);
+    return (char)std::atoi(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the first character argument referenced by its command-line name
+-------------------------------------*/
+char ArgParser::value_as_char(char shortName) const
+{
+    const std::string& argVal = this->value_as_string(shortName);
+    return (char)std::atoi(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the first character argument referenced by its command-line name
+-------------------------------------*/
+double ArgParser::value_as_real(const std::string& longName) const
+{
+    const std::string& argVal = this->value_as_string(longName);
+    return std::atof(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the first character argument referenced by its command-line name
+-------------------------------------*/
+double ArgParser::value_as_real(char shortName) const
+{
+    const std::string& argVal = this->value_as_string(shortName);
+    return std::atof(argVal.c_str());
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all integral arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<long long int> ArgParser::value_as_ints(const std::string& longName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(longName);
+    std::vector<long long int> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = std::atoll(argVal.c_str());
+    }
+
+    return results;
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all integral arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<long long int> ArgParser::value_as_ints(char shortName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(shortName);
+    std::vector<long long int> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = std::atoll(argVal.c_str());
+    }
+
+    return results;
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all character arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<char> ArgParser::value_as_chars(const std::string& longName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(longName);
+    std::vector<char> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = (char)std::atoi(argVal.c_str());
+    }
+
+    return results;
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all character arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<char> ArgParser::value_as_chars(char shortName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(shortName);
+    std::vector<char> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = (char)std::atoi(argVal.c_str());
+    }
+
+    return results;
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all float arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<double> ArgParser::value_as_reals(const std::string& longName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(longName);
+    std::vector<double> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = std::atof(argVal.c_str());
+    }
+
+    return results;
+}
+
+
+
+/*-------------------------------------
+ * Get the list of all float arguments referenced by their command-line name
+-------------------------------------*/
+std::vector<double> ArgParser::value_as_reals(char shortName) const
+{
+    const std::vector<std::string>& argVals = this->value_as_strings(shortName);
+    std::vector<double> results;
+    size_t iter = 0;
+
+    results.resize(argVals.size());
+    for (const std::string& argVal : argVals)
+    {
+        results[iter++] = std::atof(argVal.c_str());
+    }
+
+    return results;
 }
 
 

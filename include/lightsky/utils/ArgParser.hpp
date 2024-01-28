@@ -17,6 +17,9 @@ class Argument;
 
 
 
+/*-----------------------------------------------------------------------------
+ * Command-line argument parser
+-----------------------------------------------------------------------------*/
 class ArgParser
 {
   private:
@@ -32,13 +35,13 @@ class ArgParser
 
     std::string mMainFile;
 
-    void validate_internal() const noexcept;
+    void _validate_arg_counts() const noexcept;
 
-    void validate_args(int argc, char* const* argv) const noexcept;
+    void _validate_args(int argc, char* const* argv) const noexcept;
 
-    int parse_long_opt(const std::string& currentOpt, int argId, int argc, char* const* argv) noexcept;
+    int _parse_long_opt(const std::string& currentOpt, int argId, int argc, char* const* argv) noexcept;
 
-    int parse_short_opts(const char* pFlags, char lastFlag, int argId, int argc, char* const* argv) noexcept;
+    int _parse_short_opts(const char* pFlags, char lastFlag, int argId, int argc, char* const* argv) noexcept;
 
   public:
     ~ArgParser() noexcept;
@@ -57,25 +60,87 @@ class ArgParser
 
     bool parse(int argc, char* const* argv) noexcept;
 
-    bool have_value(const std::string& longName) const noexcept;
+    const std::string& main_file_path() const noexcept;
 
-    bool have_value(char shortName) const noexcept;
+    bool value_exists(const std::string& longName) const noexcept;
+
+    bool value_exists(char shortName) const noexcept;
 
     const std::vector<std::string>& value(const std::string& longName) const;
 
     const std::vector<std::string>& value(char shortName) const;
 
-    const std::string& main_file_path() const noexcept;
+    long long int value_as_int(const std::string& longName) const;
+
+    long long int value_as_int(char shortName) const;
+
+    char value_as_char(const std::string& longName) const;
+
+    char value_as_char(char shortName) const;
+
+    double value_as_real(const std::string& longName) const;
+
+    double value_as_real(char shortName) const;
+
+    const std::string& value_as_string(const std::string& longName) const;
+
+    const std::string& value_as_string(char shortName) const;
+
+    std::vector<long long int> value_as_ints(const std::string& longName) const;
+
+    std::vector<long long int> value_as_ints(char shortName) const;
+
+    std::vector<char> value_as_chars(const std::string& longName) const;
+
+    std::vector<char> value_as_chars(char shortName) const;
+
+    std::vector<double> value_as_reals(const std::string& longName) const;
+
+    std::vector<double> value_as_reals(char shortName) const;
+
+    const std::vector<std::string>& value_as_strings(const std::string& longName) const;
+
+    const std::vector<std::string>& value_as_strings(char shortName) const;
 };
 
 
 
 /*-------------------------------------
- *
+ * Get the first string argument referenced by its command-line name
 -------------------------------------*/
-inline const std::string& ArgParser::main_file_path() const noexcept
+inline const std::string& ArgParser::value_as_string(const std::string& longName) const
 {
-    return mMainFile;
+    return this->value(longName)[0];
+}
+
+
+
+/*-------------------------------------
+ * Get the first string argument referenced by its command-line name
+-------------------------------------*/
+inline const std::string& ArgParser::value_as_string(char shortName) const
+{
+    return this->value(shortName)[0];
+}
+
+
+
+/*-------------------------------------
+ * Get the list of string argument referenced by their command-line name
+-------------------------------------*/
+inline const std::vector<std::string>& ArgParser::value_as_strings(const std::string& longName) const
+{
+    return this->value(longName);
+}
+
+
+
+/*-------------------------------------
+ * Get the list of string argument referenced by their command-line name
+-------------------------------------*/
+inline const std::vector<std::string>& ArgParser::value_as_strings(char shortName) const
+{
+    return this->value(shortName);
 }
 
 
