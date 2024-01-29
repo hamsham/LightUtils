@@ -421,11 +421,12 @@ void ArgParser::_validate_arg_counts() const noexcept
         }
 
         std::vector<std::string>::size_type constSize = arg.const_value().size();
-        bool constValidation0 = (constSize == 1 && arg.num_required() == static_cast<size_t>(ArgCount::ONE));
-        bool constValidation1 = (constSize >= 1 && arg.num_required() == static_cast<size_t>(ArgCount::LEAST_ONE));
-        bool constValidation2 = (constSize == arg.num_required());
+        bool constValidation0 = (constSize == 0 && arg.num_required() == static_cast<size_t>(ArgCount::ZERO));
+        bool constValidation1 = (constSize == 1 && arg.num_required() == static_cast<size_t>(ArgCount::ONE));
+        bool constValidation2 = (constSize >= 1 && arg.num_required() == static_cast<size_t>(ArgCount::LEAST_ONE));
+        bool constValidation3 = (constSize == arg.num_required());
 
-        if (!(constValidation0 || constValidation1 || constValidation2))
+        if (!(constValidation0 || constValidation1 || constValidation2 || constValidation3))
         {
             print_err_and_quit(
                 mArgs,

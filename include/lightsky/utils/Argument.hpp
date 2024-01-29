@@ -170,7 +170,6 @@ Argument& Argument::default_value(const StringableArgs&... defaultVals) noexcept
 {
     mDefaultVal.clear();
     Argument::value_push<StringableArgs...>(mDefaultVal, defaultVals...);
-    mRequired = true;
     return *this;
 }
 
@@ -184,7 +183,6 @@ Argument& Argument::default_value(const StringableArg& defaultVal) noexcept
 {
     mDefaultVal.clear();
     Argument::value_push<StringableArg>(mDefaultVal, defaultVal);
-    mRequired = true;
     return *this;
 }
 
