@@ -766,8 +766,7 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
         {
             if (mValues[idx].empty())
             {
-                if ((arg.required() || arg.num_required() == 0)
-                && arg.const_value().empty())
+                if (arg.required() && arg.const_value().empty())
                 {
                     print_err_and_quit(
                         mArgs,
