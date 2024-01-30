@@ -539,17 +539,17 @@ void ArgParser::_validate_args(int argc, char* const* argv) const noexcept
             currentFlag = '\0';
             currentHash = Argument::hash_for_name(currentOpt);
 
+            if (currentOpt == "help")
+            {
+                print_help_and_quit(mArgs);
+            }
+
             if (!mLongOptToIndices.count(currentHash))
             {
                 print_err_and_quit(
                     mArgs,
                     std::string{"Unknown option: "} + currentOpt,
                     ArgErrCode::UNKNOWN_ARG);
-            }
-
-            if (currentOpt == "help")
-            {
-                print_help_and_quit(mArgs);
             }
         }
         else if (usage == ArgUsage::SHORT_ARG || usage == ArgUsage::SHORT_FLAGS)
@@ -564,17 +564,17 @@ void ArgParser::_validate_args(int argc, char* const* argv) const noexcept
                 currentFlag = pOpt[j];
                 currentHash = Argument::hash_for_name(pOpt[j]);
 
+                if (pOpt[j] == 'h')
+                {
+                    print_help_and_quit(mArgs);
+                }
+
                 if (!mShortOptToIndices.count(currentHash))
                 {
                     print_err_and_quit(
                         mArgs,
                         std::string{"Unknown option: "} + pOpt[j],
                         ArgErrCode::UNKNOWN_ARG);
-                }
-
-                if (pOpt[j] == 'h')
-                {
-                    print_help_and_quit(mArgs);
                 }
 
                 // validate concatenated short options
