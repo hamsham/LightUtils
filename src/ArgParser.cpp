@@ -201,14 +201,9 @@ void print_help_and_quit(
             std::cout<< "--" << argLongName;
         }
 
-        if (!arg.required())
-        {
-            std::cout << ']';
-        }
-
         if (arg.num_required() == 1)
         {
-            std::cout << " [value]";
+            std::cout << " value";
         }
         else if (arg.num_required() > 1)
         {
@@ -227,6 +222,11 @@ void print_help_and_quit(
 
                 std::cout << ']';
             }
+        }
+
+        if (!arg.required())
+        {
+            std::cout << ']';
         }
 
         std::cout << "\n\tType: " << param_type_str(arg);
