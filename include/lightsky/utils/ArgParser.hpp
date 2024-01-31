@@ -83,7 +83,11 @@ class ArgParser
 
     ArgParser& operator=(ArgParser&& parser) noexcept;
 
-    Argument& set_argument(const std::string& longName, char shortName = '\0') noexcept;
+    Argument& set_argument(char shortName) noexcept;
+
+    Argument& set_argument(const std::string& longName) noexcept;
+
+    Argument& set_argument(const std::string& longName, char shortName) noexcept;
 
     bool parse(int argc, char* const* argv) noexcept;
 

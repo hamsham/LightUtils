@@ -377,6 +377,59 @@ ArgParser& ArgParser::operator=(ArgParser&& parser) noexcept
 /*-------------------------------------
  * Assign an argument by name
 -------------------------------------*/
+Argument& ArgParser::set_argument(char shortName) noexcept
+{
+    size_t hash = Argument::hash_for_name("", shortName);
+    size_t idx = ~(size_t)0;
+
+    if (shortName && mShortOptToIndices.count(hash))
+    {
+        idx = mShortOptToIndices[hash];
+    }
+    else
+    {
+        mArgs.emplace_back(Argument{"", shortName});
+        idx = mArgs.size()-1;
+
+        // Ensure even a null option gets used.
+        mLongOptToIndices[hash] = idx;
+        mShortOptToIndices[shortName] = idx;
+    }
+
+    return mArgs[idx];
+}
+
+
+
+/*-------------------------------------
+ * Assign an argument by name
+-------------------------------------*/
+Argument& ArgParser::set_argument(const std::string& longName) noexcept
+{
+    size_t hash = Argument::hash_for_name(longName, '\0');
+    size_t idx = ~(size_t)0;
+
+    if (!longName.empty() && mLongOptToIndices.count(hash))
+    {
+        idx = mLongOptToIndices[hash];
+    }
+    else
+    {
+        mArgs.emplace_back(Argument{longName, '\0'});
+        idx = mArgs.size()-1;
+
+        // Ensure even a null option gets used.
+        mLongOptToIndices[hash] = idx;
+    }
+
+    return mArgs[idx];
+}
+
+
+
+/*-------------------------------------
+ * Assign an argument by name
+-------------------------------------*/
 Argument& ArgParser::set_argument(const std::string &longName, char shortName) noexcept
 {
     size_t hash = Argument::hash_for_name(longName, shortName);
@@ -392,15 +445,19 @@ Argument& ArgParser::set_argument(const std::string &longName, char shortName) n
     }
     else
     {
-        mFoundOpts.push_back(false);
-        mValues.emplace_back(std::vector<std::string>{});
-        idx = mValues.size()-1;
+        mArgs.emplace_back(Argument{longName, shortName});
+        idx = mArgs.size()-1;
 
         // Ensure even a null option gets used.
-        mLongOptToIndices[hash] = idx;
-        mShortOptToIndices[shortName] = idx;
+        if (!longName.empty())
+        {
+            mLongOptToIndices[hash] = idx;
+        }
 
-        mArgs.emplace_back(Argument{longName, shortName});
+        if (shortName)
+        {
+            mShortOptToIndices[shortName] = idx;
+        }
     }
 
     return mArgs[idx];
@@ -701,6 +758,12 @@ int ArgParser::_parse_short_opts(const char* pFlags, char lastFlag, int argId, i
 -------------------------------------*/
 bool ArgParser::parse(int argc, char* const*argv) noexcept
 {
+    mFoundOpts.clear();
+    mFoundOpts.resize(mArgs.size(), false);
+
+    mValues.clear();
+    mValues.resize(mArgs.size(), std::vector<std::string>{});
+
     _validate_arg_counts();
     _validate_args(argc, argv);
 
@@ -709,9 +772,6 @@ bool ArgParser::parse(int argc, char* const*argv) noexcept
     int numFlags = 0;
     char currentFlag = '\0';
     std::string currentOpt;
-
-    mFoundOpts.resize(mArgs.size(), false);
-    mValues.resize(mArgs.size(), {});
 
     while (i < argc)
     {
