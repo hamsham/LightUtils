@@ -61,10 +61,10 @@ class Argument
     bool mRequired;
 
     template <typename StringableArg>
-    static void value_push(std::vector<std::string>& argList, const StringableArg& defaultVal) noexcept;
+    static void _value_push(std::vector<std::string>& argList, const StringableArg& defaultVal) noexcept;
 
     template <typename StringableArg, typename... StringableArgs>
-    static void value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept;
+    static void _value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept;
 
   public:
     ~Argument() noexcept;
@@ -143,7 +143,7 @@ class Argument
  * Set a value for an argument
 -------------------------------------*/
 template <typename StringableArg>
-void Argument::value_push(std::vector<std::string>& argList, const StringableArg& defaultVal) noexcept
+void Argument::_value_push(std::vector<std::string>& argList, const StringableArg& defaultVal) noexcept
 {
     argList.emplace_back(std::to_string(defaultVal));
 }
@@ -154,10 +154,10 @@ void Argument::value_push(std::vector<std::string>& argList, const StringableArg
  * Set values for an argument list
 -------------------------------------*/
 template <typename StringableArg, typename... StringableArgs>
-void Argument::value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept
+void Argument::_value_push(std::vector<std::string>& argList, const StringableArg& defaultVal, const StringableArgs&... defaultVals) noexcept
 {
     argList.emplace_back(std::to_string(defaultVal));
-    Argument::value_push<StringableArgs...>(argList, defaultVals...);
+    Argument::_value_push<StringableArgs...>(argList, defaultVals...);
 }
 
 
@@ -169,7 +169,7 @@ template <typename... StringableArgs>
 Argument& Argument::default_value(const StringableArgs&... defaultVals) noexcept
 {
     mDefaultVal.clear();
-    Argument::value_push<StringableArgs...>(mDefaultVal, defaultVals...);
+    Argument::_value_push<StringableArgs...>(mDefaultVal, defaultVals...);
     return *this;
 }
 
@@ -182,7 +182,7 @@ template <typename StringableArg>
 Argument& Argument::default_value(const StringableArg& defaultVal) noexcept
 {
     mDefaultVal.clear();
-    Argument::value_push<StringableArg>(mDefaultVal, defaultVal);
+    Argument::_value_push<StringableArg>(mDefaultVal, defaultVal);
     return *this;
 }
 
@@ -195,7 +195,7 @@ template <typename... StringableArgs>
 Argument& Argument::const_value(const StringableArgs&... constVals) noexcept
 {
     mConstVal.clear();
-    Argument::value_push<StringableArgs...>(mConstVal, constVals...);
+    Argument::_value_push<StringableArgs...>(mConstVal, constVals...);
     return *this;
 }
 
@@ -208,7 +208,7 @@ template <typename StringableArg>
 Argument& Argument::const_value(const StringableArg& constVal) noexcept
 {
     mConstVal.clear();
-    Argument::value_push<StringableArg>(mConstVal, constVal);
+    Argument::_value_push<StringableArg>(mConstVal, constVal);
     return *this;
 }
 

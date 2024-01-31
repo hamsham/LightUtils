@@ -77,7 +77,7 @@ Argument::Argument(const std::string& longOpt, char shortOpt) noexcept :
     mHelp{},
     mType{ArgType::STRING},
     mNumArgs{_enum_to_value<ArgCount>(ArgCount::ONE)},
-    mRequired{true}
+    mRequired{false}
 {}
 
 
@@ -116,7 +116,7 @@ Argument::Argument(Argument&& arg) noexcept :
     arg.mShortOpt = '\0';
     arg.mType = ArgType::STRING;
     arg.mNumArgs = _enum_to_value<ArgCount>(ArgCount::ONE);
-    arg.mRequired = true;
+    arg.mRequired = false;
 }
 
 
@@ -166,7 +166,7 @@ Argument& Argument::operator=(Argument&& arg) noexcept
     arg.mNumArgs = _enum_to_value<ArgCount>(ArgCount::ONE);
 
     mRequired = arg.mRequired;
-    arg.mRequired = true;
+    arg.mRequired = false;
 
     return *this;
 }
@@ -243,7 +243,6 @@ size_t Argument::hash_for_name(const std::string& longName, char shortName) noex
 Argument& Argument::default_value(const char* defaultVal) noexcept
 {
     mDefaultVal = std::vector<std::string>{std::string{defaultVal}};
-    mRequired = true;
     return *this;
 }
 

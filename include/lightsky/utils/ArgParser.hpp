@@ -62,6 +62,17 @@ class ArgParser
 
     std::string mMainFile;
 
+    [[noreturn]]
+    void _print_help_and_quit(
+        const std::vector<argparse::Argument>& args,
+        argparse::ArgErrCode errCode = argparse::ArgErrCode::SUCCESS) const noexcept;
+
+    [[noreturn]]
+    void _print_err_and_quit(
+        const std::vector<argparse::Argument>& args,
+        const std::string& errMsg,
+        argparse::ArgErrCode errCode) const noexcept;
+
     void _validate_arg_counts() const noexcept;
 
     void _validate_args(int argc, char* const* argv) const noexcept;
