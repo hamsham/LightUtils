@@ -2,6 +2,7 @@
 #ifndef ARGPARSE_ARGUMENT_HPP
 #define ARGPARSE_ARGUMENT_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

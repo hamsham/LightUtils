@@ -1,6 +1,4 @@
 
-#include <cstdint>
-#include <functional> // std::hash
 #include <type_traits>
 #include <utility> // std::move()
 
