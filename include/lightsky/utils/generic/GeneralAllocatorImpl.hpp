@@ -75,17 +75,18 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::GeneralAllocator(MemorySource& me
     ls::utils::runtime_assert(initialSize % block_size == 0, ls::utils::ErrorLevel::LS_ERROR, "Cannot fit the current block size within an allocation table.");
     ls::utils::runtime_assert(block_size < initialSize, ls::utils::ErrorLevel::LS_ERROR, "Allocation block size must be less than the total byte size.");
 
-    mHead = reinterpret_cast<AllocationEntry*>(this->memory_source().allocate(initialSize));
+    size_type numAllocatedBytes = 0;
+    mHead = reinterpret_cast<AllocationEntry*>(this->memory_source().allocate(initialSize, &numAllocatedBytes));
     if (mHead)
     {
         // setup all links in the allocation list
-        size_type numBlocks = initialSize / block_size;
+        size_type numBlocks = numAllocatedBytes / block_size;
 
         mHead->pNext = nullptr;
         mHead->numBlocks = numBlocks;
         mHead->pSrcPool = mHead;
         mHead->allocatedBlocks = numBlocks;
-        mLastAllocSize = initialSize;
+        mLastAllocSize = numAllocatedBytes;
     }
 }
 
@@ -241,17 +242,29 @@ void GeneralAllocator<CacheSize, OffsetFreeHeader>::_free_impl(AllocationEntry* 
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
 inline typename GeneralAllocator<CacheSize, OffsetFreeHeader>::AllocationEntry*
-GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noexcept
+GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n, size_type* pOutNumBytes) noexcept
 {
     // Any allocation larger than the block size gets rounded to the next cache
     // size. If that fails, we try again by rounding to the next block. Should
     // that also fail, we bail completely.
 
     const size_type lastAllocSize = mLastAllocSize;
-    const size_type reserveBytes = OffsetFreeHeader ? lastAllocSize : ((lastAllocSize * 2) / 3);
-    const size_type t = n + reserveBytes;
+    size_type reserveBytes;
+    if (n < cache_size)
+    {
+        reserveBytes = cache_size;
+    }
+    else if (n < (lastAllocSize / 2))
+    {
+        reserveBytes = lastAllocSize;
+    }
+    else
+    {
+        reserveBytes = (lastAllocSize*3) / 2;
+    }
 
-    size_type allocSize;
+    const size_type t = n + reserveBytes;
+    size_type allocSize = 0;
     void* pCache;
     size_type rem;
 
@@ -264,21 +277,23 @@ GeneralAllocator<CacheSize, OffsetFreeHeader>::_alloc_new_cache(size_type n) noe
     rem = (n % block_size);
     const size_type blockRounding   = n + (rem ? (block_size - rem) : 0);
 
-    allocSize = reserveRounding;
-    pCache = this->memory_source().allocate(reserveRounding);
+    pCache = this->memory_source().allocate(reserveRounding, &allocSize);
     if (!pCache)
     {
-        allocSize = cacheRounding;
-        pCache = this->memory_source().allocate(cacheRounding);
+        pCache = this->memory_source().allocate(cacheRounding, &allocSize);
         if (!pCache)
         {
-            allocSize = blockRounding;
-            pCache = this->memory_source().allocate(blockRounding);
+            pCache = this->memory_source().allocate(blockRounding, &allocSize);
             if (!pCache)
             {
                 return nullptr;
             }
         }
+    }
+
+    if (pOutNumBytes)
+    {
+        *pOutNumBytes = allocSize;
     }
 
     const size_type numBlocks = allocSize / block_size;
@@ -300,7 +315,8 @@ template <unsigned long long CacheSize, bool OffsetFreeHeader>
 inline bool GeneralAllocator<CacheSize, OffsetFreeHeader>::_find_or_allocate_entry(
     size_type numBlocksNeeded,
     AllocationEntry*& pIter,
-    AllocationEntry*& pPrev) noexcept
+    AllocationEntry*& pPrev,
+    size_type* pOutNumBytes) noexcept
 {
     // we're going to actually allocate "n+sizeof(size_type)" and place a header
     // in the first few bytes to keep track of the allocation size.
@@ -309,7 +325,7 @@ inline bool GeneralAllocator<CacheSize, OffsetFreeHeader>::_find_or_allocate_ent
 
     if (LS_UNLIKELY(mHead == nullptr))
     {
-        mHead = _alloc_new_cache(numBytes);
+        mHead = _alloc_new_cache(numBytes, pOutNumBytes);
         if (LS_LIKELY(mHead != nullptr))
         {
             ret = true;
@@ -339,7 +355,7 @@ inline bool GeneralAllocator<CacheSize, OffsetFreeHeader>::_find_or_allocate_ent
 
         if (LS_UNLIKELY(!iter))
         {
-            iter = _alloc_new_cache(numBytes);
+            iter = _alloc_new_cache(numBytes, pOutNumBytes);
             if (LS_UNLIKELY(!iter))
             {
                 break;
@@ -388,7 +404,7 @@ inline bool GeneralAllocator<CacheSize, OffsetFreeHeader>::_find_or_allocate_ent
  * Array Allocations
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexcept
+void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n, size_type* pOutNumBytes) noexcept
 {
     if (!n)
     {
@@ -402,7 +418,7 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
     AllocationEntry* pPrev = nullptr;
     AllocationEntry* pIter = nullptr;
 
-    if (LS_UNLIKELY(!_find_or_allocate_entry(blocksNeeded, pIter, pPrev)))
+    if (LS_UNLIKELY(!_find_or_allocate_entry(blocksNeeded, pIter, pPrev, pOutNumBytes)))
     {
         return nullptr;
     }
@@ -411,7 +427,7 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
 
     // Sub-allocate from the beginning of a block if we're expecting large
     // allocations to be returned
-    #if 0
+    #if 1
     {
         const size_type newBlockCount = pIter->numBlocks - blocksNeeded;
         AllocationEntry* LS_RESTRICT_PTR pNext;
@@ -495,7 +511,10 @@ void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate(size_type n) noexc
  * Calloc
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate_contiguous(
+    size_type numElements,
+    size_type numBytesPerElement,
+    size_type* pOutNumBytes) noexcept
 {
     if (!numElements || !numBytesPerElement)
     {
@@ -508,10 +527,10 @@ inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate_contiguous(
     }
 
     const size_type numBytes = numElements * numBytesPerElement;
-    void* const pData = this->allocate(numBytes);
+    void* const pData = this->allocate(numBytes, pOutNumBytes);
     if (pData)
     {
-        fast_memset(pData, '\0', numBytes);
+        fast_memset(pData, '\0', pOutNumBytes ? *pOutNumBytes : numBytes);
     }
 
     return pData;
@@ -523,7 +542,10 @@ inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::allocate_contiguous(
  * Realloc
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(void* p, size_type numNewBytes) noexcept
+inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(
+    void* p,
+    size_type numNewBytes,
+    size_type* pOutNumBytes) noexcept
 {
     if (!numNewBytes)
     {
@@ -549,11 +571,11 @@ inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(void* p, 
 
         // Read the input allocation size for validation
         const size_type numPrevBytes = reclaimed->numBlocks * block_size - GeneralAllocator<CacheSize, OffsetFreeHeader>::header_size;
-        ret = this->reallocate(p, numNewBytes, numPrevBytes);
+        ret = this->reallocate(p, numNewBytes, numPrevBytes, pOutNumBytes);
     }
     else
     {
-        ret = this->allocate(numNewBytes);
+        ret = this->allocate(numNewBytes, pOutNumBytes);
     }
 
     return ret;
@@ -565,7 +587,11 @@ inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(void* p, 
  * Realloc
 -------------------------------------*/
 template <unsigned long long CacheSize, bool OffsetFreeHeader>
-inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept
+inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(
+    void* p,
+    size_type numNewBytes,
+    size_type numPrevBytes,
+    size_type* pOutNumBytes) noexcept
 {
     if (!numNewBytes)
     {
@@ -577,9 +603,14 @@ inline void* GeneralAllocator<CacheSize, OffsetFreeHeader>::reallocate(void* p, 
         return nullptr;
     }
 
-    void* const pNewData = this->allocate(numNewBytes);
+    void* const pNewData = this->allocate(numNewBytes, pOutNumBytes);
     if (pNewData)
     {
+        if (pOutNumBytes)
+        {
+            numNewBytes = *pOutNumBytes;
+        }
+
         if (p)
         {
             const size_type numMaxBytes = numNewBytes < numPrevBytes ? numNewBytes : numPrevBytes;

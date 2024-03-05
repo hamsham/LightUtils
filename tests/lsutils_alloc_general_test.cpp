@@ -11,7 +11,7 @@
 
 namespace utils = ls::utils;
 
-#define TEST_MALLOC_MEM_SRC   false
+#define TEST_MALLOC_MEM_SRC   true
 #define TEST_MALLOC_ALLOCATOR false
 
 
@@ -48,7 +48,7 @@ template <unsigned block_size>
         return *this;
     }
 
-    virtual void* allocate(size_type numBytes) noexcept override
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override
     {
         if (!numBytes)
         {
@@ -57,7 +57,7 @@ template <unsigned block_size>
 
         size_type rem = numBytes % block_size;
         numBytes += block_size - (rem ? rem : block_size);
-        return ThreadSafeAllocator::allocate(numBytes);
+        return ThreadSafeAllocator::allocate(numBytes, pOutNumBytes);
     }
 
     virtual void free(void* pData) noexcept override
@@ -99,7 +99,7 @@ int test_single_allocations()
     #if TEST_MALLOC_ALLOCATOR
         MallocMemorySource2<block_size+32u> testAllocator{memLimiter};
     #else
-        utils::GeneralAllocator<alloc_table_size+block_size> testAllocator{memLimiter};
+        utils::GeneralAllocator<alloc_table_size+block_size> testAllocator{memLimiter, alloc_table_size+32u};
     #endif
 
     void** allocations = new void*[max_allocations];

@@ -31,7 +31,7 @@ IAllocator::~IAllocator() noexcept
 /*-------------------------------------
  * Calloc (sized)
 -------------------------------------*/
-void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes) noexcept
 {
     if (!numElements || !numBytesPerElement)
     {
@@ -44,10 +44,10 @@ void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesP
     }
 
     const size_type numBytes = numElements * numBytesPerElement;
-    void* const pData = this->memory_source().allocate(numBytes);
+    void* const pData = this->memory_source().allocate(numBytes, pOutNumBytes);
     if (pData)
     {
-        fast_memset(pData, '\0', numBytes);
+        fast_memset(pData, '\0', pOutNumBytes ? *pOutNumBytes : numBytes);
     }
 
     return pData;
@@ -58,7 +58,7 @@ void* IAllocator::allocate_contiguous(size_type numElements, size_type numBytesP
 /*-------------------------------------
  * Realloc
 -------------------------------------*/
-void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
+void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type* pOutNumBytes) noexcept
 {
     if (!numNewBytes)
     {
@@ -70,9 +70,14 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
         return nullptr;
     }
 
-    void* pNewData = this->allocate(numNewBytes);
+    void* pNewData = this->allocate(numNewBytes, pOutNumBytes);
     if (pNewData)
     {
+        if (pOutNumBytes)
+        {
+            numNewBytes = *pOutNumBytes;
+        }
+
         if (p)
         {
             this->free(p);
@@ -89,7 +94,7 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes) noexcept
 /*-------------------------------------
  * Realloc (sized)
 -------------------------------------*/
-void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept
+void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBytes, size_type* pOutNumBytes) noexcept
 {
     if (!numNewBytes)
     {
@@ -101,9 +106,14 @@ void* IAllocator::reallocate(void* p, size_type numNewBytes, size_type numPrevBy
         return nullptr;
     }
 
-    void* const pNewData = this->allocate(numNewBytes);
+    void* const pNewData = this->allocate(numNewBytes, pOutNumBytes);
     if (pNewData)
     {
+        if (pOutNumBytes)
+        {
+            numNewBytes = *pOutNumBytes;
+        }
+
         if (p)
         {
             const size_type numMaxBytes = numNewBytes < numPrevBytes ? numNewBytes : numPrevBytes;
@@ -233,7 +243,7 @@ ConstrainedAllocator<0>& ConstrainedAllocator<0>::operator=(ConstrainedAllocator
 /*-------------------------------------
  * Calloc (sized)
 -------------------------------------*/
-void* ConstrainedAllocator<0>::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+void* ConstrainedAllocator<0>::allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes) noexcept
 {
     if (!numElements || !numBytesPerElement)
     {
@@ -253,11 +263,11 @@ void* ConstrainedAllocator<0>::allocate_contiguous(size_type numElements, size_t
         return nullptr;
     }
 
-    void* const pData = this->memory_source().allocate(numBytes);
+    void* const pData = this->memory_source().allocate(numBytes, pOutNumBytes);
     if (pData)
     {
         mBytesAllocated = newByteCount;
-        fast_memset(pData, '\0', numBytes);
+        fast_memset(pData, '\0', pOutNumBytes ? *pOutNumBytes : numBytes);
     }
 
     return pData;
@@ -412,7 +422,7 @@ AtomicAllocator& AtomicAllocator::operator=(AtomicAllocator&& allocator) noexcep
 /*-------------------------------------
  * Calloc (sized)
 -------------------------------------*/
-void* AtomicAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept
+void* AtomicAllocator::allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes) noexcept
 {
     if (!numElements || !numBytesPerElement)
     {
@@ -428,12 +438,12 @@ void* AtomicAllocator::allocate_contiguous(size_type numElements, size_type numB
     void* pData;
 
     mLock.lock();
-    pData = this->memory_source().allocate(numBytes);
+    pData = this->memory_source().allocate(numBytes, pOutNumBytes);
     mLock.unlock();
 
     if (pData)
     {
-        fast_memset(pData, '\0', numBytes);
+        fast_memset(pData, '\0', pOutNumBytes ? *pOutNumBytes : numBytes);
     }
 
     return pData;

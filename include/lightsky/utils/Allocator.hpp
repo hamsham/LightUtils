@@ -123,13 +123,13 @@ class IAllocator : public MemorySource
   public:
     virtual ~IAllocator() noexcept = 0;
 
-    virtual void* allocate(size_type n) noexcept override;
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept;
 
-    virtual void* reallocate(void* p, size_type numNewBytes) noexcept;
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type* pOutNumBytes = nullptr) noexcept;
 
-    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept;
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes, size_type* pOutNumBytes = nullptr) noexcept;
 
     virtual void free(void* p) noexcept override;
 
@@ -193,9 +193,9 @@ class ConstrainedAllocator : public Allocator
 
     ConstrainedAllocator& operator=(ConstrainedAllocator&&) noexcept;
 
-    virtual void* allocate(size_type numBytes) noexcept override;
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept override;
 
     virtual void free(void* pData) noexcept override;
 
@@ -229,9 +229,9 @@ class ConstrainedAllocator<0> : public Allocator
 
     ConstrainedAllocator& operator=(ConstrainedAllocator&&) noexcept;
 
-    virtual void* allocate(size_type numBytes) noexcept override;
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept override;
 
     virtual void free(void* pData) noexcept override;
 
@@ -261,9 +261,9 @@ class BlockAllocator : public Allocator
 
     BlockAllocator& operator=(BlockAllocator&&) noexcept;
 
-    virtual void* allocate(size_type numBytes) noexcept override;
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept override;
 
     virtual void free(void* pData) noexcept override;
 
@@ -344,9 +344,9 @@ class AtomicAllocator : public ThreadSafeAllocator
 
     AtomicAllocator& operator=(AtomicAllocator&& allocator) noexcept;
 
-    virtual void* allocate(size_type numBytes) noexcept override;
+    virtual void* allocate(size_type numBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept override;
 
     virtual void free(void* pData) noexcept override;
 

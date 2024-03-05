@@ -94,11 +94,17 @@ MallocMemorySource::MallocMemorySource(MallocMemorySource&& src) noexcept :
 
 
 /*-------------------------------------
- * Allocate
+ * Allocate (with internal feedback)
 -------------------------------------*/
-void* MallocMemorySource::allocate(size_type numBytes) noexcept
+void* MallocMemorySource::allocate(size_type numBytes, size_type* pOutNumBytes) noexcept
 {
-    return std::malloc(numBytes);
+    void* pResult = std::malloc(numBytes);
+    if (pOutNumBytes)
+    {
+        *pOutNumBytes = pResult ? numBytes : 0;
+    }
+
+    return pResult;
 }
 
 
@@ -312,7 +318,7 @@ SystemMemorySource& SystemMemorySource::operator=(SystemMemorySource&& allocator
 /*-------------------------------------
  * Allocate (sized)
 -------------------------------------*/
-void* SystemMemorySource::allocate(size_type numBytes) noexcept
+void* SystemMemorySource::allocate(size_type numBytes, size_type* pOutNumBytes) noexcept
 {
     if (!numBytes)
     {
@@ -355,6 +361,11 @@ void* SystemMemorySource::allocate(size_type numBytes) noexcept
         p = std::malloc(numBytes);
 
     #endif
+
+    if (pOutNumBytes)
+    {
+        *pOutNumBytes = p ? numBytes : 0;
+    }
 
     return p;
 }

@@ -98,7 +98,7 @@ class GeneralAllocator final : public Allocator
     /**
      * @brief Refill the internal cache of memory.
      */
-    AllocationEntry* _alloc_new_cache(size_type n) noexcept;
+    AllocationEntry* _alloc_new_cache(size_type n, size_type* pOutNumBytes) noexcept;
 
     /**
      * @brief Locate an allocation entry with at least \param numBlocksNeeded.
@@ -116,7 +116,7 @@ class GeneralAllocator final : public Allocator
      * allocated This function will return FALSE otherwise, without placing the
      * result values in \param pIter and \param pPrev.
      */
-    bool _find_or_allocate_entry(size_type numBlocksNeeded, AllocationEntry*& pIter, AllocationEntry*& pPrev) noexcept;
+    bool _find_or_allocate_entry(size_type numBlocksNeeded, AllocationEntry*& pIter, AllocationEntry*& pPrev, size_type* pOutNumBytes) noexcept;
 
   public:
     /**
@@ -191,7 +191,7 @@ class GeneralAllocator final : public Allocator
      * block. NULL is returned if not enough more blocks exist within the
      * allocator to fufill the request for memory.
      */
-    virtual void* allocate(size_type n) noexcept override;
+    virtual void* allocate(size_type n, size_type* pOutNumBytes = nullptr) noexcept override;
 
     /**
      * @brief Allocate an array of blocks and zero-initialize the allocation.
@@ -205,7 +205,7 @@ class GeneralAllocator final : public Allocator
      * @return A pointer to the newly allocated array, or NULL of the memory
      * allocation failed.
      */
-    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement) noexcept override;
+    virtual void* allocate_contiguous(size_type numElements, size_type numBytesPerElement, size_type* pOutNumBytes = nullptr) noexcept override;
 
     /**
      * @brief Reallocate a prior allocation, following the rules of
@@ -223,7 +223,7 @@ class GeneralAllocator final : public Allocator
      * @return A pointer to the newly allocated data, or NULL of the
      * reallocation failed.
      */
-    virtual void* reallocate(void* p, size_type numNewBytes) noexcept override;
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
     /**
      * @brief Reallocate a prior allocation, following the rules of
@@ -243,7 +243,7 @@ class GeneralAllocator final : public Allocator
      * @return A pointer to the newly allocated data, or NULL of the
      * reallocation failed.
      */
-    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes) noexcept override;
+    virtual void* reallocate(void* p, size_type numNewBytes, size_type numPrevBytes, size_type* pOutNumBytes = nullptr) noexcept override;
 
     /**
      * @brief Return an allocated block of memory back to *this allocator.
