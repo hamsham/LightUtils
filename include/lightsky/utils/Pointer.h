@@ -8,9 +8,12 @@
 #ifndef LS_UTILS_POINTER_H
 #define LS_UTILS_POINTER_H
 
+#include <type_traits> // std::is_base_of()
+
 #include "lightsky/setup/Api.h"
 #include "lightsky/setup/Arch.h"
 #include "lightsky/setup/Macros.h"
+#include "lightsky/setup/Types.h"
 
 #if defined(LS_ARCH_X86)
     #include <immintrin.h> // _mm_malloc(), _mm_free()
@@ -188,12 +191,27 @@ class alignas(alignof(data_t*)) Pointer
     }
 
     /**
+     * @brief Move Constructor (for derived types)
+     *
+     * Moves data from the input parameter into *this.
+     *
+     * @param p
+     * A Pointer type containing dynamically-allocated data.
+     */
+    template <typename derived_t, typename derived_deleter_t>
+    inline Pointer(Pointer<derived_t, derived_deleter_t>&& p) noexcept :
+        pData{p.release()}
+    {
+        static_assert(std::is_base_of<data_t, derived_t>::value, "Cannot downcast non-derived pointer type.");
+    }
+
+    /**
      * Copy Operator -- DELETED
      */
     Pointer& operator=(const Pointer&) = delete;
 
     /**
-     * @brief Move Operatpr
+     * @brief Move Operator
      *
      * Moves data from the input parameter into *this.
      *
@@ -205,11 +223,33 @@ class alignas(alignof(data_t*)) Pointer
      */
     inline Pointer& operator=(Pointer&& p) noexcept
     {
+        if (this->pData != p.pData)
+        {
+            clear();
+            pData = p.pData;
+            p.pData = nullptr;
+        }
+        return *this;
+    }
+
+    /**
+     * @brief Move Operator (for derived types)
+     *
+     * Moves data from the input parameter into *this.
+     *
+     * @param p
+     * A Pointer type containing dynamically-allocated data.
+     *
+     * @return
+     * A reference to *this.
+     */
+    template <typename derived_t, typename derived_deleter_t>
+    inline Pointer& operator=(Pointer<derived_t, derived_deleter_t>&& p) noexcept
+    {
+        static_assert(std::is_base_of<data_t, derived_t>::value, "Cannot downcast non-derived pointer type.");
+
         clear();
-
-        pData = p.pData;
-        p.pData = nullptr;
-
+        pData = p.release();
         return *this;
     }
 
@@ -630,12 +670,27 @@ class alignas(alignof(data_t*)) Pointer<data_t[], Deleter>
     }
 
     /**
+     * @brief Move Constructor (for derived types)
+     *
+     * Moves data from the input parameter into *this.
+     *
+     * @param p
+     * A Pointer type containing dynamically-allocated data.
+     */
+    template <typename derived_t, typename derived_deleter_t>
+    inline Pointer(Pointer<derived_t[], derived_deleter_t>&& p) noexcept :
+        pData{p.release()}
+    {
+        static_assert(std::is_base_of<data_t, derived_t>::value, "Cannot downcast non-derived pointer type.");
+    }
+
+    /**
      * Copy Operator -- DELETED
      */
     Pointer& operator=(const Pointer&) = delete;
 
     /**
-     * @brief Move Operatpr
+     * @brief Move Operator
      *
      * Moves data from the input parameter into *this.
      *
@@ -647,9 +702,33 @@ class alignas(alignof(data_t*)) Pointer<data_t[], Deleter>
      */
     inline Pointer& operator=(Pointer&& p) noexcept
     {
+        if (this != &p)
+        {
+            clear();
+            pData = p.pData;
+            p.pData = nullptr;
+        }
+        return *this;
+    }
+
+    /**
+     * @brief Move Operator (for derived types)
+     *
+     * Moves data from the input parameter into *this.
+     *
+     * @param p
+     * A Pointer type containing dynamically-allocated data.
+     *
+     * @return
+     * A reference to *this.
+     */
+    template <typename derived_t, typename derived_deleter_t>
+    inline Pointer& operator=(Pointer<derived_t[], derived_deleter_t>&& p) noexcept
+    {
+        static_assert(std::is_base_of<data_t, derived_t>::value, "Cannot downcast non-derived pointer type.");
+
         clear();
-        pData = p.pData;
-        p.pData = nullptr;
+        pData = p.release();
         return *this;
     }
 
