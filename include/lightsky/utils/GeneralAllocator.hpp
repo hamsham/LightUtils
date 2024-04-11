@@ -53,7 +53,7 @@ class GeneralAllocator final : public Allocator
     static_assert(cache_size % block_size == 0, "Cache Size must be a multiple of Block Size.");
     static_assert(sizeof(AllocationEntry) == sizeof(size_type)*4, "Unexpected AllocationHeader size.");
     static_assert(alignof(AllocationEntry) == alignof(size_type)*4, "Unexpected AllocationHeader alignment.");
-    static_assert(sizeof(size_type) == sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
+    static_assert(sizeof(size_type) >= sizeof(size_type*), "size_type's size is not sufficient to contain a pointer.");
 
   private:
     /**

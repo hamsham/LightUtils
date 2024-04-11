@@ -26,7 +26,7 @@ namespace ls {
 -------------------------------------*/
 void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_RESTRICT_PTR src, const uint_fast64_t count)
 {
-    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+    #if defined(LS_ARCH_X86) && LS_ARCH_X86 == 64 && defined(LS_COMPILER_GNU)
         const uint64_t* simdSrc    = reinterpret_cast<const uint64_t*>(src);
         long long*      simdDst    = reinterpret_cast<long long*>(dst);
         uint_fast64_t   simdCount  = count % sizeof(uint64_t);
@@ -44,7 +44,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
             : "rcx", "rdi", "rsi", "memory"
         );
 
-    #elif defined(LS_X86_SSE2)
+    #elif defined(LS_X86_SSE2) && LS_ARCH_X86 == 64
         const uint64_t* simdSrc    = reinterpret_cast<const uint64_t*>(src);
         long long*      simdDst    = reinterpret_cast<long long*>(dst);
         uint_fast64_t   simdCount  = count;
@@ -121,7 +121,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
     const uint8_t* s = reinterpret_cast<const uint8_t*>(simdSrc);
     uint8_t*       d = reinterpret_cast<uint8_t*>(simdDst);
 
-    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+    #if defined(LS_ARCH_X86) && LS_ARCH_X86 == 64 && defined(LS_COMPILER_GNU)
         __asm__ volatile(
             "MOV %[count], %%rcx;"
             "MOV %[in], %%rsi;"
@@ -183,7 +183,7 @@ void* utils::fast_memcpy(void* const LS_RESTRICT_PTR dst, const void* const LS_R
 -------------------------------------*/
 void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t count)
 {
-    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+    #if defined(LS_ARCH_X86) && LS_ARCH_X86 == 64 && defined(LS_COMPILER_GNU)
         uint_fast64_t stragglers = count % sizeof(uint64_t);
         uint_fast64_t simdCount  = count / sizeof(uint64_t);
         long long*    simdTo     = reinterpret_cast<long long*>(dst);
@@ -199,7 +199,7 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
             : "rax", "rcx", "rdi", "memory"
         );
 
-    #elif defined(LS_X86_SSE2)
+    #elif defined(LS_X86_SSE2) && LS_ARCH_X86 == 64
         const uint_fast64_t simdCount    = count >> 5;
         const uint_fast64_t stragglers   = count - (count & ~31);
         const int64_t       simdFillByte = (int64_t)(fillBytes);
@@ -286,7 +286,7 @@ void* utils::fast_memset_8(void* dst, const uint64_t fillBytes, uint_fast64_t co
     const uint8_t* to           = reinterpret_cast<uint8_t*>(simdTo) + stragglers;
     const uint8_t* fillByte     = reinterpret_cast<const uint8_t*>(fillArray);
 
-    #if defined(LS_ARCH_X86) && defined(LS_COMPILER_GNU)
+    #if defined(LS_ARCH_X86) && LS_ARCH_X86 == 64 && defined(LS_COMPILER_GNU)
         (void)to;
 
         __asm__ volatile(
