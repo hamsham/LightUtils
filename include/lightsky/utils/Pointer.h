@@ -1116,25 +1116,19 @@ using UniqueAlignedArray = Pointer<data_t[], AlignedDeleter>;
 template <typename data_t>
 inline Pointer<data_t, PointerDeleter<data_t>> make_unique_pointer()
 {
-    return Pointer<data_t, PointerDeleter<data_t>>(new(std::nothrow) data_t{});
+    return Pointer<data_t, PointerDeleter<data_t>>{new(std::nothrow) data_t{}};
 }
 
 template <typename data_t, typename... Args>
 inline Pointer<data_t, PointerDeleter<data_t>> make_unique_pointer(Args&&... args)
 {
-    return Pointer<data_t, PointerDeleter<data_t>>(new(std::nothrow) data_t{std::forward<Args>(args)...});
+    return Pointer<data_t, PointerDeleter<data_t>>{new(std::nothrow) data_t{std::forward<Args>(args)...}};
 }
 
 template <typename data_t>
 inline Pointer<data_t[], PointerDeleter<data_t[]>> make_unique_array(size_t size)
 {
-    return Pointer<data_t[], PointerDeleter<data_t[]>>(new(std::nothrow) data_t[size]{});
-}
-
-template <typename data_t, typename... Args>
-inline Pointer<data_t[], PointerDeleter<data_t[]>> make_unique_array(size_t size, Args&&... args)
-{
-    return Pointer<data_t[], PointerDeleter<data_t[]>>(new(std::nothrow) data_t[size]{std::forward<Args>(args)...});
+    return Pointer<data_t[], PointerDeleter<data_t[]>>{new(std::nothrow) data_t[size]()};
 }
 
 template <typename data_t>
