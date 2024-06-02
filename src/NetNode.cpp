@@ -1,5 +1,6 @@
 
 #include <cstring> // std::memset
+#include <memory> // std::nothrow
 #include <mutex>
 #include <utility> // std::move()
 
