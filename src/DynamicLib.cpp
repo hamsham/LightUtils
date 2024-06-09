@@ -58,8 +58,7 @@ DynamicLib::DynamicLib() noexcept :
  * Library Constructor
 -------------------------------------*/
 DynamicLib::DynamicLib(const char* libPath) noexcept :
-    mLibName{nullptr},
-    mHandle{nullptr}
+    DynamicLib{}
 {
     load(libPath);
 }
@@ -69,7 +68,8 @@ DynamicLib::DynamicLib(const char* libPath) noexcept :
 /*-------------------------------------
  * Copy Constructor
 -------------------------------------*/
-DynamicLib::DynamicLib(const DynamicLib& d) noexcept
+DynamicLib::DynamicLib(const DynamicLib& d) noexcept :
+    DynamicLib{}
 {
     if (d.loaded())
     {
@@ -97,14 +97,17 @@ DynamicLib::DynamicLib(DynamicLib&& d) noexcept :
 -------------------------------------*/
 DynamicLib& DynamicLib::operator=(const DynamicLib& d) noexcept
 {
-    if (loaded())
+    if (this != &d)
     {
-        unload();
-    }
+        if (loaded())
+        {
+            unload();
+        }
 
-    if (d.loaded())
-    {
-        load(d.name());
+        if (d.loaded())
+        {
+            load(d.name());
+        }
     }
 
     return *this;
@@ -117,16 +120,19 @@ DynamicLib& DynamicLib::operator=(const DynamicLib& d) noexcept
 -------------------------------------*/
 DynamicLib& DynamicLib::operator=(DynamicLib&& d) noexcept
 {
-    if (loaded())
+    if (this != &d)
     {
-        unload();
+        if (loaded())
+        {
+            unload();
+        }
+
+        mLibName = std::move(d.mLibName);
+        mHandle = d.mHandle;
+
+        d.mLibName = nullptr;
+        d.mHandle = nullptr;
     }
-
-    mLibName = std::move(d.mLibName);
-    mHandle = d.mHandle;
-
-    d.mLibName = nullptr;
-    d.mHandle = nullptr;
 
     return *this;
 }
