@@ -1,9 +1,10 @@
 
 #include <clocale> // std::setlocale()
-#include <cmath>
 #include <cstdlib> // rand(), srand()
 #include <ctime>
 #include <iostream>
+#include <limits>
+#include <ratio>
 
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/StringUtils.h"
@@ -44,13 +45,20 @@ void test_str_conversion() noexcept
     testf = -0.f;
     std::cout << testf << ": " << converter(testf) << std::endl;
 
-    testf = INFINITY;
+#ifdef __GNUC__
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wnan-infinity-disabled"
+#endif
+    testf = std::numeric_limits<float>::infinity();
     std::cout << testf << ": " << converter(testf) << std::endl;
 
-    testf = -INFINITY;
+    testf = -std::numeric_limits<float>::infinity();
     std::cout << testf << ": " << converter(testf) << std::endl;
+#ifdef __GNUC__
+    #pragma GCC diagnostic pop
+#endif
 
-    testf = NAN;
+    testf = std::numeric_limits<float>::quiet_NaN();
     std::cout << testf << ": " << converter(testf) << std::endl;
 
     testf = 1.f / 3.f;
