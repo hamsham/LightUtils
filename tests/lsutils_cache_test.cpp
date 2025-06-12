@@ -17,13 +17,13 @@ constexpr unsigned NUM_TEST_RUNS = 1 << 24;
 //constexpr unsigned NUM_TEST_RUNS = 128;
 constexpr bool VERBOSE_LOGGING = false;
 
-template class ls::utils::LRUCache<std::string, CACHE_SIZE>;
-template class ls::utils::LRU8WayCache<std::string>;
-template class ls::utils::IndexedCache<std::string, CACHE_SIZE>;
+template class ls::utils::LRUCache<size_t, CACHE_SIZE>;
+template class ls::utils::LRU8WayCache<size_t>;
+template class ls::utils::IndexedCache<size_t, CACHE_SIZE>;
 
-using TestCacheLRU = ls::utils::LRUCache<std::string, CACHE_SIZE>;
-using TestCacheLRU8 = ls::utils::LRU8WayCache<std::string>;
-using TestCacheIndexed = ls::utils::IndexedCache<std::string, CACHE_SIZE>;
+using TestCacheLRU = ls::utils::LRUCache<size_t, CACHE_SIZE>;
+using TestCacheLRU8 = ls::utils::LRU8WayCache<size_t>;
+using TestCacheIndexed = ls::utils::IndexedCache<size_t, CACHE_SIZE>;
 
 
 
@@ -47,11 +47,11 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 15)
         //val = val + (3 - (val % 3));
         //unsigned val = i % indexModifier;
 
-        const std::string* cachedVal = cache.query(val);
+        const size_t* cachedVal = cache.query(val);
         hits += nullptr != cachedVal;
 
-        cache.update(val, [&](size_t key, std::string& result) noexcept->void {
-            result = std::move(ls::utils::to_str(key));
+        cache.update(val, [&](size_t key, size_t& result) noexcept->void {
+            result = key;
         });
 
         if (VERBOSE_LOGGING)

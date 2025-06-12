@@ -32,7 +32,27 @@ namespace utils
 template <typename T>
 inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* LS_RESTRICT_PTR map, uint32_t key) noexcept
 {
-    #if defined(LS_X86_SSE4_1)
+    /*
+        const int32_t k0 = -(key == map[0]) & 1;
+        const int32_t k1 = -(key == map[1]) & 2;
+        const int32_t k2 = -(key == map[2]) & 3;
+        const int32_t k3 = -(key == map[3]) & 4;
+        const int32_t k4 = -(key == map[4]) & 5;
+        const int32_t k5 = -(key == map[5]) & 6;
+        const int32_t k6 = -(key == map[6]) & 7;
+        const int32_t k7 = -(key == map[7]) & 8;
+        return (k0|k1|k2|k3|k4|k5|k6|k7) - 1;
+    */
+
+    #if defined(LS_X86_AVX2)
+        const __m256i maps = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(map));
+        const __m256i cmp = _mm256_cmpeq_epi32(maps, _mm256_set1_epi32((int32_t)key));
+        const __m256 offsets = _mm256_castsi256_ps(cmp);
+        const int32_t bits = _mm256_movemask_ps(offsets);
+        const int32_t indices = _mm_tzcnt_32(static_cast<uint32_t>(bits));
+        return indices & -(indices >> 5);
+
+    #elif defined(LS_X86_SSE4_1)
         const __m128i lo       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map));
         const __m128i hi       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map+4));
         const __m128i val      = _mm_set1_epi32((int)key);
@@ -105,7 +125,7 @@ inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* 
 template <typename T>
 inline LS_INLINE unsigned LRU8WayCache<T>::_count_trailing_zero_bits(uint64_t n) noexcept
 {
-    #if defined(LX_X86_BMI1)
+    #if defined(LS_X86_BMI)
         return (unsigned)_tzcnt_u64(n);
 
     #elif defined(LS_COMPILER_GNU)
@@ -141,7 +161,11 @@ inline LS_INLINE void LRU8WayCache<T>::_update_lru_index(uint64_t key0To8) noexc
 {
     //LS_DEBUG_ASSERT(key0To8 < 8);
     mRows[key0To8] = 0xFF;
-    mCols &= ~(0x0101010101010101ull << key0To8);
+    #if defined(LS_X86_BMI)
+        mCols = _andn_u64(0x0101010101010101ull << key0To8, mCols);
+    #else
+        mCols &= ~(0x0101010101010101ull << key0To8);
+    #endif
 }
 
 
@@ -153,7 +177,11 @@ template <typename T>
 inline LS_INLINE unsigned LRU8WayCache<T>::_get_lru_index() const noexcept
 {
     const uint64_t cols = mCols;
-    const uint64_t n = (cols-0x0101010101010101ull) & ~cols & 0x8080808080808080ull;
+    #if defined(LS_X86_BMI)
+        const uint64_t n = (cols-0x0101010101010101ull) & _andn_u64(cols, 0x8080808080808080ull);
+    #else
+        const uint64_t n = (cols-0x0101010101010101ull) & ~cols & 0x8080808080808080ull;
+    #endif
     return _count_trailing_zero_bits(n) >> 3;
 }
 
