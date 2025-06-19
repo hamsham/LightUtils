@@ -17,6 +17,9 @@ namespace utils
 
 
 
+/*-----------------------------------------------------------------------------
+ * Lockable R/W Semaphore
+-----------------------------------------------------------------------------*/
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
@@ -178,6 +181,219 @@ const typename SharedMutexType<mutex_type>::native_handle_type& SharedMutexType<
     return mLock;
 }
 
+
+
+/*-----------------------------------------------------------------------------
+ * Spinnable R/W Semaphore
+-----------------------------------------------------------------------------*/
+#ifndef LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+    #define LS_UTILS_SHAREDMUTEX2_CPU_YIELD 0
+#endif
+
+#ifndef LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS
+    #define LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS 1
+#endif
+
+#ifndef LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+    #define LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK 1
+#endif
+
+#if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK == 0 && LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS == 0
+    #error "LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK must be enabled when LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS is disabled."
+#endif
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+inline SharedMutex2::SharedMutex2() noexcept :
+    mLockBits{0}
+{}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock
+-------------------------------------*/
+inline void SharedMutex2::lock_shared() noexcept
+{
+    #if LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS
+        const uint16_t lockId = mLockFields.currentLockId.fetch_add(1);
+        while (lockId != mLockFields.nextLockId.load())
+        {
+            #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                ls::setup::cpu_yield();
+            #else
+                std::this_thread::yield();
+            #endif
+        }
+
+        mLockFields.shareCount.fetch_add(1);
+
+        #if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+            while (mLockFields.lockType.load())
+            {
+                #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                    ls::setup::cpu_yield();
+                #else
+                    std::this_thread::yield();
+                #endif
+            }
+        #endif
+
+        mLockFields.nextLockId.fetch_add(1);
+    #else
+
+        while (!try_lock_shared())
+        {
+            #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                ls::setup::cpu_yield();
+            #else
+                std::this_thread::yield();
+            #endif
+        }
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock
+-------------------------------------*/
+inline void SharedMutex2::lock() noexcept
+{
+    #if LS_UTILS_SHAREDMUTEX2_ENABLE_FAIRNESS
+        const uint16_t lockId = mLockFields.currentLockId.fetch_add(1);
+        while (lockId != mLockFields.nextLockId.load())
+        {
+            #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                ls::setup::cpu_yield();
+            #else
+                std::this_thread::yield();
+            #endif
+        }
+
+        #if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+            uint16_t writeBit;
+            do
+            {
+                writeBit = 0;
+            }
+            while (!mLockFields.lockType.compare_exchange_strong(writeBit, LockFlags::LOCK_WRITE_BIT));
+        #else
+
+            mLockFields.lockType.store(LockFlags::LOCK_WRITE_BIT);
+        #endif
+
+        while (mLockFields.shareCount.load() != 0)
+        {
+            #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                ls::setup::cpu_yield();
+            #else
+                std::this_thread::yield();
+            #endif
+        }
+    #else
+
+        while (!try_lock())
+        {
+            #if LS_UTILS_SHAREDMUTEX2_CPU_YIELD
+                ls::setup::cpu_yield();
+            #else
+                std::this_thread::yield();
+            #endif
+        }
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Attempt Non-Exclusive Lock
+-------------------------------------*/
+inline bool SharedMutex2::try_lock_shared() noexcept
+{
+    #if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+        mLockFields.shareCount.fetch_add(1);
+
+        const bool haveLock = mLockFields.lockType.load() == 0;
+        if (!haveLock)
+        {
+            mLockFields.shareCount.fetch_sub(1);
+        }
+
+        return haveLock;
+    #else
+
+        return false;
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Attempt Exclusive Lock
+-------------------------------------*/
+inline bool SharedMutex2::try_lock() noexcept
+{
+    #if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+        uint16_t writeBit = 0;
+        if (!mLockFields.lockType.compare_exchange_strong(writeBit, LockFlags::LOCK_TRY_WRITE_BIT))
+        {
+            return false;
+        }
+
+        bool haveLock = mLockFields.shareCount.load() == 0;
+        if (!haveLock)
+        {
+            mLockFields.lockType.store(0);
+        }
+
+        return haveLock;
+    #else
+
+        return false;
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Unlock
+-------------------------------------*/
+inline void SharedMutex2::unlock_shared() noexcept
+{
+    mLockFields.shareCount.fetch_sub(1);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Unlock
+-------------------------------------*/
+inline void SharedMutex2::unlock() noexcept
+{
+    const uint16_t lockType = mLockFields.lockType.exchange(0);
+
+    #if LS_UTILS_SHAREDMUTEX2_ENABLE_TRY_LOCK
+        if (lockType == LockFlags::LOCK_WRITE_BIT)
+        {
+            mLockFields.nextLockId.fetch_add(1);
+        }
+    #else
+
+        mLockFields.nextLockId.fetch_add(1);
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Handle Type
+-------------------------------------*/
+inline const SharedMutex2::native_handle_type& SharedMutex2::native_handle() const noexcept
+{
+    return mLockBits;
+}
 
 
 } // end utils namespace
