@@ -314,13 +314,13 @@ int main()
     /*
      * Shared-lock benchmarks
      */
-    const system_duration&& rwMutex2RunTime = run_rw_test<utils::SharedMutex2>("SharedMutex2", numTests);
+    const system_duration&& rwMutex2RunTime = run_rw_test<utils::SRWLock>("SRWLock", numTests);
     const system_duration&& rwMutexRunTime = run_rw_test<utils::SharedMutex>("SharedMutex", numTests);
     const system_duration&& rwFutexRunTime = run_rw_test<utils::SharedFutex>("SharedFutex", numTests);
     const system_duration&& rwSpinRunTime = run_rw_test<utils::SharedSpinLock>("SharedSpinLock", numTests);
-    //const system_duration&& fairMutexRunTime = run_rw_test<utils::FairRWMutex>("FairRWMutex", numTests);
-    //const system_duration&& fairFutexRunTime = run_rw_test<utils::FairRWFutex>("FairRWFutex", numTests);
-    //const system_duration&& fairSpinlockRunTime = run_rw_test<utils::FairRWSpinLock>("FairRWSpinLock", numTests);
+    const system_duration&& fairMutexRunTime = run_rw_test<utils::FairRWMutex>("FairRWMutex", numTests);
+    const system_duration&& fairFutexRunTime = run_rw_test<utils::FairRWFutex>("FairRWFutex", numTests);
+    const system_duration&& fairSpinlockRunTime = run_rw_test<utils::FairRWSpinLock>("FairRWSpinLock", numTests);
 
     std::cout
         << "Results:"
@@ -331,9 +331,9 @@ int main()
         << "\n\tShared Mutex Time:    " << rwMutexRunTime.count() << "ms"
         << "\n\tShared Futex Time:    " << rwFutexRunTime.count() << "ms"
         << "\n\tShared SpinLock Time: " << rwSpinRunTime.count() << "ms"
-        //<< "\n\tFair Mutex Time:      " << fairMutexRunTime.count() << "ms"
-        //<< "\n\tFair Futex Time:      " << fairFutexRunTime.count() << "ms"
-        //<< "\n\tFair SpinLock Time:   " << fairSpinlockRunTime.count() << "ms"
+        << "\n\tFair Mutex Time:      " << fairMutexRunTime.count() << "ms"
+        << "\n\tFair Futex Time:      " << fairFutexRunTime.count() << "ms"
+        << "\n\tFair SpinLock Time:   " << fairSpinlockRunTime.count() << "ms"
         << std::endl;
 
     return 0;

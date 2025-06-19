@@ -78,10 +78,10 @@ LS_DECLARE_CLASS_TYPE(SharedSpinLock, SharedMutexType, ls::utils::SpinLock);
 
 
 
-class alignas(alignof(uint64_t)*2) SharedMutex2
+class alignas(alignof(uint64_t)) SRWLock
 {
 public:
-    typedef std::atomic_uint64_t native_handle_type;
+    typedef uint64_t native_handle_type;
 
 private:
     enum LockFlags : uint16_t
@@ -92,7 +92,8 @@ private:
 
     struct LockFields
     {
-        std::atomic_uint16_t lockType;
+        std::atomic_uint8_t lockType;
+        std::atomic_uint8_t typePadding;
         std::atomic_uint16_t shareCount;
         std::atomic_uint16_t nextLockId;
         std::atomic_uint16_t currentLockId;
@@ -100,24 +101,24 @@ private:
 
     union
     {
-        std::atomic_uint64_t mLockBits;
+        uint64_t mLockBits;
         LockFields mLockFields;
     };
 
-    uint64_t mPadding;
+    static void yield() noexcept;
 
 public:
-    ~SharedMutex2() noexcept = default;
+    ~SRWLock() noexcept = default;
 
-    SharedMutex2() noexcept;
+    SRWLock() noexcept;
 
-    SharedMutex2(const SharedMutex2&) noexcept = delete;
+    SRWLock(const SRWLock&) noexcept = delete;
 
-    SharedMutex2(SharedMutex2&&) noexcept = delete;
+    SRWLock(SRWLock&&) noexcept = delete;
 
-    SharedMutex2& operator=(const SharedMutex2&) noexcept = delete;
+    SRWLock& operator=(const SRWLock&) noexcept = delete;
 
-    SharedMutex2& operator=(SharedMutex2&&) noexcept = delete;
+    SRWLock& operator=(SRWLock&&) noexcept = delete;
 
     void lock_shared() noexcept;
 
