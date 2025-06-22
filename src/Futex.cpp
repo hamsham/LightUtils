@@ -78,12 +78,21 @@ void Futex::lock() noexcept
 
         if (currentPauses < maxPauses)
         {
-            #if 0
-                const int32_t status = (int32_t)syscall(SYS_futex, &mLock, FUTEX_WAIT_BITSET_PRIVATE, 1, currentPauses, nullptr, FUTEX_BITSET_MATCH_ANY);
-            #else
             timespec timeout;
-                timeout.tv_sec = 0;
-                timeout.tv_nsec = currentPauses;
+            timeout.tv_sec = 0;
+            //timeout.tv_nsec = 1;
+            timeout.tv_nsec = currentPauses;
+
+            #if 1
+                futex_waitv waitVal;
+                waitVal.val = 0;
+                waitVal.uaddr = reinterpret_cast<uintptr_t>(&mLock);
+                waitVal.flags = FUTEX_PRIVATE_FLAG|FUTEX2_SIZE_U32;
+                waitVal.__reserved = 0;
+                const int32_t status = (int32_t)syscall(SYS_futex_waitv, &waitVal, 1, 0, &timeout, CLOCK_MONOTONIC);
+            #elif 0
+                const int32_t status = (int32_t)syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1, nullptr);
+            #elif 1
                 const int32_t status = (int32_t)syscall(SYS_futex, &mLock, FUTEX_WAIT_BITSET_PRIVATE, 1u, &timeout, nullptr, FUTEX_BITSET_MATCH_ANY);
             #endif
 
@@ -94,7 +103,16 @@ void Futex::lock() noexcept
         }
         else
         {
-            syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr);
+            #if 1
+                futex_waitv waitVal;
+                waitVal.val = 0;
+                waitVal.uaddr = reinterpret_cast<uintptr_t>(&mLock);
+                waitVal.flags = FUTEX_PRIVATE_FLAG|FUTEX2_SIZE_U32;
+                waitVal.__reserved = 0;
+                syscall(SYS_futex_waitv, &waitVal, 1, 0, nullptr);
+            #else
+                syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr);
+            #endif
         }
     }
     while (true);

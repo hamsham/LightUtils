@@ -37,7 +37,7 @@
     #include <synchapi.h>
 #endif /* LS_UTILS_USE_WINDOWS_THREADS */
 
-#include "lightsky/utils/SpinLock.hpp"
+#include "lightsky/utils/RWLock.hpp"
 #include "lightsky/utils/RingBuffer.hpp"
 
 
@@ -75,7 +75,7 @@ class WorkerThread
 
     std::atomic_bool mIsPaused;
 
-    mutable utils::SpinLock mPushLock;
+    mutable utils::RWLock mPushLock;
 
     utils::RingBuffer<WorkerTaskType> mTasks;
 

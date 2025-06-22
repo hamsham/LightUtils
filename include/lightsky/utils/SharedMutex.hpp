@@ -78,65 +78,6 @@ LS_DECLARE_CLASS_TYPE(SharedSpinLock, SharedMutexType, ls::utils::SpinLock);
 
 
 
-class alignas(alignof(uint64_t)) SRWLock
-{
-public:
-    typedef uint64_t native_handle_type;
-
-private:
-    enum LockFlags : uint16_t
-    {
-        LOCK_WRITE_BIT = 0x0001,
-        LOCK_TRY_WRITE_BIT = 0x0003
-    };
-
-    struct LockFields
-    {
-        std::atomic_uint8_t lockType;
-        std::atomic_uint8_t typePadding;
-        std::atomic_uint16_t shareCount;
-        std::atomic_uint16_t nextLockId;
-        std::atomic_uint16_t currentLockId;
-    };
-
-    union
-    {
-        uint64_t mLockBits;
-        LockFields mLockFields;
-    };
-
-    static void yield() noexcept;
-
-public:
-    ~SRWLock() noexcept = default;
-
-    SRWLock() noexcept;
-
-    SRWLock(const SRWLock&) noexcept = delete;
-
-    SRWLock(SRWLock&&) noexcept = delete;
-
-    SRWLock& operator=(const SRWLock&) noexcept = delete;
-
-    SRWLock& operator=(SRWLock&&) noexcept = delete;
-
-    void lock_shared() noexcept;
-
-    void lock() noexcept;
-
-    bool try_lock_shared() noexcept;
-
-    bool try_lock() noexcept;
-
-    void unlock_shared() noexcept;
-
-    void unlock() noexcept;
-
-    const native_handle_type& native_handle() const noexcept;
-};
-
-
-
 } // end utils namespace
 } // end ls namespace
 

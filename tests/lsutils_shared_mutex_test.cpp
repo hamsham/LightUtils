@@ -4,7 +4,7 @@
 #include <thread>
 #include <vector>
 
-#include "lightsky/utils/FairRWLock.hpp"
+#include "lightsky/utils/RWLock.hpp"
 #include "lightsky/utils/SharedMutex.hpp"
 
 namespace utils = ls::utils;
@@ -66,12 +66,12 @@ void mutex_lock_func(
 {
     for (unsigned j = 0; j < LOCK_CONTENTION_COUNT; ++j)
     {
-        rwLock.lock();
-        log_lock_state(ioLock, "MTX exclusive lock: ", std::this_thread::get_id());
+        {
+            utils::LockGuardExclusive<MutexType> lock{rwLock};
+            log_lock_state(ioLock, "MTX exclusive lock: ", std::this_thread::get_id());
 
-        LS_ASSERT(!rwLock.try_lock());
-
-        rwLock.unlock();
+            LS_ASSERT(!rwLock.try_lock());
+        }
         log_lock_state(ioLock, "MTX exclusive unlock: ", std::this_thread::get_id());
 
         if (rwLock.try_lock())
@@ -104,13 +104,13 @@ void exclusive_lock_func(
 {
     for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
-        rwLock.lock();
-        log_lock_state(ioLock, "exclusive lock: ", std::this_thread::get_id());
+        {
+            utils::LockGuardExclusive<SharedMutexType> lock{rwLock};
+            log_lock_state(ioLock, "exclusive lock: ", std::this_thread::get_id());
 
-        LS_ASSERT(!rwLock.try_lock_shared());
+            LS_ASSERT(!rwLock.try_lock_shared());
+        }
         log_lock_state(ioLock, "exclusive unlock: ", std::this_thread::get_id());
-
-        rwLock.unlock();
 
         if (rwLock.try_lock())
         {
@@ -142,12 +142,12 @@ void shared_lock_func(
 {
     for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
-        rwLock.lock_shared();
-        log_lock_state(ioLock, "shared lock: ", std::this_thread::get_id());
+        {
+            utils::LockGuardShared<SharedMutexType> lock{rwLock};
+            log_lock_state(ioLock, "shared lock: ", std::this_thread::get_id());
 
-        LS_ASSERT(!rwLock.try_lock());
-
-        rwLock.unlock_shared();
+            LS_ASSERT(!rwLock.try_lock());
+        }
         log_lock_state(ioLock, "shared unlock: ", std::this_thread::get_id());
 
         if (rwLock.try_lock_shared())
@@ -310,30 +310,30 @@ int main()
     const system_duration&& mutexRunTime = run_mtx_test<std::mutex>("std::mutex", numTests);
     const system_duration&& futexRunTime = run_mtx_test<utils::Futex>("utils::Futex", numTests);
     const system_duration&& spinlockRunTime = run_mtx_test<utils::SpinLock>("utils::SpinLock", numTests);
+    const system_duration&& swRunTime = run_mtx_test<utils::RWLock>("utils::SRWLock", numTests);
+    const system_duration&& fairWFutexRunTime = run_mtx_test<utils::FairRWLock>("utils::FairRWLock", numTests);
 
     /*
      * Shared-lock benchmarks
      */
-    const system_duration&& rwMutex2RunTime = run_rw_test<utils::SRWLock>("SRWLock", numTests);
-    const system_duration&& rwMutexRunTime = run_rw_test<utils::SharedMutex>("SharedMutex", numTests);
-    const system_duration&& rwFutexRunTime = run_rw_test<utils::SharedFutex>("SharedFutex", numTests);
-    const system_duration&& rwSpinRunTime = run_rw_test<utils::SharedSpinLock>("SharedSpinLock", numTests);
-    const system_duration&& fairMutexRunTime = run_rw_test<utils::FairRWMutex>("FairRWMutex", numTests);
-    const system_duration&& fairFutexRunTime = run_rw_test<utils::FairRWFutex>("FairRWFutex", numTests);
-    const system_duration&& fairSpinlockRunTime = run_rw_test<utils::FairRWSpinLock>("FairRWSpinLock", numTests);
+    const system_duration&& rwMutexRunTime = run_rw_test<utils::SharedMutex>("utils::SharedMutex", numTests);
+    const system_duration&& rwFutexRunTime = run_rw_test<utils::SharedFutex>("utils::SharedFutex", numTests);
+    const system_duration&& rwSpinRunTime = run_rw_test<utils::SharedSpinLock>("utils::SharedSpinLock", numTests);
+    const system_duration&& srwMutexRunTime = run_rw_test<utils::RWLock>("utils::RWLock", numTests);
+    const system_duration&& fairRWFutexRunTime = run_rw_test<utils::FairRWLock>("utils::FairRWLock", numTests);
 
     std::cout
         << "Results:"
-        << "\n\tstd::mutex Time:      " << mutexRunTime.count() << "ms"
-        << "\n\tutils::Futex Time:    " << futexRunTime.count() << "ms"
-        << "\n\tutils::SpinLock Time: " << spinlockRunTime.count() << "ms"
-        << "\n\tShared Mutex2 Time:   " << rwMutex2RunTime.count() << "ms"
-        << "\n\tShared Mutex Time:    " << rwMutexRunTime.count() << "ms"
-        << "\n\tShared Futex Time:    " << rwFutexRunTime.count() << "ms"
-        << "\n\tShared SpinLock Time: " << rwSpinRunTime.count() << "ms"
-        << "\n\tFair Mutex Time:      " << fairMutexRunTime.count() << "ms"
-        << "\n\tFair Futex Time:      " << fairFutexRunTime.count() << "ms"
-        << "\n\tFair SpinLock Time:   " << fairSpinlockRunTime.count() << "ms"
+        << "\n\tstd::mutex Time (W):       " << mutexRunTime.count() << "ms"
+        << "\n\tFutex Time (W):            " << futexRunTime.count() << "ms"
+        << "\n\tSpinLock Time (W):         " << spinlockRunTime.count() << "ms"
+        << "\n\tRWLock Time (W):           " << swRunTime.count() << "ms"
+        << "\n\tFairWLock Time (W):        " << fairWFutexRunTime.count() << "ms"
+        << "\n\tShared Mutex Time (RW):    " << rwMutexRunTime.count() << "ms"
+        << "\n\tShared Futex Time (RW):    " << rwFutexRunTime.count() << "ms"
+        << "\n\tShared SpinLock Time (RW): " << rwSpinRunTime.count() << "ms"
+        << "\n\tRWLock Tim (RW):           " << srwMutexRunTime.count() << "ms"
+        << "\n\tFairRWLock Time (RW):      " << fairRWFutexRunTime.count() << "ms"
         << std::endl;
 
     return 0;
