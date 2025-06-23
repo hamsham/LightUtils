@@ -1,6 +1,7 @@
 
 #ifndef LS_UTILS_SPINLOCK_IMPL_HPP
 #define LS_UTILS_SPINLOCK_IMPL_HPP
+#include "lightsky/setup/CPU.h"
 
 namespace ls
 {
@@ -14,13 +15,10 @@ namespace utils
 -------------------------------------*/
 inline void SpinLock::lock() noexcept
 {
-    uint_fast32_t cachedVal;
-    do
+    while (!try_lock())
     {
-        while (mLock.load(std::memory_order_acquire));
-        cachedVal = 0;
+        std::this_thread::yield();
     }
-    while (!mLock.compare_exchange_weak(cachedVal, 1, std::memory_order_acquire, std::memory_order_relaxed));
 }
 
 
@@ -31,7 +29,7 @@ inline void SpinLock::lock() noexcept
 inline bool SpinLock::try_lock() noexcept
 {
     uint_fast32_t cachedVal = 0;
-    return mLock.compare_exchange_strong(cachedVal, true, std::memory_order_acq_rel);
+    return mLock.compare_exchange_strong(cachedVal, 1, std::memory_order_acq_rel);
 }
 
 

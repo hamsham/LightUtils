@@ -253,7 +253,7 @@ WorkerThread<WorkerTaskType>& WorkerThread<WorkerTaskType>::operator=(WorkerThre
 template <class WorkerTaskType>
 inline const ls::utils::RingBuffer<WorkerTaskType>& WorkerThread<WorkerTaskType>::tasks() const noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     return mTasks;
 }
 
@@ -266,7 +266,7 @@ inline const ls::utils::RingBuffer<WorkerTaskType>& WorkerThread<WorkerTaskType>
 template <class WorkerTaskType>
 inline ls::utils::RingBuffer<WorkerTaskType>& WorkerThread<WorkerTaskType>::tasks() noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     return mTasks;
 }
 
@@ -278,7 +278,7 @@ inline ls::utils::RingBuffer<WorkerTaskType>& WorkerThread<WorkerTaskType>::task
 template <class WorkerTaskType>
 inline std::size_t WorkerThread<WorkerTaskType>::num_pending() const noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     return mTasks.size();
 }
 
@@ -290,7 +290,7 @@ inline std::size_t WorkerThread<WorkerTaskType>::num_pending() const noexcept
 template <class WorkerTaskType>
 inline bool WorkerThread<WorkerTaskType>::have_pending() const noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     return !mTasks.empty();
 }
 
@@ -302,7 +302,7 @@ inline bool WorkerThread<WorkerTaskType>::have_pending() const noexcept
 template <class WorkerTaskType>
 inline void WorkerThread<WorkerTaskType>::clear_pending() noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     mTasks.clear();
 }
 
@@ -314,7 +314,7 @@ inline void WorkerThread<WorkerTaskType>::clear_pending() noexcept
 template <class WorkerTaskType>
 inline void WorkerThread<WorkerTaskType>::push(const WorkerTaskType& task) noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     mTasks.push(task);
 }
 
@@ -326,7 +326,7 @@ inline void WorkerThread<WorkerTaskType>::push(const WorkerTaskType& task) noexc
 template <class WorkerTaskType>
 inline void WorkerThread<WorkerTaskType>::emplace(WorkerTaskType&& task) noexcept
 {
-    std::lock_guard<utils::RWLock> lock{mPushLock};
+    std::lock_guard<utils::SpinLock> lock{mPushLock};
     mTasks.emplace(std::forward<WorkerTaskType>(task));
 }
 
