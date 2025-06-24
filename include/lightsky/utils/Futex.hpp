@@ -68,7 +68,7 @@ class alignas(64) Futex
 {
   private:
 #if defined(LS_UTILS_USE_LINUX_FUTEX)
-    alignas(alignof(int32_t)) int mLock;
+    alignas(alignof(uint32_t)) uint32_t mLock;
 
 #elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     alignas(alignof(SRWLOCK)) SRWLOCK mLock;

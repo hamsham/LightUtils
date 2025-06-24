@@ -174,6 +174,25 @@ inline SystemRWLock::SystemRWLock() noexcept
 -------------------------------------*/
 inline void SystemRWLock::lock_shared() noexcept
 {
+    constexpr unsigned maxPauses = 32;
+    unsigned currentPauses = 1;
+
+    do
+    {
+        if (try_lock_shared())
+        {
+            return;
+        }
+
+        for (unsigned i = 0; i < currentPauses; ++i)
+        {
+            std::this_thread::yield();
+        }
+
+        currentPauses <<= 1;
+    }
+    while (currentPauses <= maxPauses);
+
     while (pthread_rwlock_rdlock(&mLock) != 0)
     {
         std::this_thread::yield();
@@ -187,6 +206,25 @@ inline void SystemRWLock::lock_shared() noexcept
 -------------------------------------*/
 inline void SystemRWLock::lock() noexcept
 {
+    constexpr unsigned maxPauses = 32;
+    unsigned currentPauses = 1;
+
+    do
+    {
+        if (try_lock())
+        {
+            return;
+        }
+
+        for (unsigned i = 0; i < currentPauses; ++i)
+        {
+            std::this_thread::yield();
+        }
+
+        currentPauses <<= 1;
+    }
+    while (currentPauses <= maxPauses);
+
     while (pthread_rwlock_wrlock(&mLock) != 0)
     {
         std::this_thread::yield();
@@ -274,6 +312,25 @@ inline SystemRWLock::SystemRWLock() noexcept
 -------------------------------------*/
 inline void SystemRWLock::lock_shared() noexcept
 {
+    constexpr unsigned maxPauses = 32;
+    unsigned currentPauses = 1;
+
+    do
+    {
+        if (try_lock_shared())
+        {
+            return;
+        }
+
+        for (unsigned i = 0; i < currentPauses; ++i)
+        {
+            std::this_thread::yield();
+        }
+
+        currentPauses <<= 1;
+    }
+    while (currentPauses <= maxPauses);
+
     AcquireSRWLockShared(&mLock);
 }
 
@@ -284,6 +341,22 @@ inline void SystemRWLock::lock_shared() noexcept
 -------------------------------------*/
 inline void SystemRWLock::lock() noexcept
 {
+    do
+    {
+        if (try_lock())
+        {
+            return;
+        }
+
+        for (unsigned i = 0; i < currentPauses; ++i)
+        {
+            std::this_thread::yield();
+        }
+
+        currentPauses <<= 1;
+    }
+    while (currentPauses <= maxPauses);
+
     AcquireSRWLockExclusive(&mLock);
 }
 
