@@ -52,7 +52,6 @@ set(LS_UTILS_SOURCES
     src/NetServer.cpp
     src/RandomNum.cpp
     src/Resource.cpp
-    src/SharedMutex.cpp
     src/SpinLock.cpp
     src/StringUtils.cpp
     src/Time.cpp
@@ -94,7 +93,6 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/RingBuffer.hpp
     include/lightsky/utils/RWLock.hpp
     include/lightsky/utils/Setup.h
-    include/lightsky/utils/SharedMutex.hpp
     include/lightsky/utils/Sort.hpp
     include/lightsky/utils/SpinLock.hpp
     include/lightsky/utils/StringUtils.h
@@ -116,7 +114,6 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/generic/HashImpl.h
     include/lightsky/utils/generic/RingBufferImpl.hpp
     include/lightsky/utils/generic/RWLockImpl.hpp
-    include/lightsky/utils/generic/SharedMutexImpl.hpp
     include/lightsky/utils/generic/SortImpl.hpp
     include/lightsky/utils/generic/SpinLockImpl.hpp
     include/lightsky/utils/generic/WorkerPoolImpl.hpp

@@ -145,6 +145,205 @@ inline const RWLock::native_handle_type& RWLock::native_handle() const noexcept
 
 
 /*-----------------------------------------------------------------------------
+ * PThreads R/W Semaphore
+-----------------------------------------------------------------------------*/
+#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX)
+
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+inline SystemRWLock::~SystemRWLock() noexcept
+{
+    pthread_rwlock_destroy(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+inline SystemRWLock::SystemRWLock() noexcept
+{
+    pthread_rwlock_init(&mLock, nullptr);
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock
+-------------------------------------*/
+inline void SystemRWLock::lock_shared() noexcept
+{
+    while (pthread_rwlock_rdlock(&mLock) != 0)
+    {
+        std::this_thread::yield();
+    }
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock
+-------------------------------------*/
+inline void SystemRWLock::lock() noexcept
+{
+    while (pthread_rwlock_wrlock(&mLock) != 0)
+    {
+        std::this_thread::yield();
+    }
+}
+
+
+
+/*-------------------------------------
+ * Attempt Non-Exclusive Lock
+-------------------------------------*/
+inline bool SystemRWLock::try_lock_shared() noexcept
+{
+    return pthread_rwlock_tryrdlock(&mLock) == 0;
+}
+
+
+
+/*-------------------------------------
+ * Attempt Exclusive Lock
+-------------------------------------*/
+inline bool SystemRWLock::try_lock() noexcept
+{
+    return pthread_rwlock_trywrlock(&mLock) == 0;
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Unlock
+-------------------------------------*/
+inline void SystemRWLock::unlock_shared() noexcept
+{
+    pthread_rwlock_unlock(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Unlock
+-------------------------------------*/
+inline void SystemRWLock::unlock() noexcept
+{
+    pthread_rwlock_unlock(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Handle Type
+-------------------------------------*/
+inline const SystemRWLock::native_handle_type& SystemRWLock::native_handle() const noexcept
+{
+    return mLock;
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Windows R/W Semaphore
+-----------------------------------------------------------------------------*/
+#elif defined(LS_OS_WINDOWS)
+
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+inline SystemRWLock::~SystemRWLock() noexcept
+{
+}
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+inline SystemRWLock::SystemRWLock() noexcept
+{
+    InitializeSRWLock(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Lock
+-------------------------------------*/
+inline void SystemRWLock::lock_shared() noexcept
+{
+    AcquireSRWLockShared(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Lock
+-------------------------------------*/
+inline void SystemRWLock::lock() noexcept
+{
+    AcquireSRWLockExclusive(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Attempt Non-Exclusive Lock
+-------------------------------------*/
+inline bool SystemRWLock::try_lock_shared() noexcept
+{
+    return TryAcquireSRWLockShared(&mLock) != 0;
+}
+
+
+
+/*-------------------------------------
+ * Attempt Exclusive Lock
+-------------------------------------*/
+inline bool SystemRWLock::try_lock() noexcept
+{
+    return TryAcquireSRWLockExclusive(&mLock) != 0;
+}
+
+
+
+/*-------------------------------------
+ * Non-Exclusive Unlock
+-------------------------------------*/
+inline void SystemRWLock::unlock_shared() noexcept
+{
+    ReleaseSRWLockShared(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Exclusive Unlock
+-------------------------------------*/
+inline void SystemRWLock::unlock() noexcept
+{
+    ReleaseSRWLockExclusive(&mLock);
+}
+
+
+
+/*-------------------------------------
+ * Handle Type
+-------------------------------------*/
+inline const SystemRWLock::native_handle_type& SystemRWLock::native_handle() const noexcept
+{
+    return mLock;
+}
+
+
+
+#endif /* LS_OS_WINDOWS */
+
+
+
+/*-----------------------------------------------------------------------------
  * Sharable R/W Lock With Fair Ordering
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
@@ -196,8 +395,6 @@ inline void FairRWLock::lock() noexcept
         writeBit = 0;
     }
     while (!mLockFields.lockType.compare_exchange_strong(writeBit, LockFlags::LOCK_WRITE_BIT));
-
-    mLockFields.lockType.store(LockFlags::LOCK_WRITE_BIT, std::memory_order_release);
 
     while (mLockFields.shareCount.load(std::memory_order_acquire) != 0)
     {
