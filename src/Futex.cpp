@@ -1,10 +1,8 @@
 
+#include <thread>
+
 #include "lightsky/setup/Macros.h"
-
 #include "lightsky/utils/Futex.hpp"
-
-#include <cstdio>
-#include <cstring>
 
 #if defined(LS_UTILS_USE_LINUX_FUTEX)
     extern "C"
@@ -33,15 +31,7 @@ namespace utils
 -------------------------------------*/
 Futex::~Futex() noexcept
 {
-    (void)mPad;
-
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
-    __atomic_store_n(&mLock, 0u, __ATOMIC_RELEASE);
-
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-#else
     mLock.store(0, std::memory_order_release);
-#endif
 }
 
 
@@ -50,15 +40,9 @@ Futex::~Futex() noexcept
  * Constructor
 -------------------------------------*/
 Futex::Futex(FutexPauseCount maxPauses) noexcept :
-#if !defined(LS_UTILS_USE_WINDOWS_FUTEX)
     mLock{0},
-#endif
-    mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses},
-    mPad{0}
+    mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses}
 {
-    #if defined(LS_UTILS_USE_WINDOWS_FUTEX)
-        InitializeSRWLock(&mLock);
-    #endif
 }
 
 
@@ -68,14 +52,115 @@ Futex::Futex(FutexPauseCount maxPauses) noexcept :
 -------------------------------------*/
 void Futex::lock() noexcept
 {
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
-    const unsigned maxPauses = static_cast<unsigned>(mMaxPauseCount);
-    unsigned currentPauses = 1;
+    const uint32_t maxPauses = static_cast<uint32_t>(mMaxPauseCount);
+    uint32_t currentPauses = 1;
+    uint32_t tmp;
 
-    while (!try_lock())
+    do
     {
-        if (currentPauses <= maxPauses)
+        tmp = 0;
+        if (mLock.compare_exchange_strong(tmp, 1, std::memory_order_acquire, std::memory_order_relaxed))
         {
+            return;
+        }
+
+        for (uint32_t i = 0; i < currentPauses; ++i)
+        {
+            std::this_thread::yield();
+        }
+
+        currentPauses <<= 1u;
+    }
+    while (currentPauses <= maxPauses);
+
+    while (true)
+    {
+        tmp = 0;
+        if (mLock.compare_exchange_strong(tmp, 1, std::memory_order_acquire, std::memory_order_relaxed))
+        {
+            break;
+        }
+
+        for (uint32_t i = 0; i < maxPauses; ++i)
+        {
+            ls::setup::cpu_yield();
+            std::this_thread::yield();
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Attempt to lock
+-------------------------------------*/
+bool Futex::try_lock() noexcept
+{
+    uint32_t tmp = 0;
+    return mLock.compare_exchange_strong(tmp, 1, std::memory_order_seq_cst, std::memory_order_relaxed);
+}
+
+
+
+/*-------------------------------------
+ * Futex unlock
+-------------------------------------*/
+void Futex::unlock() noexcept
+{
+    mLock.store(0, std::memory_order_release);
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * SystemFutex
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Destructor
+-------------------------------------*/
+SystemFutex::~SystemFutex() noexcept
+{
+    #if defined(LS_UTILS_USE_LINUX_FUTEX)
+        __atomic_store_n(&mLock, 0u, __ATOMIC_RELEASE);
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
+SystemFutex::SystemFutex(FutexPauseCount maxPauses) noexcept :
+    #if defined(LS_UTILS_USE_LINUX_FUTEX)
+        mLock{0},
+    #endif
+        mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses}
+{
+    #if defined(LS_UTILS_USE_WINDOWS_FUTEX)
+        InitializeSRWLock(&mLock);
+    #endif
+}
+
+
+
+/*-------------------------------------
+ * SystemFutex Lock
+-------------------------------------*/
+void SystemFutex::lock() noexcept
+{
+    #if defined(LS_UTILS_USE_LINUX_FUTEX)
+        const unsigned maxPauses = static_cast<unsigned>(mMaxPauseCount);
+        unsigned currentPauses = 1;
+        const pid_t tid = gettid();
+
+        do
+        {
+            uint32_t tmp = 0u;
+            if (__atomic_compare_exchange_n(&mLock, &tmp, tid, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
+            {
+                return;
+            }
+
             int yieldMask = 0;
             for (unsigned i = 0; i < currentPauses; ++i)
             {
@@ -87,89 +172,33 @@ void Futex::lock() noexcept
                 currentPauses <<= 1;
             }
         }
-        else
+        while (currentPauses <= maxPauses);
+
+        while (syscall(SYS_futex, &mLock, FUTEX_LOCK_PI_PRIVATE, 0u, nullptr, nullptr, 0) != 0) {}
+
+    #elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
+        const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
+        int32_t currentPauses = 1;
+
+        while (!TryAcquireSRWLockExclusive(&mLock))
         {
-            if (syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr, nullptr, 0) != 0)
+            if (currentPauses < maxPauses)
             {
-                sched_yield();
+                for (int32_t i = 0; i < currentPauses; ++i)
+                {
+                    ls::setup::cpu_yield();
+                }
+
+                currentPauses <<= 1;
             }
-        }
-    }
-
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-    const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
-    int32_t currentPauses = 1;
-
-    while (!TryAcquireSRWLockExclusive(&mLock))
-    {
-        if (currentPauses < maxPauses)
-        {
-            for (int32_t i = 0; i < currentPauses; ++i)
+            else
             {
-                ls::setup::cpu_yield();
-            }
-
-            currentPauses <<= 1;
-        }
-        else
-        {
-            AcquireSRWLockExclusive(&mLock);
-            break;
-        }
-    }
-
-#else
-    const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
-    int32_t currentPauses = 1;
-    int32_t tmp;
-
-    do
-    {
-        while (mLock.load(std::memory_order_acquire))
-        {
-            switch (currentPauses)
-            {
-                case 32: ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                case 16: ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                case 8:  ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                case 4:  ls::setup::cpu_yield();
-                         ls::setup::cpu_yield();
-                case 2:  ls::setup::cpu_yield();
-                case 1:  ls::setup::cpu_yield();
-                default: currentPauses <<= (int)(currentPauses < maxPauses);
+                AcquireSRWLockExclusive(&mLock);
+                break;
             }
         }
 
-        tmp = 0;
-    }
-    while (!mLock.compare_exchange_weak(tmp, 1, std::memory_order_acquire, std::memory_order_relaxed));
-
-#endif
+    #endif
 }
 
 
@@ -177,40 +206,51 @@ void Futex::lock() noexcept
 /*-------------------------------------
  * Attempt to lock
 -------------------------------------*/
-bool Futex::try_lock() noexcept
+bool SystemFutex::try_lock() noexcept
 {
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
-    uint32_t tmp = 0u;
-    return __atomic_compare_exchange_n(&mLock, &tmp, 1u, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+    #if defined(LS_UTILS_USE_LINUX_FUTEX)
+        const pid_t tid = gettid();
+        uint32_t tmp = 0u;
 
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-    return 0 != TryAcquireSRWLockExclusive(&mLock);
+        #if 0
+            bool haveLock = true;
 
-#else
-    int32_t tmp = 0;
-    return mLock.compare_exchange_strong(tmp, 1, std::memory_order_seq_cst, std::memory_order_relaxed);
+            if (!__atomic_compare_exchange_n(&mLock, &tmp, tid, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
+            {
+                haveLock = syscall(SYS_futex, &mLock, FUTEX_TRYLOCK_PI_PRIVATE, 0u, nullptr, nullptr, 0) == 0;
+            }
 
-#endif
+            return haveLock;
+        #else
+            return __atomic_compare_exchange_n(&mLock, &tmp, tid, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+        #endif
+
+    #elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
+        return 0 != TryAcquireSRWLockExclusive(&mLock);
+
+    #endif
 }
 
 
 
 /*-------------------------------------
- * Futex unlock
+ * SystemFutex unlock
 -------------------------------------*/
-void Futex::unlock() noexcept
+void SystemFutex::unlock() noexcept
 {
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
-    __atomic_store_n(&mLock, 0u, __ATOMIC_RELEASE);
-    syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1u, nullptr, nullptr, 0);
+    #if defined(LS_UTILS_USE_LINUX_FUTEX)
+        const uint32_t tid = (uint32_t)gettid();
+        uint32_t tmp = tid;
 
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-    ReleaseSRWLockExclusive(&mLock);
+        if (!__atomic_compare_exchange_n(&mLock, &tmp, 0u, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
+        {
+            syscall(SYS_futex, &mLock, FUTEX_UNLOCK_PI_PRIVATE, 0u, nullptr, nullptr, 0);
+        }
 
-#else
-    mLock.store(0, std::memory_order_release);
+    #elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
+        ReleaseSRWLockExclusive(&mLock);
 
-#endif
+    #endif
 }
 
 

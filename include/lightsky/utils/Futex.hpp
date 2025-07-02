@@ -64,24 +64,11 @@ enum class FutexPauseCount : int32_t
  * @brief A Futex attempts to mimic a mutex object but will attempt to run in
  * user-space rather than switch to kernel-space unless necessary.
 -----------------------------------------------------------------------------*/
-class alignas(64) Futex
+class alignas(alignof(uint32_t)) Futex
 {
   private:
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
-    alignas(alignof(uint32_t)) uint32_t mLock;
-
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
-
-
-#else
-    alignas(alignof(int32_t)) std::atomic<int32_t> mLock;
-
-#endif
-
-    alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
-
-    alignas(alignof(int32_t)) int32_t mPad[16-(sizeof(mLock)+sizeof(FutexPauseCount))];
+    alignas(alignof(uint32_t)) std::atomic<uint32_t> mLock;
+    alignas(alignof(uint32_t)) FutexPauseCount mMaxPauseCount;
 
   public:
     ~Futex() noexcept;
@@ -107,8 +94,56 @@ class alignas(64) Futex
     void unlock() noexcept;
 };
 
-static_assert(sizeof(Futex) == 64, "Incorrect size for futex type.");
-static_assert(alignof(Futex) == 64, "Incorrect alignment for futex type.");
+
+
+/**----------------------------------------------------------------------------
+ * @brief A Futex based on Linux's Futex or Windows' SRWLOCK
+ * @todo implement pthreads pthread_rwlock_t as a fallback option
+-----------------------------------------------------------------------------*/
+#if !defined(LS_UTILS_USE_LINUX_FUTEX) && !defined(LS_UTILS_USE_WINDOWS_FUTEX)
+
+typedef SystemFutex Futex;
+
+#else
+
+class alignas(alignof(uint32_t)) SystemFutex
+{
+  private:
+#if defined(LS_UTILS_USE_LINUX_FUTEX)
+    alignas(alignof(uint32_t)) uint32_t mLock;
+
+#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
+    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
+
+#endif
+
+    alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
+
+  public:
+    ~SystemFutex() noexcept;
+
+    SystemFutex(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
+
+    SystemFutex(const SystemFutex&) = delete;
+
+    SystemFutex(SystemFutex&&) = delete;
+
+    SystemFutex& operator=(const SystemFutex&) = delete;
+
+    SystemFutex& operator=(SystemFutex&&) = delete;
+
+    void pause_count(FutexPauseCount maxPauses) noexcept;
+
+    FutexPauseCount pause_count() const noexcept;
+
+    void lock() noexcept;
+
+    bool try_lock() noexcept;
+
+    void unlock() noexcept;
+};
+
+#endif
 
 
 

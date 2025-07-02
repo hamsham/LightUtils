@@ -311,6 +311,7 @@ int main()
      */
     const system_duration&& mutexRunTime = run_mtx_test<std::mutex>("std::mutex", numTests);
     const system_duration&& futexRunTime = run_mtx_test<utils::Futex>("utils::Futex", numTests);
+    //const system_duration&& sysFutexRunTime = run_mtx_test<utils::SystemFutex>("utils::SystemFutex", numTests);
     const system_duration&& spinlockRunTime = run_mtx_test<utils::SpinLock>("utils::SpinLock", numTests);
     const system_duration&& swRunTime = run_mtx_test<utils::RWLock>("utils::SRWLock", numTests);
     const system_duration&& oswRunTime = run_mtx_test<utils::SystemRWLock>("utils::SystemRWLock", numTests);
@@ -327,6 +328,7 @@ int main()
         << "Results:"
         << "\n\tstd::mutex Time (W):       " << mutexRunTime.count() << "ms"
         << "\n\tFutex Time (W):            " << futexRunTime.count() << "ms"
+        //<< "\n\tSystemFutex Time (W):      " << sysFutexRunTime.count() << "ms"
         << "\n\tSpinLock Time (W):         " << spinlockRunTime.count() << "ms"
         << "\n\tRWLock Time (W):           " << swRunTime.count() << "ms"
         << "\n\tSystemRWLock Time (W):     " << oswRunTime.count() << "ms"
