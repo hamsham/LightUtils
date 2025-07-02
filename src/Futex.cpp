@@ -13,6 +13,7 @@
         #include <sys/syscall.h>
         #include <sys/time.h>
         #include <unistd.h>
+        #include <sched.h>
     }
 
 #endif
@@ -75,25 +76,23 @@ void Futex::lock() noexcept
     {
         if (currentPauses <= maxPauses)
         {
+            int yieldMask = 0;
             for (unsigned i = 0; i < currentPauses; ++i)
             {
-                std::this_thread::yield();
+                yieldMask |= sched_yield();
             }
 
-            currentPauses <<= 1;
+            if (!yieldMask)
+            {
+                currentPauses <<= 1;
+            }
         }
         else
         {
-            #if 0
-                futex_waitv waitVal;
-                waitVal.val = 0;
-                waitVal.uaddr = reinterpret_cast<uintptr_t>(&mLock);
-                waitVal.flags = FUTEX_PRIVATE_FLAG|FUTEX2_SIZE_U32;
-                waitVal.__reserved = 0;
-                syscall(SYS_futex_waitv, &waitVal, 1, 0, nullptr);
-            #else
-                syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr, nullptr, 0);
-            #endif
+            if (syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr, nullptr, 0) != 0)
+            {
+                sched_yield();
+            }
         }
     }
 
@@ -203,7 +202,7 @@ void Futex::unlock() noexcept
 {
 #if defined(LS_UTILS_USE_LINUX_FUTEX)
     __atomic_store_n(&mLock, 0u, __ATOMIC_RELEASE);
-    syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1u);
+    syscall(SYS_futex, &mLock, FUTEX_WAKE_PRIVATE, 1u, nullptr, nullptr, 0);
 
 #elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
     ReleaseSRWLockExclusive(&mLock);

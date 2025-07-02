@@ -191,7 +191,7 @@ inline void SystemRWLock::lock_shared() noexcept
 
         currentPauses <<= 1;
     }
-    while (currentPauses <= maxPauses);
+    while (currentPauses < maxPauses);
 
     while (pthread_rwlock_rdlock(&mLock) != 0)
     {
@@ -223,7 +223,7 @@ inline void SystemRWLock::lock() noexcept
 
         currentPauses <<= 1;
     }
-    while (currentPauses <= maxPauses);
+    while (currentPauses < maxPauses);
 
     while (pthread_rwlock_wrlock(&mLock) != 0)
     {
