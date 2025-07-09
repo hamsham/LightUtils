@@ -11,23 +11,35 @@
     #ifndef LS_UTILS_USE_LINUX_FUTEX
         #define LS_UTILS_USE_LINUX_FUTEX 1
     #endif
+#endif
 
-#elif defined(LS_OS_WINDOWS)
+#if defined(LS_COMPILER_GNU)
+    #ifndef LS_UTILS_USE_PTHREAD_FUTEX
+        #define LS_UTILS_USE_PTHREAD_FUTEX 1
+    #endif
+#endif
+
+#if defined(LS_OS_WINDOWS)
     #ifndef LS_UTILS_USE_WINDOWS_FUTEX
-        #ifndef WIN32_LEAN_AND_MEAN
-            #define WIN32_LEAN_AND_MEAN
-        #endif /* WIN32_LEAN_AND_MEAN */
-
-        // Typycal windows bullshit
-        #ifndef NOMINMAX
-            #define NOMINMAX
-        #endif /* NOMINMAX */
-
-        #include <Windows.h>
-
         #define LS_UTILS_USE_WINDOWS_FUTEX 1
     #endif
+#endif
 
+#if LS_UTILS_USE_PTHREAD_FUTEX
+    #include <pthread.h> // pthread_mutex_t
+#endif
+
+#if LS_UTILS_USE_WINDOWS_FUTEX
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif /* WIN32_LEAN_AND_MEAN */
+
+    // Typycal windows bullshit
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif /* NOMINMAX */
+
+    #include <Windows.h> // SRWLOCK
 #endif
 
 
@@ -35,6 +47,28 @@ namespace ls
 {
 namespace utils
 {
+
+
+
+class Futex;
+
+#if LS_UTILS_USE_LINUX_FUTEX
+    class SystemFutexLinux;
+#else
+    typedef Futex SystemFutexLinux;
+#endif
+
+#if LS_UTILS_USE_PTHREAD_FUTEX
+    class SystemFutexLinux;
+#else
+    typedef Futex SystemFutexPthread;
+#endif
+
+#if LS_UTILS_USE_WINDOWS_FUTEX
+    class SystemFutexLinux;
+#else
+    typedef Futex SystemFutexWin32;
+#endif
 
 
 
@@ -97,40 +131,106 @@ class alignas(alignof(uint32_t)) Futex
 
 
 /**----------------------------------------------------------------------------
- * @brief A Futex based on Linux's Futex or Windows' SRWLOCK
- * @todo implement pthreads pthread_rwlock_t as a fallback option
+ * @brief Exclusive lock type based on Linux's Futex
 -----------------------------------------------------------------------------*/
-#if !defined(LS_UTILS_USE_LINUX_FUTEX) && !defined(LS_UTILS_USE_WINDOWS_FUTEX)
+#if LS_UTILS_USE_LINUX_FUTEX
 
-typedef SystemFutex Futex;
-
-#else
-
-class alignas(alignof(uint32_t)) SystemFutex
+class alignas(alignof(uint32_t)) SystemFutexLinux
 {
   private:
-#if defined(LS_UTILS_USE_LINUX_FUTEX)
     alignas(alignof(uint32_t)) uint32_t mLock;
-
-#elif defined(LS_UTILS_USE_WINDOWS_FUTEX)
-    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
-
-#endif
-
     alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
 
   public:
-    ~SystemFutex() noexcept;
+    ~SystemFutexLinux() noexcept;
 
-    SystemFutex(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
+    SystemFutexLinux(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
 
-    SystemFutex(const SystemFutex&) = delete;
+    SystemFutexLinux(const SystemFutexLinux&) = delete;
 
-    SystemFutex(SystemFutex&&) = delete;
+    SystemFutexLinux(SystemFutexLinux&&) = delete;
 
-    SystemFutex& operator=(const SystemFutex&) = delete;
+    SystemFutexLinux& operator=(const SystemFutexLinux&) = delete;
 
-    SystemFutex& operator=(SystemFutex&&) = delete;
+    SystemFutexLinux& operator=(SystemFutexLinux&&) = delete;
+
+    void pause_count(FutexPauseCount maxPauses) noexcept;
+
+    FutexPauseCount pause_count() const noexcept;
+
+    void lock() noexcept;
+
+    bool try_lock() noexcept;
+
+    void unlock() noexcept;
+};
+
+#endif
+
+
+
+/**----------------------------------------------------------------------------
+ * @brief Exclusive lock type based on PThreads pthread_mutex_t
+-----------------------------------------------------------------------------*/
+#if LS_UTILS_USE_PTHREAD_FUTEX
+
+class alignas(alignof(uint64_t)) SystemFutexPthread
+{
+  private:
+    alignas(alignof(pthread_mutex_t)) pthread_mutex_t mLock;
+    alignas(alignof(uint64_t)) FutexPauseCount mMaxPauseCount;
+
+  public:
+    ~SystemFutexPthread() noexcept;
+
+    SystemFutexPthread(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
+
+    SystemFutexPthread(const SystemFutexPthread&) = delete;
+
+    SystemFutexPthread(SystemFutexPthread&&) = delete;
+
+    SystemFutexPthread& operator=(const SystemFutexPthread&) = delete;
+
+    SystemFutexPthread& operator=(SystemFutexPthread&&) = delete;
+
+    void pause_count(FutexPauseCount maxPauses) noexcept;
+
+    FutexPauseCount pause_count() const noexcept;
+
+    void lock() noexcept;
+
+    bool try_lock() noexcept;
+
+    void unlock() noexcept;
+};
+
+#endif
+
+
+
+/**----------------------------------------------------------------------------
+ * @brief Exclusive lock type based on Windows' SRWLOCK
+-----------------------------------------------------------------------------*/
+#if LS_UTILS_USE_WINDOWS_FUTEX
+
+class alignas(alignof(uint32_t)) SystemFutexWin32
+{
+  private:
+    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
+    alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
+
+  public:
+    ~SystemFutexWin32() noexcept;
+
+    SystemFutexWin32(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
+
+    SystemFutexWin32(const SystemFutexWin32&) = delete;
+
+    SystemFutexWin32(SystemFutexWin32&&) = delete;
+
+    SystemFutexWin32& operator=(const SystemFutexWin32&) = delete;
+
+    SystemFutexWin32& operator=(SystemFutexWin32&&) = delete;
 
     void pause_count(FutexPauseCount maxPauses) noexcept;
 

@@ -311,7 +311,9 @@ int main()
      */
     const system_duration&& mutexRunTime = run_mtx_test<std::mutex>("std::mutex", numTests);
     const system_duration&& futexRunTime = run_mtx_test<utils::Futex>("utils::Futex", numTests);
-    //const system_duration&& sysFutexRunTime = run_mtx_test<utils::SystemFutex>("utils::SystemFutex", numTests);
+    const system_duration&& lnxFutexRunTime = run_mtx_test<utils::SystemFutexLinux>("utils::SystemFutexLinux", numTests);
+    const system_duration&& pthFutexRunTime = run_mtx_test<utils::SystemFutexPthread>("utils::SystemFutexPthread", numTests);
+    const system_duration&& winFutexRunTime = run_mtx_test<utils::SystemFutexWin32>("utils::SystemFutexWin32", numTests);
     const system_duration&& spinlockRunTime = run_mtx_test<utils::SpinLock>("utils::SpinLock", numTests);
     const system_duration&& swRunTime = run_mtx_test<utils::RWLock>("utils::SRWLock", numTests);
     const system_duration&& oswRunTime = run_mtx_test<utils::SystemRWLock>("utils::SystemRWLock", numTests);
@@ -326,17 +328,19 @@ int main()
 
     std::cout
         << "Results:"
-        << "\n\tstd::mutex Time (W):       " << mutexRunTime.count() << "ms"
-        << "\n\tFutex Time (W):            " << futexRunTime.count() << "ms"
-        //<< "\n\tSystemFutex Time (W):      " << sysFutexRunTime.count() << "ms"
-        << "\n\tSpinLock Time (W):         " << spinlockRunTime.count() << "ms"
-        << "\n\tRWLock Time (W):           " << swRunTime.count() << "ms"
-        << "\n\tSystemRWLock Time (W):     " << oswRunTime.count() << "ms"
-        << "\n\tFairWLock Time (W):        " << fairWFutexRunTime.count() << "ms"
+        << "\n\tstd::mutex Time (W):         " << mutexRunTime.count() << "ms"
+        << "\n\tFutex Time (W):              " << futexRunTime.count() << "ms"
+        << "\n\tSystemFutexLinux Time (W):   " << lnxFutexRunTime.count() << "ms"
+        << "\n\tSystemFutexPThread Time (W): " << pthFutexRunTime.count() << "ms"
+        << "\n\tSystemFutexWin32 Time (W):   " << winFutexRunTime.count() << "ms"
+        << "\n\tSpinLock Time (W):           " << spinlockRunTime.count() << "ms"
+        << "\n\tRWLock Time (W):             " << swRunTime.count() << "ms"
+        << "\n\tSystemRWLock Time (W):       " << oswRunTime.count() << "ms"
+        << "\n\tFairWLock Time (W):          " << fairWFutexRunTime.count() << "ms"
         << '\n'
-        << "\n\tRWLock Time (RW):          " << srwMutexRunTime.count() << "ms"
-        << "\n\tSystemRWLock Time (RW):    " << osrwMutexRunTime.count() << "ms"
-        << "\n\tFairRWLock Time (RW):      " << fairRWFutexRunTime.count() << "ms"
+        << "\n\tRWLock Time (RW):            " << srwMutexRunTime.count() << "ms"
+        << "\n\tSystemRWLock Time (RW):      " << osrwMutexRunTime.count() << "ms"
+        << "\n\tFairRWLock Time (RW):        " << fairRWFutexRunTime.count() << "ms"
         << std::endl;
 
     return 0;
