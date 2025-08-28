@@ -52,6 +52,7 @@ set(LS_UTILS_SOURCES
     src/NetServer.cpp
     src/RandomNum.cpp
     src/Resource.cpp
+    src/RWLock.cpp
     src/SpinLock.cpp
     src/StringUtils.cpp
     src/Time.cpp

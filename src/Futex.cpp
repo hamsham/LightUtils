@@ -90,27 +90,6 @@ void Futex::lock() noexcept
 
 
 
-/*-------------------------------------
- * Attempt to lock
--------------------------------------*/
-bool Futex::try_lock() noexcept
-{
-    uint32_t tmp = 0;
-    return mLock.compare_exchange_strong(tmp, 1, std::memory_order_seq_cst, std::memory_order_relaxed);
-}
-
-
-
-/*-------------------------------------
- * Futex unlock
--------------------------------------*/
-void Futex::unlock() noexcept
-{
-    mLock.store(0, std::memory_order_release);
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * SystemFutexLinux
 -----------------------------------------------------------------------------*/
@@ -144,41 +123,22 @@ void SystemFutexLinux::lock() noexcept
     const unsigned maxPauses = static_cast<unsigned>(mMaxPauseCount);
     unsigned currentPauses = 1;
 
-    do
-    {
-        if (try_lock())
-        {
-            return;
-        }
-
-        int yieldMask = 0;
-        for (unsigned i = 0; i < currentPauses; ++i)
-        {
-            yieldMask |= sched_yield();
-        }
-
-        if (!yieldMask)
-        {
-            currentPauses <<= 1;
-        }
-    }
-    while (currentPauses <= maxPauses);
-
     while (!try_lock())
     {
-        syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr, nullptr, 0);
+        if (currentPauses > maxPauses)
+        {
+            syscall(SYS_futex, &mLock, FUTEX_WAIT_PRIVATE, 1u, nullptr, nullptr, 0);
+            currentPauses = 1;
+            continue;
+        }
+
+        for (unsigned i = 0; i < currentPauses; ++i)
+        {
+            sched_yield();
+        }
+
+        currentPauses <<= 1;
     }
-}
-
-
-
-/*-------------------------------------
- * Attempt to lock
--------------------------------------*/
-bool SystemFutexLinux::try_lock() noexcept
-{
-    uint32_t tmp = 0u;
-    return __atomic_compare_exchange_n(&mLock, &tmp, 1u, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
 }
 
 
@@ -271,26 +231,6 @@ void SystemFutexPthread::lock() noexcept
 
 
 
-/*-------------------------------------
- * Attempt to lock
--------------------------------------*/
-bool SystemFutexPthread::try_lock() noexcept
-{
-    return pthread_mutex_trylock(&mLock) == 0;
-}
-
-
-
-/*-------------------------------------
- * SystemFutexPthread unlock
--------------------------------------*/
-void SystemFutexPthread::unlock() noexcept
-{
-    pthread_mutex_unlock(&mLock);
-}
-
-
-
 #endif /* LS_UTILS_USE_PTHREAD_FUTEX */
 
 
@@ -346,26 +286,6 @@ void SystemFutexWin32::lock() noexcept
             break;
         }
     }
-}
-
-
-
-/*-------------------------------------
- * Attempt to lock
--------------------------------------*/
-bool SystemFutexWin32::try_lock() noexcept
-{
-    return 0 != TryAcquireSRWLockExclusive(&mLock);
-}
-
-
-
-/*-------------------------------------
- * SystemFutexWin32 unlock
--------------------------------------*/
-void SystemFutexWin32::unlock() noexcept
-{
-    ReleaseSRWLockExclusive(&mLock);
 }
 
 

@@ -8,8 +8,6 @@
 #ifndef LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
 #define LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
 
-#include "lightsky/utils/Assertions.h"
-
 namespace ls
 {
 namespace utils
@@ -170,70 +168,6 @@ inline SystemRWLock::SystemRWLock() noexcept
 
 
 /*-------------------------------------
- * Non-Exclusive Lock
--------------------------------------*/
-inline void SystemRWLock::lock_shared() noexcept
-{
-    constexpr unsigned maxPauses = 32;
-    unsigned currentPauses = 1;
-
-    do
-    {
-        if (try_lock_shared())
-        {
-            return;
-        }
-
-        for (unsigned i = 0; i < currentPauses; ++i)
-        {
-            std::this_thread::yield();
-        }
-
-        currentPauses <<= 1;
-    }
-    while (currentPauses < maxPauses);
-
-    while (pthread_rwlock_rdlock(&mLock) != 0)
-    {
-        std::this_thread::yield();
-    }
-}
-
-
-
-/*-------------------------------------
- * Exclusive Lock
--------------------------------------*/
-inline void SystemRWLock::lock() noexcept
-{
-    constexpr unsigned maxPauses = 32;
-    unsigned currentPauses = 1;
-
-    do
-    {
-        if (try_lock())
-        {
-            return;
-        }
-
-        for (unsigned i = 0; i < currentPauses; ++i)
-        {
-            std::this_thread::yield();
-        }
-
-        currentPauses <<= 1;
-    }
-    while (currentPauses < maxPauses);
-
-    while (pthread_rwlock_wrlock(&mLock) != 0)
-    {
-        std::this_thread::yield();
-    }
-}
-
-
-
-/*-------------------------------------
  * Attempt Non-Exclusive Lock
 -------------------------------------*/
 inline bool SystemRWLock::try_lock_shared() noexcept
@@ -308,61 +242,6 @@ inline SystemRWLock::SystemRWLock() noexcept
 
 
 /*-------------------------------------
- * Non-Exclusive Lock
--------------------------------------*/
-inline void SystemRWLock::lock_shared() noexcept
-{
-    constexpr unsigned maxPauses = 32;
-    unsigned currentPauses = 1;
-
-    do
-    {
-        if (try_lock_shared())
-        {
-            return;
-        }
-
-        for (unsigned i = 0; i < currentPauses; ++i)
-        {
-            std::this_thread::yield();
-        }
-
-        currentPauses <<= 1;
-    }
-    while (currentPauses <= maxPauses);
-
-    AcquireSRWLockShared(&mLock);
-}
-
-
-
-/*-------------------------------------
- * Exclusive Lock
--------------------------------------*/
-inline void SystemRWLock::lock() noexcept
-{
-    do
-    {
-        if (try_lock())
-        {
-            return;
-        }
-
-        for (unsigned i = 0; i < currentPauses; ++i)
-        {
-            std::this_thread::yield();
-        }
-
-        currentPauses <<= 1;
-    }
-    while (currentPauses <= maxPauses);
-
-    AcquireSRWLockExclusive(&mLock);
-}
-
-
-
-/*-------------------------------------
  * Attempt Non-Exclusive Lock
 -------------------------------------*/
 inline bool SystemRWLock::try_lock_shared() noexcept
@@ -425,55 +304,6 @@ inline const SystemRWLock::native_handle_type& SystemRWLock::native_handle() con
 inline FairRWLock::FairRWLock() noexcept :
     mLockBits{0}
 {}
-
-
-
-/*-------------------------------------
- * Non-Exclusive Lock
--------------------------------------*/
-inline void FairRWLock::lock_shared() noexcept
-{
-    const uint16_t lockId = mLockFields.currentLockId.fetch_add(1);
-    while (lockId != mLockFields.nextLockId.load(std::memory_order_acquire))
-    {
-        std::this_thread::yield();
-    }
-
-    mLockFields.shareCount.fetch_add(1);
-
-    while (mLockFields.lockType.load(std::memory_order_acquire))
-    {
-        std::this_thread::yield();
-    }
-
-    mLockFields.nextLockId.fetch_add(1);
-}
-
-
-
-/*-------------------------------------
- * Exclusive Lock
--------------------------------------*/
-inline void FairRWLock::lock() noexcept
-{
-    const uint16_t lockId = mLockFields.currentLockId.fetch_add(1);
-    while (lockId != mLockFields.nextLockId.load(std::memory_order_acquire))
-    {
-        std::this_thread::yield();
-    }
-
-    uint8_t writeBit;
-    do
-    {
-        writeBit = 0;
-    }
-    while (!mLockFields.lockType.compare_exchange_strong(writeBit, LockFlags::LOCK_WRITE_BIT));
-
-    while (mLockFields.shareCount.load(std::memory_order_acquire) != 0)
-    {
-        std::this_thread::yield();
-    }
-}
 
 
 
