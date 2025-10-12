@@ -8,6 +8,8 @@
 #ifndef LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
 #define LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
 
+#include <thread>
+
 namespace ls
 {
 namespace utils
@@ -145,7 +147,7 @@ inline const RWLock::native_handle_type& RWLock::native_handle() const noexcept
 /*-----------------------------------------------------------------------------
  * PThreads R/W Semaphore
 -----------------------------------------------------------------------------*/
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX)
+#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
 
 /*-------------------------------------
  * Destructor

@@ -10,10 +10,10 @@
 
 #include <atomic>
 
-#include "lightsky/setup/Macros.h"
+#include "lightsky/setup/Api.h"
 #include "lightsky/setup/OS.h"
 
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX)
+#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
     #include <pthread.h>
 
 #elif defined(LS_OS_WINDOWS)
@@ -91,7 +91,7 @@ public:
 /*-----------------------------------------------------------------------------
  * Pthread-based R/W Lock
 -----------------------------------------------------------------------------*/
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX)
+#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
 
 class alignas(alignof(uint64_t)) SystemRWLock
 {

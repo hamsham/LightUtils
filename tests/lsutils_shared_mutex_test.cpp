@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Futex.hpp"
 #include "lightsky/utils/RWLock.hpp"
 #include "lightsky/utils/SpinLock.hpp"

@@ -59,13 +59,13 @@ class Futex;
 #endif
 
 #if LS_UTILS_USE_PTHREAD_FUTEX
-    class SystemFutexLinux;
+    class SystemFutexPthread;
 #else
     typedef Futex SystemFutexPthread;
 #endif
 
 #if LS_UTILS_USE_WINDOWS_FUTEX
-    class SystemFutexLinux;
+    class SystemFutexWin32;
 #else
     typedef Futex SystemFutexWin32;
 #endif
@@ -213,7 +213,7 @@ class alignas(alignof(uint64_t)) SystemFutexPthread
 -----------------------------------------------------------------------------*/
 #if LS_UTILS_USE_WINDOWS_FUTEX
 
-class alignas(alignof(uint32_t)) SystemFutexWin32
+class alignas(alignof(uint64_t)) SystemFutexWin32
 {
   private:
     alignas(alignof(SRWLOCK)) SRWLOCK mLock;

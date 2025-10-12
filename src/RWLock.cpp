@@ -4,8 +4,7 @@
  * Created on July 23, 2025, at 12:11 AM
  */
 
-#include "lightsky/setup/Macros.h"
-#include "lightsky/utils/Futex.hpp"
+#include "lightsky/utils/RWLock.hpp"
 
 namespace ls
 {
@@ -16,7 +15,7 @@ namespace utils
 /*-----------------------------------------------------------------------------
  * PThreads R/W Semaphore
 -----------------------------------------------------------------------------*/
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX)
+#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
 
 /*-------------------------------------
  * Non-Exclusive Lock
@@ -88,25 +87,6 @@ void SystemRWLock::lock() noexcept
 #elif defined(LS_OS_WINDOWS)
 
 /*-------------------------------------
- * Destructor
--------------------------------------*/
-SystemRWLock::~SystemRWLock() noexcept
-{
-}
-
-
-
-/*-------------------------------------
- * Constructor
--------------------------------------*/
-SystemRWLock::SystemRWLock() noexcept
-{
-    InitializeSRWLock(&mLock);
-}
-
-
-
-/*-------------------------------------
  * Non-Exclusive Lock
 -------------------------------------*/
 void SystemRWLock::lock_shared() noexcept
@@ -140,6 +120,9 @@ void SystemRWLock::lock_shared() noexcept
 -------------------------------------*/
 void SystemRWLock::lock() noexcept
 {
+    constexpr unsigned maxPauses = 32;
+    unsigned currentPauses = 1;
+
     do
     {
         if (try_lock())
