@@ -38,9 +38,9 @@ class LRU8WayCache
     unsigned _get_lru_index() const noexcept;
 
   private: // instance data
-    uint32_t mKeys[CACHE_SIZE];
+    alignas(alignof(uint32_t)*CACHE_SIZE) uint32_t mKeys[CACHE_SIZE];
 
-    union
+    union alignas(alignof(uint64_t)*(CACHE_SIZE/2))
     {
         uint8_t mRows[CACHE_SIZE];
         uint64_t mCols;

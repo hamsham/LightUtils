@@ -1,6 +1,7 @@
 
 #include <iostream>
 
+#include "lightsky/setup/CPU.h"
 #include "lightsky/utils/LRUCache.hpp"
 #include "lightsky/utils/LRU8WayCache.hpp"
 #include "lightsky/utils/IndexedCache.hpp"
@@ -13,7 +14,7 @@ constexpr size_t CACHE_SIZE = 8;
 constexpr bool TEST_LRU_CACHE = true;
 constexpr bool TEST_LRU8_CACHE = true;
 constexpr bool TEST_INDEXED_CACHE = true;
-constexpr unsigned NUM_TEST_RUNS = 1 << 24;
+constexpr unsigned NUM_TEST_RUNS = 1 << 28;
 //constexpr unsigned NUM_TEST_RUNS = 128;
 constexpr bool VERBOSE_LOGGING = false;
 
@@ -76,7 +77,7 @@ size_t test_hash(size_t totalElems, size_t indexModifier = 15)
 
 
 
-void print_cache_stats(size_t cacheHits, size_t totalElems, const ls::utils::Clock<double, std::chrono::milliseconds::period>& timer, const char* cacheName)
+void print_cache_stats(size_t cacheHits, size_t totalElems, int64_t timer, const char* cacheName)
 {
     const double lruHitRatio = 100.0 * ((double)cacheHits / (double)totalElems);
 
@@ -84,7 +85,7 @@ void print_cache_stats(size_t cacheHits, size_t totalElems, const ls::utils::Clo
         << cacheName
         << "\n\tTotal Hits: " << cacheHits << " / " << totalElems
         << "\n\tRatio (%):  " << ls::utils::to_str(lruHitRatio)
-        << "\n\tTime (ms):  " << ls::utils::to_str(timer.tick_time().count())
+        << "\n\tTicks (ms): " << timer / 1000000.0
         << std::endl;
 }
 
@@ -94,32 +95,29 @@ int main()
 {
     constexpr unsigned totalElems = NUM_TEST_RUNS;
     size_t hits;
-    ls::utils::Clock<double, std::chrono::milliseconds::period> timer;
+    int64_t timer;
 
     if (TEST_LRU_CACHE)
     {
-        timer.stop();
-        timer.start();
+        timer = ls::setup::cpu_read_ticks();
         hits = test_hash<TestCacheLRU>(totalElems);
-        timer.tick();
+        timer = ls::setup::cpu_read_ticks() - timer;
         print_cache_stats(hits, totalElems, timer, "LRU");
     }
 
     if (TEST_LRU8_CACHE)
     {
-        timer.stop();
-        timer.start();
+        timer = ls::setup::cpu_read_ticks();
         hits = test_hash<TestCacheLRU8>(totalElems);
-        timer.tick();
+        timer = ls::setup::cpu_read_ticks() - timer;
         print_cache_stats(hits, totalElems, timer, "LRU (8-Way)");
     }
 
     if (TEST_INDEXED_CACHE)
     {
-        timer.stop();
-        timer.start();
+        timer = ls::setup::cpu_read_ticks();
         hits = test_hash<TestCacheIndexed>(totalElems);
-        timer.tick();
+        timer = ls::setup::cpu_read_ticks() - timer;
         print_cache_stats(hits, totalElems, timer, "Hash");
     }
 

@@ -15,10 +15,10 @@ namespace utils
  * Generic hash function
 --------------------------------------*/
 template <typename T, size_t cacheSize>
-constexpr size_t IndexedCache<T, cacheSize>::hash_id(size_t key) noexcept
+constexpr size_t IndexedCache<T, cacheSize>::_hash_id(size_t key) const noexcept
 {
     // Optimize key lookup for containers sized with powers-of-two
-    return !(cacheSize & (cacheSize - 1u)) ? (key & (cacheSize - 1)) : (key % cacheSize);
+    return _hash_id_to_index<!(cacheSize & (cacheSize - 1u))>(key);
 }
 
 
@@ -40,7 +40,7 @@ inline IndexedCache<T, cacheSize>::IndexedCache() noexcept
 template <typename T, size_t cacheSize>
 inline const T* IndexedCache<T, cacheSize>::query(size_t key) const noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
     return (mCacheIds[i] == key) ? &mData[i] : nullptr;
 }
 
@@ -52,7 +52,7 @@ inline const T* IndexedCache<T, cacheSize>::query(size_t key) const noexcept
 template <typename T, size_t cacheSize>
 inline T* IndexedCache<T, cacheSize>::query(size_t key) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
     return (mCacheIds[i] == key) ? &mData[i] : nullptr;
 }
 
@@ -65,7 +65,7 @@ template <typename T, size_t cacheSize>
 template <class UpdateFunc>
 inline T& IndexedCache<T, cacheSize>::update(size_t key, UpdateFunc&& updater) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
 
     if (mCacheIds[i] != key)
     {
@@ -85,7 +85,7 @@ template <typename T, size_t cacheSize>
 template <class UpdateFunc>
 inline T& IndexedCache<T, cacheSize>::query_or_update(size_t key, UpdateFunc&& updater) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
 
     if (mCacheIds[i] != key)
     {
@@ -104,7 +104,7 @@ inline T& IndexedCache<T, cacheSize>::query_or_update(size_t key, UpdateFunc&& u
 template <typename T, size_t cacheSize>
 inline T& IndexedCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
     mCacheIds[i] = key;
     mData[i] = val;
     return mData[i];
@@ -118,7 +118,7 @@ inline T& IndexedCache<T, cacheSize>::insert(size_t key, const T& val) noexcept
 template <typename T, size_t cacheSize>
 inline T& IndexedCache<T, cacheSize>::insert(size_t key, T&& val) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
     mCacheIds[i] = key;
     mData[i] = std::move(val);
     return mData[i];
@@ -133,7 +133,7 @@ template <typename T, size_t cacheSize>
 template <typename... Args>
 inline T& IndexedCache<T, cacheSize>::emplace(size_t key,  Args&&... args) noexcept
 {
-    const size_t i = IndexedCache<T, cacheSize>::hash_id(key);
+    const size_t i = _hash_id(key);
     mCacheIds[i] = key;
     mData[i] = T{std::forward<Args>(args)...};
     return mData[i];
@@ -147,7 +147,7 @@ inline T& IndexedCache<T, cacheSize>::emplace(size_t key,  Args&&... args) noexc
 template <typename T, size_t cacheSize>
 inline const T& IndexedCache<T, cacheSize>::operator[](size_t index) const noexcept
 {
-    return mData[IndexedCache<T, cacheSize>::hash_id(index)];
+    return mData[_hash_id(index)];
 }
 
 
@@ -158,7 +158,7 @@ inline const T& IndexedCache<T, cacheSize>::operator[](size_t index) const noexc
 template <typename T, size_t cacheSize>
 inline T& IndexedCache<T, cacheSize>::operator[](size_t index) noexcept
 {
-    return mData[IndexedCache<T, cacheSize>::hash_id(index)];
+    return mData[_hash_id(index)];
 }
 
 

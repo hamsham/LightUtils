@@ -23,7 +23,22 @@ class IndexedCache
     static_assert(cacheSize != 0, "Cache objects must have a nonzero capacity.");
 
   private:
-    static constexpr size_t hash_id(size_t key) noexcept;
+    template <bool amPowerOf2>
+    constexpr size_t _hash_id_to_index(size_t key) const noexcept;
+
+    template <>
+    constexpr size_t _hash_id_to_index<false>(size_t key) const noexcept
+    {
+        return key % cacheSize;
+    }
+
+    template <>
+    constexpr size_t _hash_id_to_index<true>(size_t key) const noexcept
+    {
+        return key & (cacheSize - 1);
+    }
+
+    constexpr size_t _hash_id(size_t key) const noexcept;
 
   public:
     static constexpr size_t CACHE_SIZE = cacheSize;

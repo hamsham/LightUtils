@@ -32,35 +32,27 @@ namespace utils
 template <typename T>
 inline LS_INLINE int32_t LRU8WayCache<T>::_lookup_index_for_key(const uint32_t* LS_RESTRICT_PTR map, uint32_t key) noexcept
 {
-    /*
-        const int32_t k0 = -(key == map[0]) & 1;
-        const int32_t k1 = -(key == map[1]) & 2;
-        const int32_t k2 = -(key == map[2]) & 3;
-        const int32_t k3 = -(key == map[3]) & 4;
-        const int32_t k4 = -(key == map[4]) & 5;
-        const int32_t k5 = -(key == map[5]) & 6;
-        const int32_t k6 = -(key == map[6]) & 7;
-        const int32_t k7 = -(key == map[7]) & 8;
-        return (k0|k1|k2|k3|k4|k5|k6|k7) - 1;
-    */
-
-    #if defined(LS_X86_AVX2)
-        const __m256i maps = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(map));
-        const __m256i cmp = _mm256_cmpeq_epi32(maps, _mm256_set1_epi32((int32_t)key));
-        const __m256 offsets = _mm256_castsi256_ps(cmp);
-        const int32_t bits = _mm256_movemask_ps(offsets);
+    // Disabling the AVX2 path since it can trigger frequency scaling,
+    // performing slightly worse than the SSE 4.1 version.
+    #if 0//defined(LS_X86_AVX2)
+        const __m256i maps    = _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(map));
+        const __m256i cmp     = _mm256_cmpeq_epi32(maps, _mm256_set1_epi32((int32_t)key));
+        const __m256  offsets = _mm256_castsi256_ps(cmp);
+        const int32_t bits    = _mm256_movemask_ps(offsets);
         const int32_t indices = _mm_tzcnt_32(static_cast<uint32_t>(bits));
-        return indices & -(indices >> 5);
+        return -(!bits) | indices;
 
     #elif defined(LS_X86_SSE4_1)
-        const __m128i lo       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map));
-        const __m128i hi       = _mm_loadu_si128(reinterpret_cast<const __m128i*>(map+4));
-        const __m128i val      = _mm_set1_epi32((int)key);
-        const __m128i loMask   = _mm_andnot_si128(_mm_cmpeq_epi32(val, lo), _mm_set1_epi32(0xFFFFFFFF));
-        const __m128i hiMask   = _mm_andnot_si128(_mm_cmpeq_epi32(val, hi), _mm_set1_epi32(0xFFFFFFFF));
-        const __m128i mask16   = _mm_packs_epi32(loMask, hiMask);
-        const __m128i mask     = _mm_minpos_epu16(mask16);
-        return -_mm_test_all_ones(mask16) | _mm_extract_epi16(mask, 1);
+        const __m128i  val    = _mm_set1_epi32((int)key);
+        const __m128i  hi     = _mm_lddqu_si128(reinterpret_cast<const __m128i*>(map+4));
+        const __m128i  lo     = _mm_lddqu_si128(reinterpret_cast<const __m128i*>(map));
+        const __m128i  cmphi  = _mm_cmpeq_epi32(val, hi);
+        const __m128i  cmplo  = _mm_cmpeq_epi32(val, lo);
+        const int32_t  maskhi = _mm_movemask_ps(_mm_castsi128_ps(cmphi));
+        const int32_t  masklo = _mm_movemask_ps(_mm_castsi128_ps(cmplo));
+        const int32_t  bits   = masklo | (maskhi << 4);
+        const int32_t index   = _tzcnt_u32(static_cast<int32_t>(bits));
+        return -(!bits) | index;
 
     #elif defined(LS_X86_SSE2)
         constexpr uint32_t indexArray[8] = {1, 2, 3, 4, 5, 6, 7, 8};
