@@ -4,7 +4,7 @@
 # -------------------------------------
 project(ls_utils_tests CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -38,6 +38,7 @@ LS_UTILS_ADD_TARGET(lsutils_alloc_general_test lsutils_alloc_general_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_argparse_test      lsutils_argparse_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_cache_test         lsutils_cache_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_dylib_test         lsutils_dylib_test.cpp)
+LS_UTILS_ADD_TARGET(lsutils_function_test      lsutils_function_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_memcpy_test        lsutils_memcpy_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_memset_test        lsutils_memset_test.cpp)
 LS_UTILS_ADD_TARGET(lsutils_net_client_test    lsutils_net_test.hpp lsutils_net_client_test.cpp)

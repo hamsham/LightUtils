@@ -5,7 +5,7 @@
 project(LightUtils CXX)
 set(OUTPUT_NAME lsutils)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -43,6 +43,7 @@ set(LS_UTILS_SOURCES
     src/Copy.cpp
     src/DataResource.cpp
     src/DynamicLib.cpp
+    src/Function.cpp
     src/Futex.cpp
     src/GeneralAllocator.cpp
     src/MemorySource.cpp
@@ -74,6 +75,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/DataResource.h
     include/lightsky/utils/DynamicLib.hpp
     include/lightsky/utils/Endian.h
+    include/lightsky/utils/Function.hpp
     include/lightsky/utils/Futex.hpp
     include/lightsky/utils/GeneralAllocator.hpp
     include/lightsky/utils/Hash.h
@@ -107,6 +109,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/generic/AllocatorImpl.hpp
     include/lightsky/utils/generic/BTreeImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
+    include/lightsky/utils/generic/FunctionImpl.hpp
     include/lightsky/utils/generic/FutexImpl.hpp
     include/lightsky/utils/generic/GeneralAllocatorImpl.hpp
     include/lightsky/utils/generic/IndexedCacheImpl.hpp
