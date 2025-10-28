@@ -146,7 +146,8 @@ template <typename StorageType, typename ResultType, typename... ArgsType>
 typename FunctionType<StorageType, ResultType(ArgsType...)>::result_type
 LS_IMPERATIVE FunctionType<StorageType, ResultType(ArgsType...)>::invoke(ArgsType&&... args) const
 {
-    return mFunction(ls::setup::forward<ArgsType>(args)...);
+    //return mFunction(ls::setup::forward<ArgsType>(args)...);
+    return const_cast<StorageType&>(mFunction)(ls::setup::forward<ArgsType>(args)...);
 }
 
 
@@ -344,7 +345,8 @@ template <typename StorageType, typename ResultType>
 typename FunctionType<StorageType, ResultType()>::result_type
 LS_IMPERATIVE FunctionType<StorageType, ResultType()>::invoke() const
 {
-    return mFunction();
+    //return mFunction();
+    return const_cast<StorageType&>(mFunction)();
 }
 
 

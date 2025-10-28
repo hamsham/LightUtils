@@ -35,7 +35,7 @@ int main()
     ls::utils::Function<int()> func5 = func3;
     result5 = func5() + func5(); // 18
 
-    ls::utils::Function<int()> func6 = [=]() noexcept -> int { return func1(1, 2) + func3(); };
+    ls::utils::Function<int()> func6 = [=]() mutable -> int { c += 42; return func1(1, 2) + func3(); };
     result6 = func6(); // 12
 
     std::cout << "Function result 1 (" << func1.target_size() << " -> " << sizeof(func1) << "): " << result1 << std::endl;
