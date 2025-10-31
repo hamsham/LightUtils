@@ -158,14 +158,14 @@ void SystemFutexLinux::unlock() noexcept
 
 
 /*-----------------------------------------------------------------------------
- * SystemFutexPthread
+ * SystemFutexPThread
 -----------------------------------------------------------------------------*/
 #if LS_UTILS_USE_PTHREAD_FUTEX
 
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SystemFutexPthread::~SystemFutexPthread() noexcept
+SystemFutexPThread::~SystemFutexPThread() noexcept
 {
     pthread_mutex_destroy(&mLock);
 }
@@ -175,7 +175,7 @@ SystemFutexPthread::~SystemFutexPthread() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SystemFutexPthread::SystemFutexPthread(FutexPauseCount maxPauses) noexcept :
+SystemFutexPThread::SystemFutexPThread(FutexPauseCount maxPauses) noexcept :
     mLock{},
     mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses}
 {
@@ -195,9 +195,9 @@ SystemFutexPthread::SystemFutexPthread(FutexPauseCount maxPauses) noexcept :
 
 
 /*-------------------------------------
- * SystemFutexPthread Lock
+ * SystemFutexPThread Lock
 -------------------------------------*/
-void SystemFutexPthread::lock() noexcept
+void SystemFutexPThread::lock() noexcept
 {
 #if 1
     const unsigned maxPauses = static_cast<unsigned>(mMaxPauseCount);

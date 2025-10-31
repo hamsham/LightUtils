@@ -98,14 +98,14 @@ inline bool SystemFutexLinux::try_lock() noexcept
 
 
 /*-----------------------------------------------------------------------------
- * SystemFutexPthread
+ * SystemFutexPThread
 -----------------------------------------------------------------------------*/
 #if LS_UTILS_USE_PTHREAD_FUTEX
 
 /*-------------------------------------
  * Set the maximum consecutive pauses before retrying a lock
 -------------------------------------*/
-inline void SystemFutexPthread::pause_count(FutexPauseCount maxPauses) noexcept
+inline void SystemFutexPThread::pause_count(FutexPauseCount maxPauses) noexcept
 {
     mMaxPauseCount = maxPauses;
 }
@@ -115,7 +115,7 @@ inline void SystemFutexPthread::pause_count(FutexPauseCount maxPauses) noexcept
 /*-------------------------------------
  * Get the maximum consecutive pauses
 -------------------------------------*/
-inline FutexPauseCount SystemFutexPthread::pause_count() const noexcept
+inline FutexPauseCount SystemFutexPThread::pause_count() const noexcept
 {
     return mMaxPauseCount;
 }
@@ -125,7 +125,7 @@ inline FutexPauseCount SystemFutexPthread::pause_count() const noexcept
 /*-------------------------------------
  * Attempt to lock
 -------------------------------------*/
-inline bool SystemFutexPthread::try_lock() noexcept
+inline bool SystemFutexPThread::try_lock() noexcept
 {
     return pthread_mutex_trylock(&mLock) == 0;
 }
@@ -133,9 +133,9 @@ inline bool SystemFutexPthread::try_lock() noexcept
 
 
 /*-------------------------------------
- * SystemFutexPthread unlock
+ * SystemFutexPThread unlock
 -------------------------------------*/
-inline void SystemFutexPthread::unlock() noexcept
+inline void SystemFutexPThread::unlock() noexcept
 {
     pthread_mutex_unlock(&mLock);
 }

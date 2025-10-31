@@ -13,20 +13,24 @@
     #endif
 #endif
 
-#if defined(LS_COMPILER_GNU)
+
+
+#if defined(LS_COMPILER_GNU) || defined(LS_COMPILER_CLANG)
     #ifndef LS_UTILS_USE_PTHREAD_FUTEX
         #define LS_UTILS_USE_PTHREAD_FUTEX 1
     #endif
 #endif
 
+#if LS_UTILS_USE_PTHREAD_FUTEX
+    #include <pthread.h> // pthread_mutex_t
+#endif
+
+
+
 #if defined(LS_OS_WINDOWS)
     #ifndef LS_UTILS_USE_WINDOWS_FUTEX
         #define LS_UTILS_USE_WINDOWS_FUTEX 1
     #endif
-#endif
-
-#if LS_UTILS_USE_PTHREAD_FUTEX
-    #include <pthread.h> // pthread_mutex_t
 #endif
 
 #if LS_UTILS_USE_WINDOWS_FUTEX
@@ -48,26 +52,65 @@ namespace ls
 namespace utils
 {
 
-
-
+/*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
 class Futex;
 
 #if LS_UTILS_USE_LINUX_FUTEX
-    class SystemFutexLinux;
+    class SystemFutexPThread;
 #else
-    typedef Futex SystemFutexLinux;
+    #if LS_UTILS_USE_PTHREAD_FUTEX
+        class SystemFutexPThread;
+        typedef SystemFutexPThread SystemFutexLinux;
+    #elif LS_UTILS_USE_WINDOWS_FUTEX
+        class SystemFutexWindows;
+        typedef SystemFutexWindows SystemFutexLinux;
+    #else
+        typedef Futex SystemFutexLinux;
+    #endif
 #endif
 
 #if LS_UTILS_USE_PTHREAD_FUTEX
-    class SystemFutexPthread;
+    class SystemFutexPThread;
 #else
-    typedef Futex SystemFutexPthread;
+    #if LS_UTILS_USE_LINUX_FUTEX
+        class SystemFutexLinux;
+        typedef SystemFutexLinux SystemFutexPThread;
+    #elif LS_UTILS_USE_WINDOWS_FUTEX
+        class SystemFutexWindows;
+        typedef SystemFutexWindows SystemFutexPThread;
+    #else
+        typedef Futex SystemFutexPThread;
+    #endif
 #endif
 
 #if LS_UTILS_USE_WINDOWS_FUTEX
-    class SystemFutexWin32;
+    class SystemFutexWindows;
 #else
-    typedef Futex SystemFutexWin32;
+    #if LS_UTILS_USE_PTHREAD_FUTEX
+        class SystemFutexPThread;
+        typedef SystemFutexPThread SystemFutexWindows;
+    #elif LS_UTILS_USE_LINUX_FUTEX
+        class SystemFutexLinux;
+        typedef SystemFutexLinux SystemFutexWindows;
+    #else
+        typedef Futex SystemFutexWindows;
+    #endif
+#endif
+
+
+
+#if LS_UTILS_USE_PTHREAD_FUTEX
+    // PThread Futexes perform better on Windows through MinGW.
+    // Prefer the faster implementation
+    typedef SystemFutexPThread SystemFutex;
+#elif LS_UTILS_USE_LINUX_FUTEX
+    typedef SystemFutexLinux SystemFutex;
+#elif LS_UTILS_USE_WINDOWS_FUTEX
+    typedef SystemFutexWindows SystemFutex;
+#else
+    typedef Futex SystemFutex;
 #endif
 
 
@@ -174,24 +217,24 @@ class alignas(alignof(uint32_t)) SystemFutexLinux
 -----------------------------------------------------------------------------*/
 #if LS_UTILS_USE_PTHREAD_FUTEX
 
-class alignas(alignof(uint64_t)) SystemFutexPthread
+class alignas(alignof(uint64_t)) SystemFutexPThread
 {
   private:
     alignas(alignof(pthread_mutex_t)) pthread_mutex_t mLock;
     alignas(alignof(uint64_t)) FutexPauseCount mMaxPauseCount;
 
   public:
-    ~SystemFutexPthread() noexcept;
+    ~SystemFutexPThread() noexcept;
 
-    SystemFutexPthread(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
+    SystemFutexPThread(FutexPauseCount maxPauses = FutexPauseCount::FUTEX_PAUSE_COUNT_32) noexcept;
 
-    SystemFutexPthread(const SystemFutexPthread&) = delete;
+    SystemFutexPThread(const SystemFutexPThread&) = delete;
 
-    SystemFutexPthread(SystemFutexPthread&&) = delete;
+    SystemFutexPThread(SystemFutexPThread&&) = delete;
 
-    SystemFutexPthread& operator=(const SystemFutexPthread&) = delete;
+    SystemFutexPThread& operator=(const SystemFutexPThread&) = delete;
 
-    SystemFutexPthread& operator=(SystemFutexPthread&&) = delete;
+    SystemFutexPThread& operator=(SystemFutexPThread&&) = delete;
 
     void pause_count(FutexPauseCount maxPauses) noexcept;
 

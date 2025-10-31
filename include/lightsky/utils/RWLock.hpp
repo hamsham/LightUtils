@@ -13,10 +13,29 @@
 #include "lightsky/setup/Api.h"
 #include "lightsky/setup/OS.h"
 
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
-    #include <pthread.h>
+#ifndef LS_UTILS_USE_PTHREAD_RWLOCK
+    #if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
+        #define LS_UTILS_USE_PTHREAD_RWLOCK 1
+    #else
+        #define LS_UTILS_USE_PTHREAD_RWLOCK 0
+    #endif
+#endif
 
-#elif defined(LS_OS_WINDOWS)
+#if LS_UTILS_USE_PTHREAD_RWLOCK
+        #include <pthread.h>
+#endif
+
+
+
+#ifndef LS_UTILS_USE_WINDOWS_RWLOCK
+    #if defined(LS_OS_WINDOWS)
+        #define LS_UTILS_USE_WINDOWS_RWLOCK 1
+    #else
+        #define LS_UTILS_USE_WINDOWS_RWLOCK 0
+    #endif
+#endif
+
+#if LS_UTILS_USE_WINDOWS_RWLOCK
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif /* WIN32_LEAN_AND_MEAN */
@@ -30,11 +49,50 @@
 #endif
 
 
+
 namespace ls
 {
 namespace utils
 {
 
+/*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+class RWLock;
+
+#if LS_UTILS_USE_PTHREAD_RWLOCK
+    class SystemRWLockPThread;
+#else
+    #if LS_UTILS_USE_WINDOWS_RWLOCK
+        class SystemRWLockWindows;
+        typedef SystemRWLockWindows SystemRWLockPThread;
+    #else
+        typedef RWLock SystemRWLockPThread;
+    #endif
+#endif
+
+#if LS_UTILS_USE_WINDOWS_RWLOCK
+    class SystemRWLockWindows;
+#else
+    #if LS_UTILS_USE_PTHREAD_RWLOCK
+        class SystemRWLockPThread;
+        typedef SystemRWLockPThread SystemRWLockWindows;
+    #else
+        typedef RWLock SystemRWLockWindows;
+    #endif
+#endif
+
+
+
+#if LS_UTILS_USE_WINDOWS_RWLOCK
+    // Windows' SRWLock performs better than pthreads on MinGW.
+    // Prefer the faster implementation
+    typedef SystemRWLockWindows SystemRWLock;
+#elif LS_UTILS_USE_PTHREAD_RWLOCK
+    typedef SystemRWLockPThread SystemRWLock;
+#else
+    typedef RWLock SystemRWLock;
+#endif
 
 
 /*-----------------------------------------------------------------------------
@@ -91,9 +149,9 @@ public:
 /*-----------------------------------------------------------------------------
  * Pthread-based R/W Lock
 -----------------------------------------------------------------------------*/
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
+#if LS_UTILS_USE_PTHREAD_RWLOCK
 
-class alignas(alignof(uint64_t)) SystemRWLock
+class alignas(alignof(uint64_t)) SystemRWLockPThread
 {
 public:
     typedef pthread_rwlock_t native_handle_type;
@@ -102,17 +160,17 @@ private:
     pthread_rwlock_t mLock;
 
 public:
-    ~SystemRWLock() noexcept;
+    ~SystemRWLockPThread() noexcept;
 
-    SystemRWLock() noexcept;
+    SystemRWLockPThread() noexcept;
 
-    SystemRWLock(const SystemRWLock&) noexcept = delete;
+    SystemRWLockPThread(const SystemRWLockPThread&) noexcept = delete;
 
-    SystemRWLock(SystemRWLock&&) noexcept = delete;
+    SystemRWLockPThread(SystemRWLockPThread&&) noexcept = delete;
 
-    SystemRWLock& operator=(const SystemRWLock&) noexcept = delete;
+    SystemRWLockPThread& operator=(const SystemRWLockPThread&) noexcept = delete;
 
-    SystemRWLock& operator=(SystemRWLock&&) noexcept = delete;
+    SystemRWLockPThread& operator=(SystemRWLockPThread&&) noexcept = delete;
 
     void lock_shared() noexcept;
 
@@ -129,9 +187,16 @@ public:
     const native_handle_type& native_handle() const noexcept;
 };
 
-#elif defined(LS_OS_WINDOWS)
+#endif
 
-class alignas(alignof(uint64_t)) SystemRWLock
+
+
+/*-----------------------------------------------------------------------------
+ * Windows-Native RWLock
+-----------------------------------------------------------------------------*/
+#if LS_UTILS_USE_WINDOWS_RWLOCK
+
+class alignas(alignof(uint64_t)) SystemRWLockWindows
 {
 public:
     typedef SRWLOCK native_handle_type;
@@ -140,17 +205,17 @@ public:
         alignas(alignof(SRWLOCK)) SRWLOCK mLock;
 
 public:
-    ~SystemRWLock() noexcept;
+    ~SystemRWLockWindows() noexcept;
 
-    SystemRWLock() noexcept;
+    SystemRWLockWindows() noexcept;
 
-    SystemRWLock(const SystemRWLock&) noexcept = delete;
+    SystemRWLockWindows(const SystemRWLockWindows&) noexcept = delete;
 
-    SystemRWLock(SystemRWLock&&) noexcept = delete;
+    SystemRWLockWindows(SystemRWLockWindows&&) noexcept = delete;
 
-    SystemRWLock& operator=(const SystemRWLock&) noexcept = delete;
+    SystemRWLockWindows& operator=(const SystemRWLockWindows&) noexcept = delete;
 
-    SystemRWLock& operator=(SystemRWLock&&) noexcept = delete;
+    SystemRWLockWindows& operator=(SystemRWLockWindows&&) noexcept = delete;
 
     void lock_shared() noexcept;
 

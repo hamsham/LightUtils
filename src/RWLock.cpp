@@ -15,12 +15,12 @@ namespace utils
 /*-----------------------------------------------------------------------------
  * PThreads R/W Semaphore
 -----------------------------------------------------------------------------*/
-#if defined(LS_OS_UNIX) || defined(LS_OS_LINUX) || defined(LS_OS_MINGW)
+#if LS_UTILS_USE_PTHREAD_RWLOCK
 
 /*-------------------------------------
  * Non-Exclusive Lock
 -------------------------------------*/
-void SystemRWLock::lock_shared() noexcept
+void SystemRWLockPThread::lock_shared() noexcept
 {
     constexpr unsigned maxPauses = 32;
     unsigned currentPauses = 1;
@@ -52,7 +52,7 @@ void SystemRWLock::lock_shared() noexcept
 /*-------------------------------------
  * Exclusive Lock
 -------------------------------------*/
-void SystemRWLock::lock() noexcept
+void SystemRWLockPThread::lock() noexcept
 {
     constexpr unsigned maxPauses = 32;
     unsigned currentPauses = 1;
@@ -79,17 +79,19 @@ void SystemRWLock::lock() noexcept
     }
 }
 
+#endif
+
 
 
 /*-----------------------------------------------------------------------------
  * Windows R/W Semaphore
 -----------------------------------------------------------------------------*/
-#elif defined(LS_OS_WINDOWS)
+#if LS_UTILS_USE_WINDOWS_RWLOCK
 
 /*-------------------------------------
  * Non-Exclusive Lock
 -------------------------------------*/
-void SystemRWLock::lock_shared() noexcept
+void SystemRWLockWindows::lock_shared() noexcept
 {
     constexpr unsigned maxPauses = 32;
     unsigned currentPauses = 1;
@@ -118,7 +120,7 @@ void SystemRWLock::lock_shared() noexcept
 /*-------------------------------------
  * Exclusive Lock
 -------------------------------------*/
-void SystemRWLock::lock() noexcept
+void SystemRWLockWindows::lock() noexcept
 {
     constexpr unsigned maxPauses = 32;
     unsigned currentPauses = 1;
