@@ -245,6 +245,7 @@ void SystemFutexPThread::lock() noexcept
 -------------------------------------*/
 SystemFutexWin32::~SystemFutexWin32() noexcept
 {
+    DeleteCriticalSection(&mLock);
 }
 
 
@@ -254,9 +255,10 @@ SystemFutexWin32::~SystemFutexWin32() noexcept
 -------------------------------------*/
 SystemFutexWin32::SystemFutexWin32(FutexPauseCount maxPauses) noexcept :
     mLock{},
-    mMaxPauseCount{LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses}
+    mLockState{0},
+    mMaxPauseCount{(uint16_t)(LS_ENUM_VAL(maxPauses) > LS_ENUM_VAL(FutexPauseCount::FUTEX_PAUSE_COUNT_MAX) ? FutexPauseCount::FUTEX_PAUSE_COUNT_MAX : maxPauses)}
 {
-    InitializeSRWLock(&mLock);
+    InitializeCriticalSectionAndSpinCount(&mLock, (DWORD)maxPauses);
 }
 
 
@@ -266,26 +268,8 @@ SystemFutexWin32::SystemFutexWin32(FutexPauseCount maxPauses) noexcept :
 -------------------------------------*/
 void SystemFutexWin32::lock() noexcept
 {
-    const int32_t maxPauses = static_cast<int32_t>(mMaxPauseCount);
-    int32_t currentPauses = 1;
-
-    while (!TryAcquireSRWLockExclusive(&mLock))
-    {
-        if (currentPauses < maxPauses)
-        {
-            for (int32_t i = 0; i < currentPauses; ++i)
-            {
-                ls::setup::cpu_yield();
-            }
-
-            currentPauses <<= 1;
-        }
-        else
-        {
-            AcquireSRWLockExclusive(&mLock);
-            break;
-        }
-    }
+    EnterCriticalSection(&mLock);
+    mLockState.store(1, std::memory_order::release);
 }
 
 

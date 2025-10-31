@@ -252,15 +252,16 @@ class alignas(alignof(uint64_t)) SystemFutexPThread
 
 
 /**----------------------------------------------------------------------------
- * @brief Exclusive lock type based on Windows' SRWLOCK
+ * @brief Exclusive lock type based on Windows' Critical Section
 -----------------------------------------------------------------------------*/
 #if LS_UTILS_USE_WINDOWS_FUTEX
 
 class alignas(alignof(uint64_t)) SystemFutexWin32
 {
   private:
-    alignas(alignof(SRWLOCK)) SRWLOCK mLock;
-    alignas(alignof(int32_t)) FutexPauseCount mMaxPauseCount;
+    alignas(alignof(SRWLOCK)) CRITICAL_SECTION mLock;
+    alignas(alignof(uint16_t)) std::atomic_uint16_t mLockState;
+    alignas(alignof(uint16_t)) uint16_t mMaxPauseCount;
 
   public:
     ~SystemFutexWin32() noexcept;

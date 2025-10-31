@@ -154,7 +154,8 @@ inline void SystemFutexPThread::unlock() noexcept
 -------------------------------------*/
 inline void SystemFutexWin32::pause_count(FutexPauseCount maxPauses) noexcept
 {
-    mMaxPauseCount = maxPauses;
+    SetCriticalSectionSpinCount(&mLock, (DWORD)maxPauses);
+    mMaxPauseCount = (uint16_t)maxPauses;
 }
 
 
@@ -164,7 +165,7 @@ inline void SystemFutexWin32::pause_count(FutexPauseCount maxPauses) noexcept
 -------------------------------------*/
 inline FutexPauseCount SystemFutexWin32::pause_count() const noexcept
 {
-    return mMaxPauseCount;
+    return static_cast<FutexPauseCount>(mMaxPauseCount);
 }
 
 
@@ -174,7 +175,14 @@ inline FutexPauseCount SystemFutexWin32::pause_count() const noexcept
 -------------------------------------*/
 inline bool SystemFutexWin32::try_lock() noexcept
 {
-    return 0 != TryAcquireSRWLockExclusive(&mLock);
+    bool result = false;
+    if (mLockState.load(std::memory_order::acquire) == 0 && 0 != TryEnterCriticalSection(&mLock))
+    {
+        mLockState.store(1, std::memory_order::release);
+        result = true;
+    }
+
+    return result;
 }
 
 
@@ -184,7 +192,8 @@ inline bool SystemFutexWin32::try_lock() noexcept
 -------------------------------------*/
 inline void SystemFutexWin32::unlock() noexcept
 {
-    ReleaseSRWLockExclusive(&mLock);
+    mLockState.store(0, std::memory_order::release);
+    LeaveCriticalSection(&mLock);
 }
 
 #endif // LS_UTILS_USE_WINDOWS_FUTEX
