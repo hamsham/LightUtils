@@ -1,12 +1,12 @@
 /*
- * File:   FairRWLockImpl.hpp
+ * File:   RWLockImpl.hpp
  * Author: hammy
  *
  * Created on Mar 30, 2023 at 9:42 PM
  */
 
-#ifndef LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
-#define LS_UTILS_FAIR_RW_LOCK_IMPL_HPP
+#ifndef LS_UTILS_RWLOCK_IMPL_HPP
+#define LS_UTILS_RWLOCK_IMPL_HPP
 
 #include <thread>
 
@@ -20,8 +20,8 @@ namespace utils
 /*-----------------------------------------------------------------------------
  * Spinnable R/W Semaphore
 -----------------------------------------------------------------------------*/
-#ifndef LS_UTILS_SWRLOCK_CPU_YIELD
-    #define LS_UTILS_SWRLOCK_CPU_YIELD 0
+#ifndef LS_UTILS_RWLOCK_CPU_YIELD
+    #define LS_UTILS_RWLOCK_CPU_YIELD 0
 #endif
 
 /*-------------------------------------
@@ -29,7 +29,7 @@ namespace utils
 -------------------------------------*/
 inline void LS_IMPERATIVE RWLock::yield() noexcept
 {
-    #if LS_UTILS_SWRLOCK_CPU_YIELD
+    #if LS_UTILS_RWLOCK_CPU_YIELD
         ls::setup::cpu_yield();
     #else
         std::this_thread::yield();
@@ -440,4 +440,4 @@ inline LockGuardExclusive<RWLockType>::LockGuardExclusive(RWLockType& rwLock) no
 } // end utils namespace
 } // end ls namespace
 
-#endif /* LS_UTILS_FAIR_RW_LOCK_IMPL_HPP */
+#endif /* LS_UTILS_RWLOCK_IMPL_HPP */

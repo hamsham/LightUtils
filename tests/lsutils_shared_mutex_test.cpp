@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Barrier.hpp"
 #include "lightsky/utils/Futex.hpp"
 #include "lightsky/utils/RWLock.hpp"
 #include "lightsky/utils/SpinLock.hpp"
@@ -62,11 +63,14 @@ inline void log_lock_state(utils::SpinLock& ioLock, const char* msg, const std::
 // ----------------------------------------------------------------------------
 template <typename MutexType>
 void mutex_lock_func(
+    utils::SystemBarrier& testBarrier,
     MutexType& rwLock,
     utils::SpinLock& ioLock,
     std::condition_variable& cv,
     std::atomic_uint& numThreadsRunning)
 {
+    testBarrier.wait();
+
     for (unsigned j = 0; j < LOCK_CONTENTION_COUNT; ++j)
     {
         {
@@ -100,11 +104,14 @@ void mutex_lock_func(
 // ----------------------------------------------------------------------------
 template <typename SharedMutexType>
 void exclusive_lock_func(
+    utils::SystemBarrier& testBarrier,
     SharedMutexType& rwLock,
     utils::SpinLock& ioLock,
     std::condition_variable& cv,
     std::atomic_uint& numThreadsRunning)
 {
+    testBarrier.wait();
+
     for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
         {
@@ -138,11 +145,14 @@ void exclusive_lock_func(
 // ----------------------------------------------------------------------------
 template <typename SharedMutexType>
 void shared_lock_func(
+    utils::SystemBarrier& testBarrier,
     SharedMutexType& rwLock,
     utils::SpinLock& ioLock,
     std::condition_variable& cv,
     std::atomic_uint& numThreadsRunning)
 {
+    testBarrier.wait();
+
     for (unsigned i = 0; i < LOCK_CONTENTION_COUNT; ++i)
     {
         {
@@ -181,6 +191,7 @@ system_duration run_mtx_test(const char* testName, unsigned numTests)
 
     system_duration runTime{0};
     const unsigned concurrency = num_test_threads();
+    utils::SystemBarrier testBarrier{concurrency};
     std::condition_variable cv;
     std::mutex mtx;
     std::vector<std::thread> threads;
@@ -197,6 +208,7 @@ system_duration run_mtx_test(const char* testName, unsigned numTests)
         {
             threads[i] = std::thread{
                 mutex_lock_func<MutexType>,
+                std::ref(testBarrier),
                 std::ref(rwLock),
                 std::ref(ioLock),
                 std::ref(cv),
@@ -236,6 +248,7 @@ system_duration run_rw_test(const char* testName, unsigned numTests)
 
     system_duration runTime{0};
     const unsigned concurrency = num_test_threads();
+    utils::SystemBarrier testBarrier{concurrency};
     std::condition_variable cv;
     std::mutex mtx;
     std::vector<std::thread> threads;
@@ -254,6 +267,7 @@ system_duration run_rw_test(const char* testName, unsigned numTests)
             {
                 threads[i] = std::thread{
                     exclusive_lock_func<SharedMutexType>,
+                    std::ref(testBarrier),
                     std::ref(rwLock),
                     std::ref(ioLock),
                     std::ref(cv),
@@ -264,6 +278,7 @@ system_duration run_rw_test(const char* testName, unsigned numTests)
             {
                 threads[i] = std::thread{
                     shared_lock_func<SharedMutexType>,
+                    std::ref(testBarrier),
                     std::ref(rwLock),
                     std::ref(ioLock),
                     std::ref(cv),
@@ -339,12 +354,12 @@ int main()
         << "\n\tSpinLock Time (W):           " << spinlockRunTime.count() << "ms"
         << "\n\tRWLock Time (W):             " << swRunTime.count() << "ms"
         << "\n\tPThread RWLock Time (W):     " << swPThreadRunTime.count() << "ms"
-        << "\n\tWindoows RWLock Time (W):    " << swWindowsRunTime.count() << "ms"
+        << "\n\tWindows RWLock Time (W):     " << swWindowsRunTime.count() << "ms"
         << "\n\tFairWLock Time (W):          " << fairWFutexRunTime.count() << "ms"
         << '\n'
         << "\n\tRWLock Time (RW):            " << srwMutexRunTime.count() << "ms"
         << "\n\tPThread RWLock Time (RW):    " << srwPThreadRunTime.count() << "ms"
-        << "\n\tWindoows RWLock Time (RW):   " << srwWindowsRunTime.count() << "ms"
+        << "\n\tWindows RWLock Time (RW):    " << srwWindowsRunTime.count() << "ms"
         << "\n\tFairRWLock Time (RW):        " << fairRWFutexRunTime.count() << "ms"
         << std::endl;
 

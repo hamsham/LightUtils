@@ -40,6 +40,7 @@ set(LS_UTILS_SOURCES
     src/Argument.cpp
     src/ArgParser.cpp
     src/Assertions.cpp
+    src/Barrier.cpp
     src/Copy.cpp
     src/DataResource.cpp
     src/DynamicLib.cpp
@@ -67,6 +68,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Argument.hpp
     include/lightsky/utils/ArgParser.hpp
     include/lightsky/utils/Assertions.h
+    include/lightsky/utils/Barrier.hpp
     include/lightsky/utils/Bits.h
     include/lightsky/utils/BTree.h
     include/lightsky/utils/ByteSize.h
@@ -107,6 +109,7 @@ set(LS_UTILS_HEADERS
 
     include/lightsky/utils/generic/AlgorithmImpl.hpp
     include/lightsky/utils/generic/AllocatorImpl.hpp
+    include/lightsky/utils/generic/BarrierImpl.hpp
     include/lightsky/utils/generic/BTreeImpl.hpp
     include/lightsky/utils/generic/ChunkAllocatorImpl.hpp
     include/lightsky/utils/generic/FunctionImpl.hpp

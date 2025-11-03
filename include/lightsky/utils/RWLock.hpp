@@ -1,12 +1,12 @@
 /*
- * File:   FairRWLock.hpp
+ * File:   RWLock.hpp
  * Author: hammy
  *
  * Created on Mar 30, 2023 at 9:40 PM
  */
 
-#ifndef LS_UTILS_FAIR_RW_LOCK_HPP
-#define LS_UTILS_FAIR_RW_LOCK_HPP
+#ifndef LS_UTILS_RW_LOCK_HPP
+#define LS_UTILS_RW_LOCK_HPP
 
 #include <atomic>
 
@@ -85,8 +85,6 @@ class RWLock;
 
 
 #if LS_UTILS_USE_WINDOWS_RWLOCK
-    // Windows' SRWLock performs better than pthreads on MinGW.
-    // Prefer the faster implementation
     typedef SystemRWLockWindows SystemRWLock;
 #elif LS_UTILS_USE_PTHREAD_RWLOCK
     typedef SystemRWLockPThread SystemRWLock;
@@ -362,4 +360,4 @@ public:
 
 #include "lightsky/utils/generic/RWLockImpl.hpp"
 
-#endif /* LS_UTILS_FAIR_RW_LOCK_HPP */
+#endif /* LS_UTILS_RW_LOCK_HPP */

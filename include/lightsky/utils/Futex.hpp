@@ -101,14 +101,14 @@ class Futex;
 
 
 
-#if LS_UTILS_USE_PTHREAD_FUTEX
-    // PThread Futexes perform better on Windows through MinGW.
-    // Prefer the faster implementation
+#if LS_UTILS_USE_WINDOWS_FUTEX
+    typedef SystemFutexWindows SystemFutex;
+#elif LS_UTILS_USE_PTHREAD_FUTEX
     typedef SystemFutexPThread SystemFutex;
 #elif LS_UTILS_USE_LINUX_FUTEX
+    // POSIX interfaces should be default across Linux for consistency.
+    // Fallback to Linux implementation only if PThreads is disabled.
     typedef SystemFutexLinux SystemFutex;
-#elif LS_UTILS_USE_WINDOWS_FUTEX
-    typedef SystemFutexWindows SystemFutex;
 #else
     typedef Futex SystemFutex;
 #endif
