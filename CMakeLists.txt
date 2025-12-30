@@ -41,6 +41,7 @@ set(LS_UTILS_SOURCES
     src/ArgParser.cpp
     src/Assertions.cpp
     src/Barrier.cpp
+    src/BitSet.cpp
     src/Copy.cpp
     src/DataResource.cpp
     src/DynamicLib.cpp
@@ -70,6 +71,7 @@ set(LS_UTILS_HEADERS
     include/lightsky/utils/Assertions.h
     include/lightsky/utils/Barrier.hpp
     include/lightsky/utils/Bits.h
+    include/lightsky/utils/BitSet.hpp
     include/lightsky/utils/BTree.h
     include/lightsky/utils/ByteSize.h
     include/lightsky/utils/ChunkAllocator.hpp
