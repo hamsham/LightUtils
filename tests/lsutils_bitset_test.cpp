@@ -16,15 +16,15 @@ template <typename ElementType>
 std::ostream& operator <<(std::ostream& os, const utils::BitSet<ElementType>& bitset)
 {
     typedef ls::utils::BitSet<ElementType> BitSetType;
-    const typename BitSetType::element_type* pBits = bitset.bits();
+    const typename BitSetType::value_type* pBits = bitset.data();
     const typename BitSetType::size_type numBits = bitset.size();
-    const typename BitSetType::size_type numElements = numBits / BitSetType::bits_per_element;
+    const typename BitSetType::size_type numElements = numBits / BitSetType::bits_per_bucket;
     typename BitSetType::size_type i = numElements;
 
     while (i--)
     {
-        typename BitSetType::element_type localBits = pBits[i];
-        typename BitSetType::element_type j = BitSetType::bits_per_element;
+        typename BitSetType::value_type localBits = pBits[i];
+        typename BitSetType::value_type j = BitSetType::bits_per_bucket;
 
         while (j--)
         {
@@ -80,6 +80,8 @@ void test_bit_set()
         << "\n\tBits:       " << bitset0
         << "\n\tSize:       " << bitset0.size()
         << "\n\tCapacity:   " << bitset0.capacity()
+        << "\n\tBit Width:  " << bitset0.bucket_size()
+        << "\n\tBuckets:    " << bitset0.bucket_count()
         << "\n\tAND(30, 1): " << (unsigned)bitset0.cbit_and(30, 1)
         << "\n\tAND(30, 0): " << (unsigned)bitset0.cbit_and(30, 0)
         << "\n\tOR(30, 1):  " << (unsigned)bitset0.cbit_or(30, 1)

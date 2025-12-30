@@ -18,7 +18,7 @@ namespace ls::utils
  * Constructor
 --------------------------------------*/
 template <typename ElementType>
-BitSet<ElementType>::BitSet(size_type numBits, const element_type* bits) noexcept :
+BitSet<ElementType>::BitSet(size_type numBits, const value_type* bits) noexcept :
     BitSet{}
 {
     resize(numBits, bits);
@@ -33,12 +33,12 @@ template <typename ElementType>
 BitSet<ElementType>::BitSet(const BitSet& bitSet) noexcept :
     BitSet{}
 {
-    const size_type numElements = bitSet.size() / bits_per_element;
-    const size_type numReserved = bitSet.capacity() / bits_per_element;
+    const size_type numElements = bitSet.bucket_count();
+    const size_type numReserved = bitSet.capacity() / bits_per_bucket;
 
     if (numElements > 0)
     {
-        mBits = ls::utils::make_unique_aligned_array<element_type>(numReserved);
+        mBits = ls::utils::make_unique_aligned_array<value_type>(numReserved);
     }
 
     if (mBits != nullptr)
@@ -81,13 +81,13 @@ BitSet<ElementType>& BitSet<ElementType>::operator=(const BitSet& bitSet) noexce
         return *this;
     }
 
-    const size_type numElements = bitSet.size() / bits_per_element;
-    const size_type numReserved = bitSet.capacity() / bits_per_element;
-    ls::utils::UniqueAlignedArray<element_type> bits;
+    const size_type numElements = bitSet.bucket_count();
+    const size_type numReserved = bitSet.capacity() / bits_per_bucket;
+    ls::utils::UniqueAlignedArray<value_type> bits;
 
     if (numElements > 0)
     {
-        bits = ls::utils::make_unique_aligned_array<element_type>(numReserved);
+        bits = ls::utils::make_unique_aligned_array<value_type>(numReserved);
     }
 
     if (bits != nullptr)
@@ -145,7 +145,7 @@ bool BitSet<ElementType>::operator==(const BitSet& bitSet) const noexcept
         }
         else
         {
-            const size_type numElements = size() / bits_per_element;
+            const size_type numElements = bucket_count();
             for (size_type i = 0; i < numElements; ++i)
             {
                 if (mBits[i] != bitSet.mBits[i])
@@ -178,7 +178,7 @@ bool BitSet<ElementType>::operator!=(const BitSet& bitSet) const noexcept
         }
         else
         {
-            const size_type numElements = size() / bits_per_element;
+            const size_type numElements = bucket_count();
             for (size_type i = 0; i < numElements; ++i)
             {
                 if (mBits[i] != bitSet.mBits[i])
@@ -210,7 +210,7 @@ void BitSet<ElementType>::clear() noexcept
  * Resize internal bit-array
 --------------------------------------*/
 template <typename ElementType>
-BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, const element_type* bits) noexcept
+BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, const value_type* bits) noexcept
 {
     if (!numBits)
     {
@@ -223,21 +223,21 @@ BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, co
         return numBits;
     }
 
-    const size_type multiple = ((numBits + bits_per_element - 1) / bits_per_element);
+    const size_type multiple = ((numBits + bits_per_bucket - 1) / bits_per_bucket);
     size_type reserved = 0;
-    ls::utils::UniqueAlignedArray<element_type> tmp;
+    ls::utils::UniqueAlignedArray<value_type> tmp;
 
-    if (multiple < (mNumBitsReserved/bits_per_element))
+    if (multiple < (mNumBitsReserved/bits_per_bucket))
     {
         tmp = ls::setup::move(mBits);
-        reserved = (mNumBitsReserved/bits_per_element);
+        reserved = (mNumBitsReserved/bits_per_bucket);
     }
     else
     {
-        constexpr size_type slack = sizeof(element_type);// * 2;
+        constexpr size_type slack = sizeof(value_type);// * 2;
         reserved = ((multiple + slack - 1) / slack) * slack;
 
-        tmp = ls::utils::make_unique_aligned_array<element_type>(reserved);
+        tmp = ls::utils::make_unique_aligned_array<value_type>(reserved);
         if (tmp == nullptr)
         {
             return 0;
@@ -254,7 +254,7 @@ BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, co
     }
     else if (tmp && mBits) // new allocation
     {
-        const size_type bytesToCopy = mNumBitsActive / bits_per_element;
+        const size_type bytesToCopy = mNumBitsActive / bits_per_bucket;
         for (; i < bytesToCopy; ++i)
         {
             tmp[i] = mBits[i];
@@ -272,8 +272,8 @@ BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, co
     }
 
     mBits = ls::setup::move(tmp);
-    mNumBitsActive = multiple * bits_per_element;
-    mNumBitsReserved = reserved * bits_per_element;
+    mNumBitsActive = multiple * bits_per_bucket;
+    mNumBitsReserved = reserved * bits_per_bucket;
 
     return mNumBitsActive;
 }
@@ -284,7 +284,7 @@ BitSet<ElementType>::size_type BitSet<ElementType>::resize(size_type numBits, co
 template <typename ElementType>
 BitSet<ElementType>::size_type BitSet<ElementType>::reserve(size_type numBits) noexcept
 {
-    const size_type multiple = ((numBits + bits_per_element - 1) / bits_per_element);
+    const size_type multiple = ((numBits + bits_per_bucket - 1) / bits_per_bucket);
     if (!multiple)
     {
         clear();
@@ -293,12 +293,12 @@ BitSet<ElementType>::size_type BitSet<ElementType>::reserve(size_type numBits) n
 
     if (numBits < mNumBitsActive)
     {
-        const size_type activeElements = mNumBitsActive / bits_per_element;
-        const size_type elementIndex = multiple-1;
-        const size_type bitIndex = numBits % bits_per_element;
-        constexpr element_type mask = ~(element_type)0;
+        const size_type activeElements = mNumBitsActive / bits_per_bucket;
+        const size_type bucketIndex = multiple-1;
+        const size_type bitIndex = numBits & (bits_per_bucket-1);
+        constexpr value_type mask = ~(value_type)0;
 
-        mBits[elementIndex] = mBits[elementIndex] & ~(mask << bitIndex);
+        mBits[bucketIndex] = mBits[bucketIndex] & ~(mask << bitIndex);
         for (size_type i = multiple; i < activeElements; ++i)
         {
             mBits[i] = 0;
@@ -308,10 +308,10 @@ BitSet<ElementType>::size_type BitSet<ElementType>::reserve(size_type numBits) n
         return mNumBitsReserved;
     }
 
-    const size_type reservedElements = mNumBitsReserved / bits_per_element;
+    const size_type reservedElements = mNumBitsReserved / bits_per_bucket;
     if (multiple > reservedElements)
     {
-        ls::utils::UniqueAlignedArray<element_type> tmp = ls::utils::make_unique_aligned_array<element_type>(multiple);
+        ls::utils::UniqueAlignedArray<value_type> tmp = ls::utils::make_unique_aligned_array<value_type>(multiple);
         if (!tmp)
         {
             return 0;
@@ -329,7 +329,7 @@ BitSet<ElementType>::size_type BitSet<ElementType>::reserve(size_type numBits) n
         }
 
         mBits = ls::setup::move(tmp);
-        mNumBitsReserved = multiple * bits_per_element;
+        mNumBitsReserved = multiple * bits_per_bucket;
     }
 
     return mNumBitsReserved;
@@ -344,7 +344,7 @@ template <typename ElementType>
 BitSet<ElementType>& BitSet<ElementType>::set_and(const BitSet& bitSet) noexcept
 {
     LS_ASSERT(size() == bitSet.size());
-    const size_type numElements = size() / bits_per_element;
+    const size_type numElements = bucket_count();
 
     for (size_type i = 0; i < numElements; ++i)
     {
@@ -361,7 +361,7 @@ template <typename ElementType>
 BitSet<ElementType>& BitSet<ElementType>::set_or(const BitSet& bitSet) noexcept
 {
     LS_ASSERT(size() == bitSet.size());
-    const size_type numElements = size() / bits_per_element;
+    const size_type numElements = bucket_count();
 
     for (size_type i = 0; i < numElements; ++i)
     {
@@ -378,7 +378,7 @@ template <typename ElementType>
 BitSet<ElementType>& BitSet<ElementType>::set_xor(const BitSet& bitSet) noexcept
 {
     LS_ASSERT(size() == bitSet.size());
-    const size_type numElements = size() / bits_per_element;
+    const size_type numElements = bucket_count();
 
     for (size_type i = 0; i < numElements; ++i)
     {
@@ -394,7 +394,7 @@ BitSet<ElementType>& BitSet<ElementType>::set_xor(const BitSet& bitSet) noexcept
 template <typename ElementType>
 BitSet<ElementType>& BitSet<ElementType>::set_not() noexcept
 {
-    const size_type numElements = size() / bits_per_element;
+    const size_type numElements = bucket_count();
 
     for (size_type i = 0; i < numElements; ++i)
     {

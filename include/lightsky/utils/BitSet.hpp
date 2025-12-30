@@ -35,16 +35,16 @@ class BitSet final
 
 public:
     typedef unsigned long long size_type;
-    typedef ElementType element_type;
+    typedef ElementType value_type;
 
     enum : size_type
     {
-        bytes_per_element = sizeof(element_type),
-        bits_per_element = (element_type)(CHAR_BIT*sizeof(element_type))
+        bytes_per_bucket = sizeof(value_type),
+        bits_per_bucket = (value_type)(CHAR_BIT*sizeof(value_type))
     };
 
   private:
-    ls::utils::UniqueAlignedArray<element_type> mBits;
+    ls::utils::UniqueAlignedArray<value_type> mBits;
     size_type mNumBitsActive;
     size_type mNumBitsReserved;
 
@@ -52,7 +52,7 @@ public:
     ~BitSet() noexcept = default;
 
     BitSet() noexcept;
-    BitSet(size_type numBits, const element_type* bits = nullptr) noexcept;
+    BitSet(size_type numBits, const value_type* bits = nullptr) noexcept;
 
     BitSet(const BitSet& bitSet) noexcept;
     BitSet(BitSet&& bitSet) noexcept;
@@ -66,39 +66,41 @@ public:
     void clear() noexcept;
     bool empty() const noexcept;
 
-    size_type resize(size_type numBits, const element_type* bits = nullptr) noexcept;
+    size_type resize(size_type numBits, const value_type* bits = nullptr) noexcept;
     size_type reserve(size_type numBits) noexcept;
 
     size_type size() const noexcept; // returns number of bits used
-    size_type elements() const noexcept; // returns the number of bytes, words, dwords, or qwords
     size_type capacity() const noexcept; // returns number of bits available
+    size_type bucket_size() const noexcept;
+    size_type bucket_count() const noexcept; // returns the number of bytes, words, dwords, or qwords
+    size_type max_bucket_count() const noexcept; // returns the number of reserved bytes, words, dwords, or qwords
 
-    size_type bit_width() const noexcept;
-    size_type byte_width() const noexcept;
-    const element_type* bits() const noexcept;
+    const value_type* data() const noexcept;
+    value_type bucket(size_type bucketIndex) const noexcept;
+    value_type& bucket(size_type bucketIndex) noexcept;
 
-    element_type get(size_type bitIndex) const noexcept;
-    element_type set(size_type bitIndex, element_type val) noexcept;
+    value_type get(size_type bitIndex) const noexcept;
+    value_type set(size_type bitIndex, value_type val) noexcept;
 
-    element_type cbit_and(size_type bitIndex, element_type val) const noexcept;
-    element_type cbit_or(size_type bitIndex, element_type val) const noexcept;
-    element_type cbit_xor(size_type bitIndex, element_type val) const noexcept;
-    element_type cbit_not(size_type bitIndex) const noexcept;
+    value_type cbit_and(size_type bitIndex, value_type val) const noexcept;
+    value_type cbit_or(size_type bitIndex, value_type val) const noexcept;
+    value_type cbit_xor(size_type bitIndex, value_type val) const noexcept;
+    value_type cbit_not(size_type bitIndex) const noexcept;
 
-    element_type bit_and(size_type bitIndex, element_type val) noexcept;
-    element_type bit_or(size_type bitIndex, element_type val) noexcept;
-    element_type bit_xor(size_type bitIndex, element_type val) noexcept;
-    element_type bit_not(size_type bitIndex) noexcept;
+    value_type bit_and(size_type bitIndex, value_type val) noexcept;
+    value_type bit_or(size_type bitIndex, value_type val) noexcept;
+    value_type bit_xor(size_type bitIndex, value_type val) noexcept;
+    value_type bit_not(size_type bitIndex) noexcept;
 
-    element_type celement_and(size_type elementIndex, element_type val) const noexcept;
-    element_type celement_or(size_type elementIndex, element_type val) const noexcept;
-    element_type celement_xor(size_type elementIndex, element_type val) const noexcept;
-    element_type celement_not(size_type elementIndex) const noexcept;
+    value_type cbucket_and(size_type bucketIndex, value_type val) const noexcept;
+    value_type cbucket_or(size_type bucketIndex, value_type val) const noexcept;
+    value_type cbucket_xor(size_type bucketIndex, value_type val) const noexcept;
+    value_type cbucket_not(size_type bucketIndex) const noexcept;
 
-    element_type element_and(size_type elementIndex, element_type val) noexcept;
-    element_type element_or(size_type elementIndex, element_type val) noexcept;
-    element_type element_xor(size_type elementIndex, element_type val) noexcept;
-    element_type element_not(size_type elementIndex) noexcept;
+    value_type bucket_and(size_type bucketIndex, value_type val) noexcept;
+    value_type bucket_or(size_type bucketIndex, value_type val) noexcept;
+    value_type bucket_xor(size_type bucketIndex, value_type val) noexcept;
+    value_type bucket_not(size_type bucketIndex) noexcept;
 
     BitSet& set_and(const BitSet& bitSet) noexcept;
     BitSet& set_or(const BitSet& bitSet) noexcept;
@@ -142,17 +144,6 @@ inline BitSet<ElementType>::size_type BitSet<ElementType>::size() const noexcept
 
 
 /*--------------------------------------
- * Check size
---------------------------------------*/
-template <typename ElementType>
-inline BitSet<ElementType>::size_type BitSet<ElementType>::elements() const noexcept
-{
-    return mNumBitsActive / bits_per_element;
-}
-
-
-
-/*--------------------------------------
  * Check capacity
 --------------------------------------*/
 template <typename ElementType>
@@ -164,23 +155,34 @@ inline BitSet<ElementType>::size_type BitSet<ElementType>::capacity() const noex
 
 
 /*--------------------------------------
- * Bits per element
+ * Bits per bucket
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::size_type BitSet<ElementType>::bit_width() const noexcept
+inline BitSet<ElementType>::size_type BitSet<ElementType>::bucket_size() const noexcept
 {
-    return bits_per_element;
+    return bits_per_bucket;
 }
 
 
 
 /*--------------------------------------
- * Bytes per element
+ * Check bucket size
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::size_type BitSet<ElementType>::byte_width() const noexcept
+inline BitSet<ElementType>::size_type BitSet<ElementType>::bucket_count() const noexcept
 {
-    return bytes_per_element;
+    return mNumBitsActive / bits_per_bucket;
+}
+
+
+
+/*--------------------------------------
+ * Check bucket capacity
+--------------------------------------*/
+template <typename ElementType>
+inline BitSet<ElementType>::size_type BitSet<ElementType>::max_bucket_count() const noexcept
+{
+    return mNumBitsReserved / bits_per_bucket;
 }
 
 
@@ -189,9 +191,31 @@ inline BitSet<ElementType>::size_type BitSet<ElementType>::byte_width() const no
  * Data retrieval
 --------------------------------------*/
 template <typename ElementType>
-inline const BitSet<ElementType>::element_type* BitSet<ElementType>::bits() const noexcept
+inline const BitSet<ElementType>::value_type* BitSet<ElementType>::data() const noexcept
 {
     return mBits.get();
+}
+
+
+
+/*--------------------------------------
+ * Bucket retrieval (const)
+--------------------------------------*/
+template <typename ElementType>
+inline BitSet<ElementType>::value_type BitSet<ElementType>::bucket(size_type bucketIndex) const noexcept
+{
+    return mBits[bucketIndex];
+}
+
+
+
+/*--------------------------------------
+ * Bucket retrieval
+--------------------------------------*/
+template <typename ElementType>
+inline BitSet<ElementType>::value_type& BitSet<ElementType>::bucket(size_type bucketIndex) noexcept
+{
+    return mBits[bucketIndex];
 }
 
 
@@ -200,14 +224,14 @@ inline const BitSet<ElementType>::element_type* BitSet<ElementType>::bits() cons
  * Bit retrieval
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::get(size_type bitIndex) const noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::get(size_type bitIndex) const noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type bit    = bucket & (element_type)1 << bitOffset;
+    const value_type bucket = mBits[bucketIndex];
+    const value_type bit    = bucket & (value_type)1 << bitOffset;
     return bit != 0;
 }
 
@@ -217,19 +241,19 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::get(size_type bitI
  * Bit assignment
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::set(size_type bitIndex, element_type val) noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::set(size_type bitIndex, value_type val) noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type ones   = ~((element_type)1 << bitOffset);
-    const element_type bit    = (element_type)(val != 0);
-    const element_type result = (bucket & ones) | (bit << bitOffset);
+    const value_type bucket = mBits[bucketIndex];
+    const value_type ones   = ~((value_type)1 << bitOffset);
+    const value_type bit    = (value_type)(val != 0);
+    const value_type result = (bucket & ones) | (bit << bitOffset);
 
     mBits[bucketIndex] = result;
-    return static_cast<element_type>(bit);
+    return static_cast<value_type>(bit);
 }
 
 
@@ -238,9 +262,9 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::set(size_type bitI
  * AND a single bit (const)
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_and(size_type bitIndex, element_type val) const noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::cbit_and(size_type bitIndex, value_type val) const noexcept
 {
-    return static_cast<element_type>(this->get(bitIndex) && val);
+    return static_cast<value_type>(this->get(bitIndex) && val);
 }
 
 
@@ -249,9 +273,9 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_and(size_type
  * OR a single bit (const)
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_or(size_type bitIndex, element_type val) const noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::cbit_or(size_type bitIndex, value_type val) const noexcept
 {
-    return static_cast<element_type>(this->get(bitIndex) || val);
+    return static_cast<value_type>(this->get(bitIndex) || val);
 }
 
 
@@ -260,9 +284,9 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_or(size_type 
  * XOR a single bit (const)
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_xor(size_type bitIndex, element_type val) const noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::cbit_xor(size_type bitIndex, value_type val) const noexcept
 {
-    return static_cast<element_type>(this->get(bitIndex) != (val != 0));
+    return static_cast<value_type>(this->get(bitIndex) != (val != 0));
 }
 
 
@@ -271,9 +295,9 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_xor(size_type
  * NOT a single bit (const)
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_not(size_type bitIndex) const noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::cbit_not(size_type bitIndex) const noexcept
 {
-    return static_cast<element_type>(!this->get(bitIndex));
+    return static_cast<value_type>(!this->get(bitIndex));
 }
 
 
@@ -282,19 +306,19 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::cbit_not(size_type
  * AND a single bit
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_and(size_type bitIndex, element_type val) noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::bit_and(size_type bitIndex, value_type val) noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type bit    = (element_type)(val != 0) << bitOffset;
-    const element_type mask   = ~(element_type)0 & bit;
-    const element_type result = bucket & mask;
+    const value_type bucket = mBits[bucketIndex];
+    const value_type bit    = (value_type)(val != 0) << bitOffset;
+    const value_type mask   = ~(value_type)0 & bit;
+    const value_type result = bucket & mask;
 
     mBits[bucketIndex] = result;
-    return static_cast<element_type>((result & bit) != 0);
+    return static_cast<value_type>((result & bit) != 0);
 }
 
 
@@ -303,18 +327,18 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_and(size_type 
  * OR a single bit
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_or(size_type bitIndex, element_type val) noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::bit_or(size_type bitIndex, value_type val) noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type bit    = (element_type)(val != 0) << bitOffset;
-    const element_type result = bucket | bit;
+    const value_type bucket = mBits[bucketIndex];
+    const value_type bit    = (value_type)(val != 0) << bitOffset;
+    const value_type result = bucket | bit;
 
     mBits[bucketIndex] = result;
-    return static_cast<element_type>((result & bit) != 0);
+    return static_cast<value_type>((result & bit) != 0);
 }
 
 
@@ -323,19 +347,19 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_or(size_type b
  * XOR a single bit
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_xor(size_type bitIndex, element_type val) noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::bit_xor(size_type bitIndex, value_type val) noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type bit    = (element_type)(val != 0) << bitOffset;
-    const element_type result = bucket ^ bit;
+    const value_type bucket = mBits[bucketIndex];
+    const value_type bit    = (value_type)(val != 0) << bitOffset;
+    const value_type result = bucket ^ bit;
 
     mBits[bucketIndex] = result;
 
-    return static_cast<element_type>((result & bit) != 0);
+    return static_cast<value_type>((result & bit) != 0);
 }
 
 
@@ -344,18 +368,18 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_xor(size_type 
  * NOT a single bit
 --------------------------------------*/
 template <typename ElementType>
-inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_not(size_type bitIndex) noexcept
+inline BitSet<ElementType>::value_type BitSet<ElementType>::bit_not(size_type bitIndex) noexcept
 {
     LS_DEBUG_ASSERT(bitIndex < mNumBitsActive);
-    const size_type bucketIndex = bitIndex / bits_per_element;
-    const size_type bitOffset   = bitIndex % bits_per_element;
+    const size_type bucketIndex = bitIndex / bits_per_bucket;
+    const size_type bitOffset   = bitIndex & (bits_per_bucket-1);
 
-    const element_type bucket = mBits[bucketIndex];
-    const element_type bit    = ((element_type)1 << bitOffset);
-    const element_type result = bucket ^ bit;
+    const value_type bucket = mBits[bucketIndex];
+    const value_type bit    = ((value_type)1 << bitOffset);
+    const value_type result = bucket ^ bit;
 
     mBits[bucketIndex] = result;
-    return static_cast<element_type>((result & bit) != 0);
+    return static_cast<value_type>((result & bit) != 0);
 }
 
 
@@ -363,10 +387,10 @@ inline BitSet<ElementType>::element_type BitSet<ElementType>::bit_not(size_type 
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_and(size_type elementIndex, element_type val) const noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::cbucket_and(size_type bucketIndex, value_type val) const noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return mBits[elementIndex] & val;
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return mBits[bucketIndex] & val;
 }
 
 
@@ -374,10 +398,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_and(siz
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_or(size_type elementIndex, element_type val) const noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::cbucket_or(size_type bucketIndex, value_type val) const noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return mBits[elementIndex] | val;
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return mBits[bucketIndex] | val;
 }
 
 
@@ -385,10 +409,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_or(size
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_xor(size_type elementIndex, element_type val) const noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::cbucket_xor(size_type bucketIndex, value_type val) const noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return mBits[elementIndex] ^ val;
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return mBits[bucketIndex] ^ val;
 }
 
 
@@ -396,10 +420,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_xor(siz
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_not(size_type elementIndex) const noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::cbucket_not(size_type bucketIndex) const noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return ~mBits[elementIndex];
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return ~mBits[bucketIndex];
 }
 
 
@@ -407,10 +431,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::celement_not(siz
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::element_and(size_type elementIndex, element_type val) noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::bucket_and(size_type bucketIndex, value_type val) noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return (mBits[elementIndex] &= val);
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return (mBits[bucketIndex] &= val);
 }
 
 
@@ -418,10 +442,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::element_and(size
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::element_or(size_type elementIndex, element_type val) noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::bucket_or(size_type bucketIndex, value_type val) noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return (mBits[elementIndex] |= val);
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return (mBits[bucketIndex] |= val);
 }
 
 
@@ -429,10 +453,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::element_or(size_
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::element_xor(size_type elementIndex, element_type val) noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::bucket_xor(size_type bucketIndex, value_type val) noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return (mBits[elementIndex] ^= val);
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return (mBits[bucketIndex] ^= val);
 }
 
 
@@ -440,10 +464,10 @@ typename BitSet<ElementType>::element_type BitSet<ElementType>::element_xor(size
 /*--------------------------------------
 --------------------------------------*/
 template <typename ElementType>
-typename BitSet<ElementType>::element_type BitSet<ElementType>::element_not(size_type elementIndex) noexcept
+typename BitSet<ElementType>::value_type BitSet<ElementType>::bucket_not(size_type bucketIndex) noexcept
 {
-    LS_DEBUG_ASSERT(elementIndex < elements());
-    return (mBits[elementIndex] = ~mBits[elementIndex]);
+    LS_DEBUG_ASSERT(bucketIndex < bucket_count());
+    return (mBits[bucketIndex] = ~mBits[bucketIndex]);
 }
 
 
